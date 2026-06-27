@@ -19,8 +19,15 @@
             </div>
         @endif
 
+        @if(session('contact_error'))
+            <div class="mb-8 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-5 text-slate-900">
+                {{ session('contact_error') }}
+            </div>
+        @endif
+
         <form class="space-y-8" method="POST" action="{{ route('contact.store') }}">
             @csrf
+            <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
 
             <div>
                 <label for="name" class="block mb-2 text-sm font-medium text-slate-900">Nome</label>

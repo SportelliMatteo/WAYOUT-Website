@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('contact_messages')) {
-            Schema::create('contact_messages', function (Blueprint $table) {
+        if (!Schema::hasTable('purchases')) {
+            Schema::create('purchases', function (Blueprint $table) {
                 $table->id();
-                $table->string('name');
                 $table->string('email');
-                $table->string('subject')->nullable();
-                $table->text('message');
+                $table->string('plan');
+                $table->integer('amount');
+                $table->string('currency', 3)->default('eur');
+                $table->string('stripe_session_id')->nullable();
+                $table->string('status')->default('pending');
                 $table->timestamps();
             });
         }
@@ -28,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('contact_messages');
+        Schema::dropIfExists('purchases');
     }
 };

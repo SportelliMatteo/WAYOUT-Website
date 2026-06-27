@@ -10,20 +10,22 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-{
-    Schema::create('waitlist_entries', function (Blueprint $table) {
-        $table->id();
-        $table->string('email')->unique();
-        $table->boolean('offer_shown')->default(true);
-        $table->timestamps();
-    });
-}
+    {
+        if (!Schema::hasTable('waitlist_entries')) {
+            Schema::create('waitlist_entries', function (Blueprint $table) {
+                $table->id();
+                $table->string('email')->unique();
+                $table->boolean('offer_shown')->default(true);
+                $table->timestamps();
+            });
+        }
+    }
 
     /**
      * Reverse the migrations.
-     
+     */
     public function down(): void
     {
         Schema::dropIfExists('waitlist_entries');
-    }*/
+    }
 };

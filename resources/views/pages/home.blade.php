@@ -12,7 +12,7 @@
                 Accedi in anteprima alla piattaforma che rivoluzionerà il modo di organizzare serate, trovare persone e unirsi ai tavoli più interessanti della tua città.
             </h1>
             <p class="mb-6 text-base md:text-lg lg:text-xl leading-relaxed w-full md:w-4/5 lg:w-3/4 text-slate-600 md:text-left">
-                Solo 1.000 posti disponibili nella waitlist. 🔥 
+                Solo 2.000 posti disponibili nella waitlist. 🔥
             </p>
 
             <div class="mt-6 w-full flex justify-start items-start gap-4">
@@ -24,6 +24,7 @@
                     <div class="w-full">
                         <form method="POST" action="{{ route('waitlist.store') }}" class="flex flex-col gap-3 w-full">
                             @csrf
+                            <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
                             <input
                                 type="email"
                                 name="email"
@@ -39,7 +40,15 @@
                             <p class="mt-2 text-sm text-rose-500">{{ $message }}</p>
                         @enderror
 
-                        @if(session('success'))
+                        @if(session('waitlist_error'))
+                            <p class="mt-2 text-sm text-rose-500">{{ session('waitlist_error') }}</p>
+                        @endif
+
+                        @if(session('waitlist_offer'))
+                            @php
+                                $alreadyRegistered = session('waitlist_status') === 'already_registered';
+                                $purchasedPlan = session('purchased_plan');
+                            @endphp
                             <div id="waitlist-offer" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
                                 <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
                                 <div id="waitlist-offer-panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-offer-title" class="relative bg-slate-950/95 border border-white/10 rounded-[2.5rem] shadow-2xl max-w-4xl w-full mx-auto z-10 transform transition-all duration-300 opacity-0 translate-y-8 overflow-hidden">
@@ -50,58 +59,95 @@
                                         <div class="space-y-5">
                                             <span class="inline-flex items-center rounded-full bg-slate-800/70 text-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em]">Offerta riservata waitlist</span>
                                             <div class="space-y-4">
-                                                <h3 id="waitlist-offer-title" class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Il tuo posto è confermato</h3>
-                                                <p class="text-slate-300 text-base sm:text-lg leading-relaxed">Hai riservato uno dei posti disponibili su WAYOUT prima del lancio ufficiale. Iscrivendoti alla waitlist ottieni automaticamente <strong>60 giorni gratis</strong>, e puoi anche bloccare uno sconto esclusivo riservato solo ai primi iscritti.</p>
+                                                <h3 id="waitlist-offer-title" class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                                                    @if($purchasedPlan)
+                                                        Sei già nella waitlist e hai già acquistato
+                                                    @else
+                                                        {{ $alreadyRegistered ? 'Sei già nella waitlist' : 'Il tuo posto è confermato' }}
+                                                    @endif
+                                                </h3>
+                                                <p class="text-slate-300 text-base sm:text-lg leading-relaxed">
+                                                    @if($purchasedPlan)
+                                                        L’email {{ session('waitlist_email') }} risulta già iscritta alla waitlist e ha già acquistato il piano <strong>{{ $purchasedPlan['name'] }}</strong>. La conferma del pagamento ti arriverà via email.
+                                                    @elseif($alreadyRegistered)
+                                                        L’email {{ session('waitlist_email') }} risulta già iscritta alla waitlist. Puoi comunque accedere alle offerte Founder Pass riservate ai primi iscritti e mantenere i tuoi <strong>60 giorni di prova gratuita</strong>.
+                                                    @else
+                                                        Hai riservato uno dei 2.000 posti disponibili su WAYOUT prima del lancio ufficiale. Iscrivendoti alla waitlist ottieni automaticamente <strong>60 giorni di prova gratuita</strong> e potrai accedere alle offerte Founder Pass riservate ai primi iscritti.
+                                                    @endif
+                                                </p>
                                             </div>
 
                                             <div class="grid gap-4 sm:grid-cols-2">
                                                 <div class="rounded-3xl bg-white/5 border border-white/10 p-5">
-                                                    <p class="text-sm uppercase tracking-[0.28em] text-slate-400">Prova</p>
-                                                    <p class="mt-3 text-2xl font-bold text-white">60 giorni gratis</p>
-                                                    <p class="mt-2 text-sm text-slate-400">Garantiti con la sola iscrizione alla waitlist.</p>
+                                                    <p class="text-sm uppercase tracking-[0.28em] text-slate-400">Prova gratuita</p>
+                                                    <p class="mt-3 text-2xl font-bold text-white">60 giorni</p>
+                                                    <p class="mt-2 text-sm text-slate-400">Attiva subito il tuo accesso di prova appena l’app sarà online.</p>
                                                 </div>
                                                 <div class="rounded-3xl bg-white/5 border border-white/10 p-5">
-                                                    <p class="text-sm uppercase tracking-[0.28em] text-slate-400">Offerta</p>
-                                                    <p class="mt-3 text-2xl font-bold text-white">€2,99<span class="text-base font-semibold text-slate-400">/mese</span></p>
-                                                    <p class="mt-2 text-sm text-slate-400 line-through">€4,99/mese dopo il lancio</p>
+                                                    <p class="text-sm uppercase tracking-[0.28em] text-slate-400">Posti riservati</p>
+                                                    <p class="mt-3 text-2xl font-bold text-white">2.000</p>
+                                                    <p class="mt-2 text-sm text-slate-400">Disponibili solo per gli utenti iscritti alla waitlist.</p>
                                                 </div>
                                             </div>
 
                                             <div class="rounded-3xl bg-white/5 border border-white/10 p-6 shadow-inner">
-                                                <p class="text-sm text-slate-300">Dettagli</p>
-                                                <ul class="mt-4 space-y-3 text-slate-300 text-sm">
-                                                    <li>• Sconto early bird riservato ai primi iscritti</li>
-                                                    <li>• Offerta non ripetibile dopo il lancio</li>
-                                                </ul>
+                                                @if($purchasedPlan)
+                                                    <p class="text-sm text-slate-300">Piano acquistato</p>
+                                                    <p class="mt-3 text-2xl font-bold text-white">{{ $purchasedPlan['name'] }}</p>
+                                                    <p class="mt-2 text-sm text-slate-400">Pagamento registrato correttamente per {{ number_format($purchasedPlan['amount'] / 100, 2, ',', '.') }}€.</p>
+                                                    @if(session('purchase_confirmation_success'))
+                                                        <p class="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-sm text-emerald-100">{{ session('purchase_confirmation_success') }}</p>
+                                                    @endif
+                                                    @if(session('purchase_confirmation_error'))
+                                                        <p class="mt-4 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-100">{{ session('purchase_confirmation_error') }}</p>
+                                                    @endif
+                                                @else
+                                                    <p class="text-sm text-slate-300">Le offerte pre-lancio</p>
+                                                    <ul class="mt-4 space-y-3 text-slate-300 text-sm">
+                                                        <li>• Founder Join 12M Pass a 29€ per 12 mesi, 500 posti disponibili</li>
+                                                        <li>• Founder 12M Creator Pass a 59€ per 12 mesi, 150 posti disponibili</li>
+                                                        <li>• Entrambe includono 60 giorni di prova gratuita</li>
+                                                    </ul>
+                                                @endif
                                             </div>
 
                                             <div class="flex flex-col sm:flex-row gap-3">
-                                                <a id="block-discount" href="{{ route('subscribe') }}" class="inline-flex w-full items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 text-slate-950 px-6 py-3 text-lg font-semibold shadow-xl">Blocca il mio sconto</a>
-                                                <button id="keep-waitlist" type="button" class="inline-flex w-full items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-white px-6 py-3 text-lg font-semibold">No, resto nella waitlist</button>
+                                                @if($purchasedPlan)
+                                                    <form method="POST" action="{{ route('purchase.confirmation.resend') }}" class="w-full">
+                                                        @csrf
+                                                        <button type="submit" class="inline-flex w-full items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 text-slate-950 px-6 py-3 text-lg font-semibold shadow-xl">Richiedi nuovamente email acquisto</button>
+                                                    </form>
+                                                    <button id="keep-waitlist" type="button" class="inline-flex w-full items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-white px-6 py-3 text-lg font-semibold">Ho capito</button>
+                                                @else
+                                                    <form method="POST" action="{{ route('subscribe.access') }}" class="w-full">
+                                                        @csrf
+                                                        <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
+                                                        <button id="block-discount" type="submit" class="inline-flex w-full items-center justify-center rounded-full bg-slate-200 hover:bg-slate-300 text-slate-950 px-6 py-3 text-lg font-semibold shadow-xl">Scopri i Founder Pass</button>
+                                                    </form>
+                                                    <button id="keep-waitlist" type="button" class="inline-flex w-full items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-white px-6 py-3 text-lg font-semibold">No, resto nella waitlist</button>
+                                                @endif
                                             </div>
                                         </div>
 
                                         <div class="rounded-[2rem] border border-white/10 bg-slate-900/80 p-6 backdrop-blur-xl text-white shadow-xl">
                                             <div class="mb-6">
                                                 <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Offerta esclusiva</p>
-                                                <p class="mt-2 text-2xl font-extrabold">Founder Join 12M Pass</p>
+                                                <p class="mt-2 text-2xl font-extrabold">Founder Pass pre-lancio</p>
                                             </div>
                                             <div class="space-y-4">
                                                 <div class="rounded-3xl bg-slate-950/90 p-5">
-                                                    <p class="text-sm text-slate-400">Prezzo</p>
-                                                    <p class="mt-2 text-3xl font-bold text-white">€2,99<span class="text-base font-semibold text-slate-400">/mese</span></p>
+                                                    <p class="text-sm text-slate-400">Founder Join 12M Pass</p>
+                                                    <p class="mt-2 text-3xl font-bold text-white">29€</p>
+                                                    <p class="mt-2 text-sm text-slate-400">Partecipa a tavoli e feste private già esistenti</p>
                                                 </div>
                                                 <div class="rounded-3xl bg-slate-950/90 p-5">
-                                                    <p class="text-sm text-slate-400">Durata</p>
-                                                    <p class="mt-2 text-2xl font-semibold text-white">12 mesi</p>
-                                                </div>
-                                                <div class="rounded-3xl bg-slate-950/90 p-5">
-                                                    <p class="text-sm text-slate-400">Bonus</p>
-                                                    <p class="mt-2 text-2xl font-semibold text-white">60 giorni free</p>
+                                                    <p class="text-sm text-slate-400">Founder 12M Creator Pass</p>
+                                                    <p class="mt-2 text-3xl font-bold text-white">59€</p>
+                                                    <p class="mt-2 text-sm text-slate-400">Include tutto il Join Pass e consente di creare e gestire tavoli e feste private</p>
                                                 </div>
                                             </div>
                                             <div class="mt-6 rounded-3xl bg-white/5 p-4 text-sm text-slate-300">
-                                                <p class="font-semibold text-white">Disponibile solo per gli utenti della waitlist.</p>
+                                                <p class="font-semibold text-white">Disponibile solo per chi è iscritto alla waitlist.</p>
                                             </div>
                                         </div>
                                     </div>
