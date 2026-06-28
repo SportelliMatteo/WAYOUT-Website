@@ -4,49 +4,94 @@
 ])
 
 @section('content')
-<section class="bg-white mt-2">
-    <div class="py-8 px-4 mx-auto max-w-screen-2xl text-center lg:py-16 lg:px-6">
-        <div class="mx-auto mb-8 max-w-3xl lg:mb-16 flex flex-col items-center">
-            <h2 class="mb-4 text-4xl font-extrabold tracking-tight lg:text-5xl">
-                THIS IS WAYOUT
-            </h2>
-            <p class="font-light text-gray-500 sm:text-xl max-w-2xl">
-                WAYOUT nasce per realizzare una visione: unire persone che non si sono mai viste prima e portarle a fare serata insieme.
-                Abbiamo inventato un’esperienza e l’abbiamo chiamata social clubbing.
-            </p>
-
-            <img
-                class="w-full max-w-xxl h-auto rounded-lg mt-5 shadow-xl"
-                src="/images/about/about.jpg"
-                alt="Wayout about"
-            />
-        </div>
-
-        <div class="mx-auto max-w-6xl text-left">
-            <h2 class="mt-10 text-3xl font-semibold tracking-tight">
-                Il progetto in sintesi
-            </h2>
-            <p class="leading-7 mt-6 text-lg text-slate-700">
-                WAYOUT è una nuova iniziativa nel settore della vita notturna che punta a portare una ventata di aria fresca nel contesto del clubbing italiano ed europeo.
-                Siamo un giovanissimo team di artisti, marketer, sviluppatori, content creator, ma soprattutto fan della notte e del divertimento, che hanno deciso di mettersi insieme per realizzare una visione: unire persone che non si sono mai viste prima e portarle a fare serata insieme.
-                Il nostro obiettivo è permettere ai giovani di tutta Italia di conoscere nuovi amici con cui condividere le stesse vibes notturne!
-            </p>
-            <p class="leading-7 mt-6 text-lg text-slate-700">
-                Più precisamente tramite l'app di WAYOUT chiunque può partecipare a tavoli in discoteca organizzati da altri utenti oppure creare il proprio tavolo a cui gli altri possono unirsi.
-            </p>
-            <p class="leading-7 mt-6 text-lg text-slate-700">
-                Se stai cercando nuovi amici con cui uscire e divertirti, WAYOUT fa proprio al caso tuo. Non sai con chi fare serata nel weekend? Unisciti ad un tavolo WAYOUT e conosci gente nuova!
-            </p>
-            <p class="leading-7 mt-6 text-lg text-slate-700">
-                Quella che puoi vivere tramite WAYOUT è un’esperienza totalmente nuova, sorprendente ed emozionante. Abbiamo perfino coniato un termine per definirla: noi la chiamiamo SOCIAL CLUBBING.
-            </p>
-            <p class="leading-7 mt-6 text-lg text-slate-700">
-                Noi founder siamo tutti ex studenti ed ognuno di noi nel corso degli anni universitari ha vissuto la stessa sensazione: una grande voglia di vivere al meglio gli ultimi anni di spensieratezza, di socializzare, di fare esperienze nuove e creare ricordi indelebili con persone vere e che avevano la stessa nostra voglia di divertirsi. Ma spesso il problema era proprio trovare le persone giuste con cui condividere questa voglia di allegria, leggerezza e divertimento.
-            </p>
-            <p class="leading-7 mt-6 text-lg text-slate-700">
-                Se anche tu hai vissuto la stessa sensazione, WAYOUT è la soluzione che cercavi: partecipa ad un tavolo già formato o creane uno tu!
-            </p>
+<section class="relative overflow-hidden py-10 lg:py-16">
+    <div class="wayout-shell">
+        <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+                <span class="inline-flex rounded-full border border-violet-200 bg-white/80 px-4 py-2 text-sm font-black uppercase tracking-[0.22em] text-violet-700">
+                    This is WAYOUT
+                </span>
+                <h1 class="mt-6 text-4xl font-black leading-[0.98] text-slate-950 sm:text-6xl lg:text-7xl">
+                    Abbiamo dato un nome a una nuova vibe: <span class="wayout-gradient-text">social clubbing.</span>
+                </h1>
+                <p class="mt-5 max-w-2xl text-base font-medium leading-7 text-slate-600 sm:mt-6 sm:text-lg sm:leading-8">
+                    WAYOUT nasce per unire persone che non si sono mai viste prima e portarle a fare serata insieme. Tavoli, club, feste private e nuove amicizie diventano un’unica esperienza.
+                </p>
+            </div>
+            <div class="relative">
+                <div class="absolute -inset-3 rounded-[2rem] bg-violet-500/20 blur-2xl sm:-inset-4 sm:rounded-[2.5rem]"></div>
+                <img class="relative aspect-[4/3] w-full rounded-[2rem] object-cover shadow-[0_30px_90px_rgba(15,23,42,0.18)] sm:rounded-[2.5rem]" src="/images/about/about.jpg" alt="Team WAYOUT" />
+                <div class="relative mx-4 -mt-10 rounded-[1.5rem] border border-white/70 bg-white/[0.9] p-4 shadow-2xl backdrop-blur-xl sm:absolute sm:-bottom-6 sm:left-6 sm:right-6 sm:mx-0 sm:mt-0 sm:rounded-[2rem] sm:p-5">
+                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Missione</p>
+                    <p class="mt-2 text-xl font-black text-slate-950 sm:text-2xl">Portare aria fresca nel clubbing italiano ed europeo.</p>
+                </div>
+            </div>
         </div>
     </div>
 </section>
+
+<section class="py-12 lg:py-24">
+    <div class="wayout-shell">
+        <div class="grid gap-5 md:grid-cols-3">
+            <article class="wayout-card rounded-[2rem] p-6">
+                <p class="text-5xl font-black text-violet-700">01</p>
+                <h2 class="mt-5 text-2xl font-black text-slate-950">Persone vere</h2>
+                <p class="mt-3 leading-7 text-slate-600">Il problema non è avere voglia di uscire. Spesso è trovare le persone giuste con cui condividere energia, allegria e leggerezza.</p>
+            </article>
+            <article class="wayout-card rounded-[2rem] p-6">
+                <p class="text-5xl font-black text-violet-700">02</p>
+                <h2 class="mt-5 text-2xl font-black text-slate-950">Tavoli aperti</h2>
+                <p class="mt-3 leading-7 text-slate-600">Con l’app puoi partecipare a tavoli organizzati da altri utenti oppure crearne uno tuo e far entrare nuove persone.</p>
+            </article>
+            <article class="wayout-card rounded-[2rem] p-6">
+                <p class="text-5xl font-black text-violet-700">03</p>
+                <h2 class="mt-5 text-2xl font-black text-slate-950">Ricordi condivisi</h2>
+                <p class="mt-3 leading-7 text-slate-600">La notte diventa un posto più facile da vivere: stessa città, stesse vibes, nuove connessioni da trasformare in ricordi.</p>
+            </article>
+        </div>
+
+        <div class="mt-10 rounded-[2rem] bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem] sm:p-10 lg:p-14">
+            <div class="grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+                <div>
+                    <p class="text-sm font-black uppercase tracking-[0.28em] text-violet-200">Il progetto</p>
+                    <h2 class="mt-4 text-3xl font-black leading-tight sm:text-5xl">Una soluzione nata da una sensazione comune.</h2>
+                </div>
+                <div class="space-y-5 text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
+                    <p>
+                        Siamo un team di artisti, marketer, sviluppatori, content creator e fan della notte. Abbiamo vissuto gli anni universitari con la stessa voglia: socializzare, divertirci e creare esperienze nuove con persone sulla stessa frequenza.
+                    </p>
+                    <p>
+                        WAYOUT esiste per rendere quella possibilità più semplice. Se non sai con chi fare serata nel weekend, puoi unirti a un tavolo già formato. Se hai tu la serata in mente, puoi crearla e aprirla agli altri.
+                    </p>
+                    <p class="font-black text-white">
+                        Non è solo prenotare un posto. È entrare in una scena.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{{--
+<section class="pb-10 lg:pb-20">
+    <div class="wayout-shell">
+        <div class="grid gap-6 lg:grid-cols-2">
+            <article class="wayout-card overflow-hidden rounded-[2rem]">
+                <img src="/images/about/Matteo.jpg" alt="Matteo di WAYOUT" class="aspect-[4/3] w-full object-cover" />
+                <div class="p-6">
+                    <p class="text-sm font-black uppercase tracking-[0.24em] text-violet-700">Founder</p>
+                    <h2 class="mt-2 text-3xl font-black text-slate-950">Matteo</h2>
+                </div>
+            </article>
+            <article class="wayout-card overflow-hidden rounded-[2rem]">
+                <img src="/images/about/Niccolo.jpg" alt="Niccolò di WAYOUT" class="aspect-[4/3] w-full object-cover" />
+                <div class="p-6">
+                    <p class="text-sm font-black uppercase tracking-[0.24em] text-violet-700">Founder</p>
+                    <h2 class="mt-2 text-3xl font-black text-slate-950">Marco</h2>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+--}}
 @endsection

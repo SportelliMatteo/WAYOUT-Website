@@ -59,3 +59,77 @@ body {
     @apply bg-white text-slate-900 antialiased;
     font-family: var(--font-sans);
 }
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background:
+        radial-gradient(circle at 10% 10%, rgba(124, 35, 245, 0.16), transparent 28rem),
+        radial-gradient(circle at 90% 12%, rgba(185, 255, 74, 0.18), transparent 24rem),
+        linear-gradient(180deg, #fbfbff 0%, #ffffff 42%, #f6f3ff 100%);
+}
+
+::selection {
+    background: #7c23f5;
+    color: white;
+}
+
+.wayout-shell {
+    @apply max-w-screen-2xl mx-auto px-5 lg:px-20;
+}
+
+.wayout-panel {
+    @apply border border-white/70 bg-white/[0.82] shadow-[0_24px_80px_rgba(23,23,23,0.10)] backdrop-blur-xl;
+}
+
+.wayout-card {
+    @apply border border-slate-200/80 bg-white/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] backdrop-blur;
+}
+
+.wayout-gradient-text {
+    background: linear-gradient(120deg, #171717 0%, #171717 48%, #7c23f5 78%, #b9ff4a 115%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.wayout-purple {
+    background: linear-gradient(135deg, #8a2cff 0%, #6918e8 100%);
+}
+
+.wayout-lime {
+    background: linear-gradient(135deg, #d9ff70 0%, #a7ff31 100%);
+}
+
+.phone-float {
+    animation: phoneFloat 6s ease-in-out infinite;
+}
+
+.phone-float-delayed {
+    animation: phoneFloat 7s ease-in-out infinite;
+    animation-delay: -2s;
+}
+
+.pulse-glow {
+    animation: pulseGlow 3.2s ease-in-out infinite;
+}
+
+@keyframes phoneFloat {
+    0%, 100% {
+        transform: var(--phone-base, translateX(0)) translateY(0) rotate(var(--phone-rotate, 0deg));
+    }
+    50% {
+        transform: var(--phone-base, translateX(0)) translateY(-18px) rotate(var(--phone-rotate, 0deg));
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(124, 35, 245, 0.28), 0 24px 60px rgba(124, 35, 245, 0.24);
+    }
+    50% {
+        box-shadow: 0 0 0 18px rgba(124, 35, 245, 0), 0 30px 80px rgba(124, 35, 245, 0.32);
+    }
+}
