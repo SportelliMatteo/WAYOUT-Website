@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'Wayout' }}</title>
-    <meta name="description" content="{{ $description ?? 'Wayout - Trova persone con cui condividere tavoli e serate.' }}">
+    <meta name="description" content="{{ $description ?? __('messages.home.description') }}">
     <link rel="shortcut icon" href="/favicon.jpg" type="image/jpeg" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -16,7 +16,7 @@
             </a>
 
             <button id="nav-toggle" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:border-violet-300 hover:text-violet-700 md:hidden" aria-controls="mobile-nav" aria-expanded="false">
-                <span class="sr-only">Apri menu</span>
+                <span class="sr-only">{{ __('messages.nav.open_menu') }}</span>
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                 </svg>
@@ -25,14 +25,18 @@
             <div class="hidden md:flex md:w-auto md:items-center">
                 <div class="flex w-auto flex-row gap-1 rounded-full border border-slate-950/5 bg-white/55 p-1 text-center text-sm font-black shadow-inner shadow-white/60">
                     <a href="{{ route('home') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('home') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
-                        Home
+                        {{ __('messages.nav.home') }}
                     </a>
                     <a href="{{ route('about') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('about') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
-                        Chi siamo
+                        {{ __('messages.nav.about') }}
                     </a>
                     <a href="{{ route('contact') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('contact') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
-                        Contatti
+                        {{ __('messages.nav.contact') }}
                     </a>
+                </div>
+                <div class="ml-2 flex rounded-full border border-slate-950/5 bg-white/55 p-1 text-xs font-black shadow-inner shadow-white/60">
+                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-3 py-2 transition {{ app()->getLocale() === 'it' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">IT</a>
+                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full px-3 py-2 transition {{ app()->getLocale() === 'en' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">EN</a>
                 </div>
             </div>
         </div>
@@ -44,7 +48,7 @@
                 <a href="{{ route('home') }}" class="inline-flex rounded-2xl bg-white/[0.92] px-4 py-3 shadow-lg shadow-slate-950/10">
                     <img src="/logos/logo_black.png" class="h-8" alt="WAYOUT Logo" />
                 </a>
-                <button id="nav-close" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white shadow-lg shadow-slate-950/10 transition hover:bg-white/20" aria-label="Chiudi menu">
+                <button id="nav-close" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white shadow-lg shadow-slate-950/10 transition hover:bg-white/20" aria-label="{{ __('messages.nav.close_menu') }}">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -53,14 +57,18 @@
 
             <div class="flex flex-1 flex-col justify-center gap-3 text-center">
                 <a href="{{ route('home') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('home') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
-                    Home
+                    {{ __('messages.nav.home') }}
                 </a>
                 <a href="{{ route('about') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('about') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
-                    Chi siamo
+                    {{ __('messages.nav.about') }}
                 </a>
                 <a href="{{ route('contact') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('contact') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
-                    Contatti
+                    {{ __('messages.nav.contact') }}
                 </a>
+                <div class="mx-auto mt-3 flex rounded-full border border-white/10 bg-white/10 p-1 text-sm font-black">
+                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-4 py-2 {{ app()->getLocale() === 'it' ? 'bg-white text-slate-950' : 'text-white' }}">IT</a>
+                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full px-4 py-2 {{ app()->getLocale() === 'en' ? 'bg-white text-slate-950' : 'text-white' }}">EN</a>
+                </div>
             </div>
         </div>
     </div>
@@ -110,7 +118,7 @@
                             <img src="/logos/logo_black.png" class="h-8" alt="WAYOUT Logo" />
                         </a>
                         <p class="mt-6 max-w-md text-lg font-semibold leading-8 text-slate-300">
-                            Social clubbing per scoprire tavoli, club e feste private con persone sulla tua stessa vibe.
+                            {{ __('messages.footer.description') }}
                         </p>
                         <div class="mt-6 flex gap-3">
                             <a href="https://www.instagram.com/wayout_app/" class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-violet-600 hover:text-white" aria-label="Instagram">
@@ -127,11 +135,11 @@
                     </div>
 
                     <div>
-                        <p class="text-sm font-black uppercase tracking-[0.26em] text-violet-200">Navigazione</p>
+                        <p class="text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.nav.navigation') }}</p>
                         <div class="mt-5 flex flex-col gap-3 text-base font-bold text-slate-300">
-                            <a href="{{ route('home') }}" class="transition hover:text-white">Home</a>
-                            <a href="{{ route('about') }}" class="transition hover:text-white">Chi siamo</a>
-                            <a href="{{ route('contact') }}" class="transition hover:text-white">Contatti</a>
+                            <a href="{{ route('home') }}" class="transition hover:text-white">{{ __('messages.nav.home') }}</a>
+                            <a href="{{ route('about') }}" class="transition hover:text-white">{{ __('messages.nav.about') }}</a>
+                            <a href="{{ route('contact') }}" class="transition hover:text-white">{{ __('messages.nav.contact') }}</a>
                         </div>
                     </div>
 
@@ -139,19 +147,19 @@
                         
                         <dl class="space-y-3 text-sm">
                             <div>
-                                <dt class="font-bold text-slate-500">Ragione sociale</dt>
+                                <dt class="font-bold text-slate-500">{{ __('messages.footer.company_name') }}</dt>
                                 <dd class="mt-1 font-semibold text-slate-200">WAYOUT S.r.l.</dd>
                             </div>
                             <div>
-                                <dt class="font-bold text-slate-500">P.IVA</dt>
+                                <dt class="font-bold text-slate-500">{{ __('messages.footer.vat') }}</dt>
                                 <dd class="mt-1 font-semibold text-slate-200">01482970167</dd>
                             </div>
                             <div>
-                                <dt class="font-bold text-slate-500">REA</dt>
+                                <dt class="font-bold text-slate-500">{{ __('messages.footer.rea') }}</dt>
                                 <dd class="mt-1 font-semibold text-slate-200">MI3456234</dd>
                             </div>
                             <div>
-                                <dt class="font-bold text-slate-500">PEC</dt>
+                                <dt class="font-bold text-slate-500">{{ __('messages.footer.pec') }}</dt>
                                 <dd class="mt-1 font-semibold text-slate-200">pec@pec.wayoutapp.it</dd>
                             </div>
                         </dl>
@@ -159,7 +167,7 @@
                 </div>
 
                 <div class="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-                    <p>© {{ date('Y') }} WAYOUT. Tutti i diritti sono riservati.</p>
+                    <p>© {{ date('Y') }} WAYOUT. {{ __('messages.footer.rights') }}</p>
                 </div>
             </div>
         </div>

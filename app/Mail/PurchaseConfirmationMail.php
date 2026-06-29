@@ -14,13 +14,11 @@ class PurchaseConfirmationMail extends Mailable
     /**
      * @param  array{email: string, plan_name: string, amount: int, currency: string}  $purchase
      */
-    public function __construct(public array $purchase)
-    {
-    }
+    public function __construct(public array $purchase) {}
 
     public function build(): static
     {
-        return $this->subject('Conferma acquisto Founder Pass WAYOUT')
+        return $this->subject(__('messages.email.purchase_subject'))
             ->view('emails.purchase-confirmation');
     }
 }

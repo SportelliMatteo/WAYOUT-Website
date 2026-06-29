@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="it">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
-    <title>Conferma acquisto Founder Pass WAYOUT</title>
+    <title>{{ __('messages.email.purchase_subject') }}</title>
 </head>
 <body style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;">
-    <h1 style="font-size: 24px;">Conferma acquisto Founder Pass WAYOUT</h1>
-    <p>Ciao,</p>
-    <p>ti confermiamo che l’acquisto del tuo <strong>{{ $purchase['plan_name'] }}</strong> è stato registrato correttamente.</p>
+    <h1 style="font-size: 24px;">{{ __('messages.email.purchase_subject') }}</h1>
+    <p>{{ __('messages.email.hello') }}</p>
+    <p>{!! __('messages.email.purchase_confirmed', ['plan' => '<strong>'.$purchase['plan_name'].'</strong>']) !!}</p>
     <p>
-        Importo:
+        {{ __('messages.email.amount') }}
         <strong>{{ number_format($purchase['amount'] / 100, 2, ',', '.') }} {{ strtoupper($purchase['currency']) }}</strong>
     </p>
-    <p>La tua email waitlist associata è <strong>{{ $purchase['email'] }}</strong>.</p>
-    <p>Grazie per aver scelto WAYOUT.</p>
+    <p>{!! __('messages.email.waitlist_email', ['email' => '<strong>'.$purchase['email'].'</strong>']) !!}</p>
+    <p>{{ __('messages.email.thanks') }}</p>
 </body>
 </html>

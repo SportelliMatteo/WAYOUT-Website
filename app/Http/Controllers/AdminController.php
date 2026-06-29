@@ -32,7 +32,7 @@ class AdminController extends Controller
 
         if (! $adminEmail || ! $adminPassword) {
             throw ValidationException::withMessages([
-                'email' => 'Credenziali admin non configurate.',
+                'email' => __('messages.messages.admin_missing_credentials'),
             ]);
         }
 
@@ -42,7 +42,7 @@ class AdminController extends Controller
 
         if (! hash_equals(Str::lower($adminEmail), Str::lower($validated['email'])) || ! $passwordMatches) {
             throw ValidationException::withMessages([
-                'email' => 'Credenziali non valide.',
+                'email' => __('messages.messages.admin_invalid_credentials'),
             ]);
         }
 
@@ -178,7 +178,7 @@ class AdminController extends Controller
             );
         }
 
-        return back()->with('admin_success', 'Quantità aggiornate.');
+        return back()->with('admin_success', __('messages.messages.admin_success'));
     }
 
     private function buyersForPlan(string $plan)

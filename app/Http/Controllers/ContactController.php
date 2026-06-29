@@ -18,7 +18,7 @@ class ContactController extends Controller
             ]);
 
             return back()->withInput($request->except('website'))
-                ->with('contact_error', 'Non siamo riusciti a inviare il messaggio. Riprova tra qualche minuto.');
+                ->with('contact_error', __('messages.messages.contact_error'));
         }
 
         $validated = $request->validate([
@@ -41,7 +41,7 @@ class ContactController extends Controller
             ]);
 
             return back()->withInput($request->except('website'))
-                ->with('contact_error', 'Non siamo riusciti a inviare il messaggio. Riprova tra qualche minuto.');
+                ->with('contact_error', __('messages.messages.contact_error'));
         }
 
         return back()->with('contact_success', true);

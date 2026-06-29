@@ -46,7 +46,7 @@ class SubscribeController extends Controller
         $email = $request->session()->get('waitlist_email');
 
         if (! $email) {
-            return back()->with('purchase_confirmation_error', 'Email waitlist non trovata. Reinserisci la tua email dalla home.');
+            return back()->with('purchase_confirmation_error', __('messages.messages.purchase_email_missing'));
         }
 
         try {
@@ -65,11 +65,11 @@ class SubscribeController extends Controller
                 ->with('waitlist_offer', true)
                 ->with('waitlist_status', 'already_registered')
                 ->with('waitlist_email', $email)
-                ->with('purchase_confirmation_error', 'Non siamo riusciti a inviare nuovamente l’email. Riprova tra qualche minuto.');
+                ->with('purchase_confirmation_error', __('messages.messages.purchase_resend_error'));
         }
 
         if (! $purchase) {
-            return back()->with('purchase_confirmation_error', 'Non risulta ancora un acquisto confermato per questa email.');
+            return back()->with('purchase_confirmation_error', __('messages.messages.purchase_not_found'));
         }
 
         $purchaseData = [
@@ -90,19 +90,19 @@ class SubscribeController extends Controller
 
             return back()
                 ->with($this->purchasedPlanFlashData($email, $purchase))
-                ->with('purchase_confirmation_error', 'Non siamo riusciti a inviare nuovamente l’email. Riprova tra qualche minuto.');
+                ->with('purchase_confirmation_error', __('messages.messages.purchase_resend_error'));
         }
 
         return back()
             ->with($this->purchasedPlanFlashData($email, $purchase))
-            ->with('purchase_confirmation_success', 'Ti abbiamo inviato nuovamente l’email di conferma acquisto.');
+            ->with('purchase_confirmation_success', __('messages.messages.purchase_resend_success'));
     }
 
     public function checkout(Request $request, FounderAvailability $availability)
     {
         if (! $request->session()->get('waitlist_offer_access')) {
             return response()->json([
-                'error' => 'Accesso non autorizzato. Torna dal banner della waitlist.',
+                'error' => __('messages.messages.checkout_unauthorized'),
             ], 403);
         }
 
@@ -110,7 +110,7 @@ class SubscribeController extends Controller
 
         if (! $email) {
             return response()->json([
-                'error' => 'Email waitlist non trovata. Reinserisci la tua email dalla home.',
+                'error' => __('messages.messages.purchase_email_missing'),
             ], 403);
         }
 
@@ -118,13 +118,13 @@ class SubscribeController extends Controller
 
         if (! in_array($plan, ['join', 'creator'], true)) {
             return response()->json([
-                'error' => 'Seleziona un Founder Pass valido.',
+                'error' => __('messages.messages.invalid_pass'),
             ], 422);
         }
 
         if ($availability->isPlanSoldOut($plan)) {
             return response()->json([
-                'error' => $this->planName($plan).' è esaurito. Scegli un altro pass o resta in waitlist.',
+                'error' => __('messages.messages.pass_sold_out', ['plan' => $this->planName($plan)]),
             ], 422);
         }
 
@@ -185,13 +185,13 @@ class SubscribeController extends Controller
                 ]);
 
                 return response()->json([
-                    'error' => 'Non siamo riusciti a registrare il pagamento. Riprova tra qualche minuto.',
+                    'error' => __('messages.messages.purchase_register_error'),
                 ], 500);
             }
 
             if ($soldOut) {
                 return response()->json([
-                    'error' => $this->planName($plan).' è esaurito. Scegli un altro pass o resta in waitlist.',
+                    'error' => __('messages.messages.pass_sold_out', ['plan' => $this->planName($plan)]),
                 ], 422);
             }
 
@@ -206,7 +206,7 @@ class SubscribeController extends Controller
 
         if (! $secret) {
             return response()->json([
-                'error' => 'Stripe non è configurato. Inserisci STRIPE_SECRET in .env.',
+                'error' => __('messages.messages.stripe_secret_missing'),
             ], 500);
         }
 
@@ -237,7 +237,7 @@ class SubscribeController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Checkout temporaneamente non disponibile. Riprova tra qualche minuto.',
+                'error' => __('messages.messages.checkout_unavailable'),
             ], 502);
         }
 
@@ -249,7 +249,7 @@ class SubscribeController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Checkout temporaneamente non disponibile. Riprova tra qualche minuto.',
+                'error' => __('messages.messages.checkout_unavailable'),
             ], 502);
         }
 
@@ -261,7 +261,7 @@ class SubscribeController extends Controller
             ]);
 
             return response()->json([
-                'error' => 'Checkout temporaneamente non disponibile. Riprova tra qualche minuto.',
+                'error' => __('messages.messages.checkout_unavailable'),
             ], 502);
         }
 

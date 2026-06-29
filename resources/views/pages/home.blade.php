@@ -1,6 +1,6 @@
 @extends('layouts.app', [
-    'title' => 'Wayout',
-    'description' => 'Trova persone con cui condividere tavoli, serate e nuove esperienze.'
+    'title' => __('messages.home.title'),
+    'description' => __('messages.home.description')
 ])
 
 @section('content')
@@ -14,26 +14,26 @@
     <div class="wayout-shell grid items-center gap-8 py-8 sm:py-10 lg:min-h-[calc(100vh-6rem)] lg:grid-cols-[1.02fr_0.98fr] lg:gap-12 lg:py-16">
         <div class="relative z-10 text-center lg:text-left">
             <span class="inline-flex max-w-full items-center rounded-full border border-violet-200 bg-white/80 px-4 py-2 text-sm font-bold text-violet-700 shadow-sm">
-                Social clubbing, prima di tutti
+                {{ __('messages.home.eyebrow') }}
             </span>
             <h1 class="mx-auto mt-6 max-w-4xl text-4xl font-black leading-[0.96] text-slate-950 sm:text-6xl lg:mx-0 lg:text-7xl">
-                Trova il tuo tavolo. <span class="wayout-gradient-text">Entra nella notte.</span>
+                {{ __('messages.home.headline_a') }} <span class="wayout-gradient-text">{{ __('messages.home.headline_b') }}</span>
             </h1>
             <p class="mx-auto mt-5 max-w-2xl text-base font-medium leading-7 text-slate-600 sm:mt-6 sm:text-xl sm:leading-8 lg:mx-0">
-                WAYOUT unisce persone che non si conoscono ancora e le porta a condividere club, tavoli e feste private nella stessa città.
+                {{ __('messages.home.intro') }}
             </p>
 
             <div class="mx-auto mt-7 max-w-2xl overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-[0_26px_80px_rgba(15,23,42,0.20)] sm:mt-8 lg:mx-0">
                 <div class="bg-[radial-gradient(circle_at_12%_0%,rgba(124,35,245,0.62),transparent_22rem),radial-gradient(circle_at_95%_10%,rgba(185,255,74,0.20),transparent_18rem)] p-4 sm:p-5">
                     <div class="flex flex-col items-center gap-4 text-center lg:items-start lg:text-left">
                         <div class="min-w-0">
-                            <p class="text-xs font-black uppercase tracking-[0.22em] text-violet-200">Accesso anticipato</p>
-                            <p class="mt-2 text-xl font-black leading-tight sm:text-2xl">{{ $waitlistFull ? 'Waitlist al completo' : 'Entra nella waitlist WAYOUT' }}</p>
+                            <p class="text-xs font-black uppercase tracking-[0.22em] text-violet-200">{{ __('messages.home.early_access') }}</p>
+                            <p class="mt-2 text-xl font-black leading-tight sm:text-2xl">{{ $waitlistFull ? __('messages.home.waitlist_full') : __('messages.home.waitlist_open') }}</p>
                         </div>
                         <div class="flex w-full flex-wrap justify-center gap-2 text-center text-xs font-black text-slate-950 sm:text-sm lg:justify-start">
-                            <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">{{ $capacity('waitlist_capacity') }}</span>posti</div>
-                            <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">60</span>giorni</div>
-                            <div class="min-w-[6.25rem] rounded-2xl wayout-lime px-3 py-2"><span class="block text-base sm:text-lg">Pass</span>Founder</div>
+                            <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">{{ $capacity('waitlist_capacity') }}</span>{{ __('messages.home.spots') }}</div>
+                            <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">60</span>{{ __('messages.home.days') }}</div>
+                            <div class="min-w-[6.25rem] rounded-2xl wayout-lime px-3 py-2"><span class="block text-base sm:text-lg">{{ __('messages.home.founder_pass_short') }}</span>Founder</div>
                         </div>
                     </div>
 
@@ -44,18 +44,18 @@
                             type="email"
                             name="email"
                             value="{{ old('email') }}"
-                            placeholder="La tua email"
+                            placeholder="{{ __('messages.home.email_placeholder') }}"
                             required
                             class="min-h-14 w-full rounded-full border border-white/10 bg-white px-5 text-base font-bold text-slate-950 placeholder-slate-400 outline-none transition focus:ring-4 focus:ring-violet-300/40"
                         />
                         <button type="submit" class="min-h-14 w-full rounded-full wayout-purple px-7 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] sm:w-auto">
-                            {{ $waitlistFull ? 'Verifica email' : 'Accedi' }}
+                            {{ $waitlistFull ? __('messages.home.verify_email') : __('messages.home.join_button') }}
                         </button>
                     </form>
 
                     @if($waitlistFull)
                         <p class="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-violet-100">
-                            La waitlist è chiusa perché i posti sono terminati. Se sei già iscritto, inserisci la tua email per accedere alle offerte Founder.
+                            {{ __('messages.home.waitlist_closed_message') }}
                         </p>
                     @endif
 
@@ -75,16 +75,16 @@
             <img src="/images/screen/1.png" alt="Schermata esplora di WAYOUT" class="phone-float pulse-glow relative z-10 w-[min(72vw,285px)] max-w-full rounded-[2.5rem] shadow-[0_34px_90px_rgba(15,23,42,0.22)] sm:w-[min(58vw,370px)] sm:rounded-[3rem] lg:w-[min(72%,390px)] xl:w-[410px]" />
             
             <div class="absolute left-0 top-16 z-20 w-[min(88%,270px)] rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl xl:block">
-                <p class="text-sm font-bold text-violet-200">Live a Milano</p>
+                <p class="text-sm font-bold text-violet-200">{{ __('messages.home.live_milan') }}</p>
                 <p class="mt-2 text-4xl font-black">48</p>
-                <p class="mt-1 text-sm text-slate-300">tavoli e feste in creazione questa settimana</p>
+                <p class="mt-1 text-sm text-slate-300">{{ __('messages.home.events_this_week') }}</p>
             </div>
             <div class="relative z-20 mt-[-3.5rem] w-[min(88%,270px)] rounded-[2rem] border border-white/70 bg-white/[0.9] p-4 shadow-2xl backdrop-blur-xl sm:mt-[-4.5rem] sm:p-5 lg:absolute lg:bottom-10 lg:right-0 lg:mt-0 lg:w-[250px]">
-                <p class="text-sm font-black text-slate-950">Tavolo di Matteo</p>
+                <p class="text-sm font-black text-slate-950">{{ __('messages.home.matteo_table') }}</p>
                 <div class="mt-4 flex items-end justify-between">
                     <div>
-                        <p class="text-xs font-bold uppercase text-slate-400">Disponibili</p>
-                        <p class="text-3xl font-black text-violet-700">4 posti</p>
+                        <p class="text-xs font-bold uppercase text-slate-400">{{ __('messages.home.available') }}</p>
+                        <p class="text-3xl font-black text-violet-700">{{ __('messages.home.four_spots') }}</p>
                     </div>
                     <span class="rounded-full wayout-lime px-3 py-2 text-xs font-black text-slate-950">Join</span>
                 </div>
@@ -97,11 +97,11 @@
     <div class="wayout-shell">
         <div class="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
             <div>
-                <p class="text-sm font-black uppercase tracking-[0.28em] text-violet-700">Come funziona</p>
-                <h2 class="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-5xl">Dalla mappa alla chat in pochi tocchi.</h2>
+                <p class="text-sm font-black uppercase tracking-[0.28em] text-violet-700">{{ __('messages.home.how_it_works') }}</p>
+                <h2 class="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-5xl">{{ __('messages.home.features_title') }}</h2>
             </div>
             <p class="text-base font-medium leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                Organizzi il tuo tavolo, scopri gli eventi vicini, scegli le persone con cui condividere la serata e porti tutto in chat. L’esperienza resta semplice, veloce, visiva.
+                {{ __('messages.home.features_intro') }}
             </p>
         </div>
 
@@ -110,22 +110,22 @@
                 <div class="flex h-12 w-12 items-center justify-center rounded-full wayout-purple text-white">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21s7-4.35 7-11a7 7 0 10-14 0c0 6.65 7 11 7 11z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10h.01"/></svg>
                 </div>
-                <h3 class="mt-6 text-2xl font-black text-slate-950">Esplora la città</h3>
-                <p class="mt-3 leading-7 text-slate-600">Trova club, tavoli e feste private nelle vicinanze con una mappa pensata per la notte.</p>
+                <h3 class="mt-6 text-2xl font-black text-slate-950">{{ __('messages.home.feature_1_title') }}</h3>
+                <p class="mt-3 leading-7 text-slate-600">{{ __('messages.home.feature_1_text') }}</p>
             </article>
             <article class="wayout-card rounded-[2rem] p-6 transition hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(124,35,245,0.14)]">
                 <div class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-950 text-white">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"/></svg>
                 </div>
-                <h3 class="mt-6 text-2xl font-black text-slate-950">Crea un tavolo</h3>
-                <p class="mt-3 leading-7 text-slate-600">Scegli evento, posti, prezzo e vibe. Gli altri utenti possono unirsi al tuo gruppo.</p>
+                <h3 class="mt-6 text-2xl font-black text-slate-950">{{ __('messages.home.feature_2_title') }}</h3>
+                <p class="mt-3 leading-7 text-slate-600">{{ __('messages.home.feature_2_text') }}</p>
             </article>
             <article class="wayout-card rounded-[2rem] p-6 transition hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(124,35,245,0.14)]">
                 <div class="flex h-12 w-12 items-center justify-center rounded-full wayout-lime text-slate-950">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v7a2 2 0 01-2 2H8l-5 3V10a2 2 0 012-2h2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3h6a2 2 0 012 2v6a2 2 0 01-2 2H9l-4 2V5a2 2 0 012-2z"/></svg>
                 </div>
-                <h3 class="mt-6 text-2xl font-black text-slate-950">Entra nel gruppo</h3>
-                <p class="mt-3 leading-7 text-slate-600">Una volta dentro, la chat diventa il punto d’incontro prima della serata.</p>
+                <h3 class="mt-6 text-2xl font-black text-slate-950">{{ __('messages.home.feature_3_title') }}</h3>
+                <p class="mt-3 leading-7 text-slate-600">{{ __('messages.home.feature_3_text') }}</p>
             </article>
         </div>
     </div>
@@ -137,9 +137,9 @@
             <div class="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_20%_0%,rgba(124,35,245,0.55),transparent_34rem),radial-gradient(circle_at_88%_10%,rgba(185,255,74,0.25),transparent_22rem)] sm:rounded-[2.5rem]"></div>
             <div class="relative grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
                 <div>
-                    <p class="text-sm font-black uppercase tracking-[0.28em] text-violet-200">Esperienza app</p>
-                    <h2 class="mt-4 text-3xl font-black leading-tight sm:text-5xl">Un’interfaccia pulita, ma con energia da club.</h2>
-                    <p class="mt-5 text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">Lo stile di WAYOUT mette l’evento al centro e lascia ogni azione immediata.</p>
+                    <p class="text-sm font-black uppercase tracking-[0.28em] text-violet-200">{{ __('messages.home.app_experience') }}</p>
+                    <h2 class="mt-4 text-3xl font-black leading-tight sm:text-5xl">{{ __('messages.home.app_title') }}</h2>
+                    <p class="mt-5 text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">{{ __('messages.home.app_text') }}</p>
                 </div>
                 <div id="feature-slideshow" class="relative h-[340px] sm:h-[460px] lg:h-[520px]">
                     <img src="/images/screen/2.png" alt="Organizzazione evento WAYOUT" class="absolute inset-0 h-full w-full object-contain opacity-100 transition duration-700" />
@@ -160,8 +160,8 @@
         <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
         <div id="waitlist-offer-panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-offer-title" class="relative z-10 my-auto max-h-[calc(100vh-2.5rem)] w-full max-w-4xl translate-y-8 overflow-y-auto rounded-[2rem] border border-white/15 bg-slate-950/95 p-4 text-white opacity-0 shadow-2xl transition-all duration-300 sm:rounded-[2.5rem] sm:p-8">
             <div class="mb-5 flex items-center justify-between gap-4">
-                <span class="inline-flex rounded-full bg-violet-500/20 px-4 py-2 text-xs font-black uppercase tracking-[0.26em] text-violet-100">Waitlist</span>
-                <button id="waitlist-close-x" aria-label="Chiudi" class="shrink-0 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/15 hover:text-white">
+                <span class="inline-flex rounded-full bg-violet-500/20 px-4 py-2 text-xs font-black uppercase tracking-[0.26em] text-violet-100">{{ __('messages.home.waitlist') }}</span>
+                <button id="waitlist-close-x" aria-label="{{ __('messages.nav.close_menu') }}" class="shrink-0 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/15 hover:text-white">
                     <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -169,57 +169,57 @@
                 <div class="min-w-0">
                     <h3 id="waitlist-offer-title" class="text-3xl font-black leading-tight tracking-tight sm:text-4xl">
                         @if($purchasedPlan)
-                            Sei già nella waitlist e hai già acquistato
+                            {{ __('messages.home.already_purchased_title') }}
                         @else
-                            {{ $alreadyRegistered ? 'Sei già nella waitlist' : 'Il tuo posto è confermato' }}
+                            {{ $alreadyRegistered ? __('messages.home.already_registered_title') : __('messages.home.confirmed_title') }}
                         @endif
                     </h3>
                     <p class="mt-4 break-words text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
                         @if($purchasedPlan)
-                            L’email {{ session('waitlist_email') }} risulta già iscritta e ha già acquistato il piano <strong>{{ $purchasedPlan['name'] }}</strong> da {{ number_format($purchasedPlan['amount'] / 100, 2, ',', '.') }}€.
+                            {!! __('messages.home.already_purchased_text', ['email' => session('waitlist_email'), 'plan' => '<strong>'.$purchasedPlan['name'].'</strong>', 'amount' => number_format($purchasedPlan['amount'] / 100, 2, ',', '.').'€']) !!}
                         @elseif($alreadyRegistered)
-                            L’email {{ session('waitlist_email') }} risulta già iscritta. Puoi ancora accedere alle offerte Founder Pass.
+                            {{ __('messages.home.already_registered_text', ['email' => session('waitlist_email')]) }}
                         @else
-                            Hai riservato uno dei {{ $capacity('waitlist_capacity') }} posti disponibili e ottieni automaticamente 60 giorni di prova gratuita.
+                            {{ __('messages.home.confirmed_text', ['count' => $capacity('waitlist_capacity')]) }}
                         @endif
                     </p>
                     <div class="mt-5 grid gap-3 sm:grid-cols-2">
                         <div class="rounded-3xl bg-white/[0.08] p-4">
-                            <p class="text-sm text-slate-400">Prova gratuita</p>
-                            <p class="mt-1 text-2xl font-black">60 giorni</p>
+                            <p class="text-sm text-slate-400">{{ __('messages.home.free_trial') }}</p>
+                            <p class="mt-1 text-2xl font-black">60 {{ __('messages.home.days') }}</p>
                         </div>
                         <div class="rounded-3xl bg-white/[0.08] p-4">
-                            <p class="text-sm text-slate-400">Posti riservati</p>
+                            <p class="text-sm text-slate-400">{{ __('messages.home.reserved_spots') }}</p>
                             <p class="mt-1 text-2xl font-black">{{ $capacity('waitlist_capacity') }}</p>
                         </div>
                     </div>
                 </div>
                 <div class="rounded-[2rem] bg-white p-4 text-slate-950 sm:p-5">
-                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Founder Pass pre-lancio</p>
+                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.home.founder_presale') }}</p>
                     <div class="mt-5 grid gap-3 md:grid-cols-2">
                         <div class="rounded-3xl bg-slate-100 p-4 sm:p-5">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="font-black">Founder Join 12M Pass</p>
-                                    <p class="mt-1 text-sm font-semibold text-slate-500">Partecipa a tavoli e feste private già esistenti.</p>
+                                    <p class="font-black">{{ __('messages.home.join_pass') }}</p>
+                                    <p class="mt-1 text-sm font-semibold text-slate-500">{{ __('messages.home.join_pass_text') }}</p>
                                 </div>
                                 <span class="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-slate-950">29€</span>
                             </div>
-                            <p class="mt-3 text-sm font-bold text-violet-700">{{ $joinFull ? 'Esaurito' : $capacity('join_capacity').' posti disponibili' }}</p>
+                            <p class="mt-3 text-sm font-bold text-violet-700">{{ $joinFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
                         </div>
                         <div class="rounded-3xl bg-slate-950 p-4 text-white sm:p-5">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="font-black">Founder Creator 12M Pass</p>
-                                    <p class="mt-1 text-sm font-semibold text-slate-300">Crea e gestisci tavoli e feste private.</p>
+                                    <p class="font-black">{{ __('messages.home.creator_pass') }}</p>
+                                    <p class="mt-1 text-sm font-semibold text-slate-300">{{ __('messages.home.creator_pass_text') }}</p>
                                 </div>
                                 <span class="shrink-0 rounded-full wayout-lime px-3 py-1 text-sm font-black text-slate-950">59€</span>
                             </div>
-                            <p class="mt-3 text-sm font-bold text-violet-200">{{ $creatorFull ? 'Esaurito' : $capacity('creator_capacity').' posti disponibili' }}</p>
+                            <p class="mt-3 text-sm font-bold text-violet-200">{{ $creatorFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
                         </div>
                     </div>
                     <p class="mt-4 rounded-2xl bg-slate-100 p-3 text-sm font-bold text-slate-600">
-                        Entrambi includono 60 giorni di prova gratuita.
+                        {{ __('messages.home.both_include_trial') }}
                     </p>
                 </div>
             </div>
@@ -227,16 +227,16 @@
                 @if($purchasedPlan)
                     <form method="POST" action="{{ route('purchase.confirmation.resend') }}" class="w-full">
                         @csrf
-                        <button type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">Richiedi nuovamente email acquisto</button>
+                        <button type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.resend_purchase_email') }}</button>
                     </form>
-                    <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">Ho capito</button>
+                    <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">{{ __('messages.home.understood') }}</button>
                 @else
                     <form method="POST" action="{{ route('subscribe.access') }}" class="w-full">
                         @csrf
                         <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
-                        <button id="block-discount" type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">Scopri i Founder Pass</button>
+                        <button id="block-discount" type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.discover_passes') }}</button>
                     </form>
-                    <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">Resto nella waitlist</button>
+                    <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">{{ __('messages.home.stay_waitlist') }}</button>
                 @endif
             </div>
         </div>

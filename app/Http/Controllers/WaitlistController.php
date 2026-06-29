@@ -19,7 +19,7 @@ class WaitlistController extends Controller
             ]);
 
             return back()->withInput($request->except('website'))
-                ->with('waitlist_error', 'Non siamo riusciti a completare l’iscrizione. Riprova tra qualche minuto.');
+                ->with('waitlist_error', __('messages.messages.waitlist_generic_error'));
         }
 
         $validated = $request->validate([
@@ -65,7 +65,7 @@ class WaitlistController extends Controller
 
                 if ($waitlistFull) {
                     return back()->withInput($request->except('website'))
-                        ->with('waitlist_error', 'La waitlist è chiusa: tutti i posti disponibili sono già stati riservati.');
+                        ->with('waitlist_error', __('messages.messages.waitlist_closed'));
                 }
             }
 
@@ -96,7 +96,7 @@ class WaitlistController extends Controller
                 ]);
 
                 return back()->withInput($request->except('website'))
-                    ->with('waitlist_error', 'Non siamo riusciti a completare l’iscrizione. Riprova tra qualche minuto.');
+                    ->with('waitlist_error', __('messages.messages.waitlist_generic_error'));
             }
         }
 
