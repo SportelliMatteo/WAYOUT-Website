@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PurchaseConfirmationMail;
+use App\Support\FounderAvailability;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ class SubscribeController extends Controller
 {
     public function show(Request $request)
     {
-        if (!$request->session()->pull('subscribe_entry_allowed')) {
+        if (! $request->session()->pull('subscribe_entry_allowed')) {
             return redirect()->route('home');
         }
 
@@ -44,7 +45,7 @@ class SubscribeController extends Controller
     {
         $email = $request->session()->get('waitlist_email');
 
-        if (!$email) {
+        if (! $email) {
             return back()->with('purchase_confirmation_error', 'Email waitlist non trovata. Reinserisci la tua email dalla home.');
         }
 
@@ -67,7 +68,7 @@ class SubscribeController extends Controller
                 ->with('purchase_confirmation_error', 'Non siamo riusciti a inviare nuovamente l’email. Riprova tra qualche minuto.');
         }
 
-        if (!$purchase) {
+        if (! $purchase) {
             return back()->with('purchase_confirmation_error', 'Non risulta ancora un acquisto confermato per questa email.');
         }
 
@@ -97,9 +98,9 @@ class SubscribeController extends Controller
             ->with('purchase_confirmation_success', 'Ti abbiamo inviato nuovamente l’email di conferma acquisto.');
     }
 
-    public function checkout(Request $request)
+    public function checkout(Request $request, FounderAvailability $availability)
     {
-        if (!$request->session()->get('waitlist_offer_access')) {
+        if (! $request->session()->get('waitlist_offer_access')) {
             return response()->json([
                 'error' => 'Accesso non autorizzato. Torna dal banner della waitlist.',
             ], 403);
@@ -107,7 +108,7 @@ class SubscribeController extends Controller
 
         $email = $request->session()->get('waitlist_email');
 
-        if (!$email) {
+        if (! $email) {
             return response()->json([
                 'error' => 'Email waitlist non trovata. Reinserisci la tua email dalla home.',
             ], 403);
@@ -115,9 +116,15 @@ class SubscribeController extends Controller
 
         $plan = $request->input('plan');
 
-        if (!in_array($plan, ['join', 'creator'], true)) {
+        if (! in_array($plan, ['join', 'creator'], true)) {
             return response()->json([
                 'error' => 'Seleziona un Founder Pass valido.',
+            ], 422);
+        }
+
+        if ($availability->isPlanSoldOut($plan)) {
+            return response()->json([
+                'error' => $this->planName($plan).' è esaurito. Scegli un altro pass o resta in waitlist.',
             ], 422);
         }
 
@@ -140,16 +147,37 @@ class SubscribeController extends Controller
 
         if ($directCheckout) {
             try {
-                $purchase = DB::table('purchases')->insertGetId([
-                    'email' => $email,
-                    'plan' => $plan,
-                    'amount' => (int) $planConfig['unit_amount'],
-                    'currency' => 'eur',
-                    'stripe_session_id' => 'direct_' . uniqid(),
-                    'status' => 'succeeded',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $soldOut = false;
+                $purchase = null;
+
+                DB::transaction(function () use ($email, $plan, $planConfig, $availability, &$purchase, &$soldOut) {
+                    $capacity = (int) (DB::table('founder_settings')
+                        ->where('key', $availability->capacityKeyForPlan($plan))
+                        ->lockForUpdate()
+                        ->value('value') ?? config('founder.default_capacities.'.$availability->capacityKeyForPlan($plan)));
+
+                    $soldCount = DB::table('purchases')
+                        ->where('status', 'succeeded')
+                        ->where('plan', $plan)
+                        ->count();
+
+                    if ($capacity <= 0 || $soldCount >= $capacity) {
+                        $soldOut = true;
+
+                        return;
+                    }
+
+                    $purchase = DB::table('purchases')->insertGetId([
+                        'email' => $email,
+                        'plan' => $plan,
+                        'amount' => (int) $planConfig['unit_amount'],
+                        'currency' => 'eur',
+                        'stripe_session_id' => 'direct_'.uniqid(),
+                        'status' => 'succeeded',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                });
             } catch (QueryException $exception) {
                 Log::error('Direct checkout purchase insert failed.', [
                     'plan' => $plan,
@@ -161,6 +189,12 @@ class SubscribeController extends Controller
                 ], 500);
             }
 
+            if ($soldOut) {
+                return response()->json([
+                    'error' => $this->planName($plan).' è esaurito. Scegli un altro pass o resta in waitlist.',
+                ], 422);
+            }
+
             return response()->json([
                 'purchaseId' => $purchase,
                 'completed' => true,
@@ -170,7 +204,7 @@ class SubscribeController extends Controller
 
         $secret = config('services.stripe.secret');
 
-        if (!$secret) {
+        if (! $secret) {
             return response()->json([
                 'error' => 'Stripe non è configurato. Inserisci STRIPE_SECRET in .env.',
             ], 500);
@@ -219,7 +253,7 @@ class SubscribeController extends Controller
             ], 502);
         }
 
-        if (!$response->json('id')) {
+        if (! $response->json('id')) {
             Log::warning('Stripe checkout response did not include a session id.', [
                 'plan' => $plan,
                 'status' => $response->status(),

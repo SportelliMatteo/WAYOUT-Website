@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\SubscribeController;
 use App\Http\Controllers\WaitlistController;
@@ -15,3 +16,9 @@ Route::post('/subscribe/checkout', [SubscribeController::class, 'checkout'])->mi
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware('throttle:purchase-confirmation')->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware('throttle:contact')->name('contact.store');
 Route::post('/waitlist', [WaitlistController::class, 'store'])->middleware('throttle:waitlist')->name('waitlist.store');
+
+Route::get('/admin/login', [AdminController::class, 'login'])->middleware('throttle:admin')->name('admin.login');
+Route::post('/admin/login', [AdminController::class, 'authenticate'])->middleware('throttle:admin')->name('admin.authenticate');
+Route::post('/admin/logout', [AdminController::class, 'logout'])->name('admin.logout');
+Route::post('/admin/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+Route::get('/admin', [AdminController::class, 'dashboard'])->name('admin.dashboard');

@@ -41,12 +41,32 @@ class WaitlistController extends Controller
                         'updated_at' => now(),
                     ]);
             } else {
-                DB::table('waitlist_entries')->insert([
-                    'email' => $email,
-                    'offer_shown' => true,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]);
+                $waitlistFull = false;
+
+                DB::transaction(function () use ($email, &$waitlistFull) {
+                    $capacity = (int) (DB::table('founder_settings')
+                        ->where('key', 'waitlist_capacity')
+                        ->lockForUpdate()
+                        ->value('value') ?? config('founder.default_capacities.waitlist_capacity'));
+
+                    if ($capacity <= 0 || DB::table('waitlist_entries')->count() >= $capacity) {
+                        $waitlistFull = true;
+
+                        return;
+                    }
+
+                    DB::table('waitlist_entries')->insert([
+                        'email' => $email,
+                        'offer_shown' => true,
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]);
+                });
+
+                if ($waitlistFull) {
+                    return back()->withInput($request->except('website'))
+                        ->with('waitlist_error', 'La waitlist è chiusa: tutti i posti disponibili sono già stati riservati.');
+                }
             }
 
             $purchase = DB::table('purchases')

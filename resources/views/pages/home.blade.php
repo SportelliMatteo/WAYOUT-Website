@@ -4,6 +4,12 @@
 ])
 
 @section('content')
+@php
+    $capacity = fn (string $key) => number_format(($founderCapacities[$key] ?? config('founder.default_capacities')[$key]), 0, ',', '.');
+    $waitlistFull = $founderAvailability['waitlist']['is_full'] ?? false;
+    $joinFull = $founderAvailability['join']['is_full'] ?? false;
+    $creatorFull = $founderAvailability['creator']['is_full'] ?? false;
+@endphp
 <section class="relative overflow-x-clip">
     <div class="wayout-shell grid items-center gap-8 py-8 sm:py-10 lg:min-h-[calc(100vh-6rem)] lg:grid-cols-[1.02fr_0.98fr] lg:gap-12 lg:py-16">
         <div class="relative z-10 text-center lg:text-left">
@@ -22,10 +28,10 @@
                     <div class="flex flex-col items-center gap-4 text-center lg:items-start lg:text-left">
                         <div class="min-w-0">
                             <p class="text-xs font-black uppercase tracking-[0.22em] text-violet-200">Accesso anticipato</p>
-                            <p class="mt-2 text-xl font-black leading-tight sm:text-2xl">Entra nella waitlist WAYOUT</p>
+                            <p class="mt-2 text-xl font-black leading-tight sm:text-2xl">{{ $waitlistFull ? 'Waitlist al completo' : 'Entra nella waitlist WAYOUT' }}</p>
                         </div>
                         <div class="flex w-full flex-wrap justify-center gap-2 text-center text-xs font-black text-slate-950 sm:text-sm lg:justify-start">
-                            <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">2.000</span>posti</div>
+                            <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">{{ $capacity('waitlist_capacity') }}</span>posti</div>
                             <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">60</span>giorni</div>
                             <div class="min-w-[6.25rem] rounded-2xl wayout-lime px-3 py-2"><span class="block text-base sm:text-lg">Pass</span>Founder</div>
                         </div>
@@ -43,9 +49,15 @@
                             class="min-h-14 w-full rounded-full border border-white/10 bg-white px-5 text-base font-bold text-slate-950 placeholder-slate-400 outline-none transition focus:ring-4 focus:ring-violet-300/40"
                         />
                         <button type="submit" class="min-h-14 w-full rounded-full wayout-purple px-7 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] sm:w-auto">
-                            Accedi
+                            {{ $waitlistFull ? 'Verifica email' : 'Accedi' }}
                         </button>
                     </form>
+
+                    @if($waitlistFull)
+                        <p class="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-violet-100">
+                            La waitlist è chiusa perché i posti sono terminati. Se sei già iscritto, inserisci la tua email per accedere alle offerte Founder.
+                        </p>
+                    @endif
 
                     @error('email')
                         <p class="mt-3 px-2 text-sm font-semibold text-rose-200">{{ $message }}</p>
@@ -168,7 +180,7 @@
                         @elseif($alreadyRegistered)
                             L’email {{ session('waitlist_email') }} risulta già iscritta. Puoi ancora accedere alle offerte Founder Pass.
                         @else
-                            Hai riservato uno dei 2.000 posti disponibili e ottieni automaticamente 60 giorni di prova gratuita.
+                            Hai riservato uno dei {{ $capacity('waitlist_capacity') }} posti disponibili e ottieni automaticamente 60 giorni di prova gratuita.
                         @endif
                     </p>
                     <div class="mt-5 grid gap-3 sm:grid-cols-2">
@@ -178,7 +190,7 @@
                         </div>
                         <div class="rounded-3xl bg-white/[0.08] p-4">
                             <p class="text-sm text-slate-400">Posti riservati</p>
-                            <p class="mt-1 text-2xl font-black">2.000</p>
+                            <p class="mt-1 text-2xl font-black">{{ $capacity('waitlist_capacity') }}</p>
                         </div>
                     </div>
                 </div>
@@ -193,7 +205,7 @@
                                 </div>
                                 <span class="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-slate-950">29€</span>
                             </div>
-                            <p class="mt-3 text-sm font-bold text-violet-700">500 posti disponibili</p>
+                            <p class="mt-3 text-sm font-bold text-violet-700">{{ $joinFull ? 'Esaurito' : $capacity('join_capacity').' posti disponibili' }}</p>
                         </div>
                         <div class="rounded-3xl bg-slate-950 p-4 text-white sm:p-5">
                             <div class="flex items-start justify-between gap-3">
@@ -203,7 +215,7 @@
                                 </div>
                                 <span class="shrink-0 rounded-full wayout-lime px-3 py-1 text-sm font-black text-slate-950">59€</span>
                             </div>
-                            <p class="mt-3 text-sm font-bold text-violet-200">150 posti disponibili</p>
+                            <p class="mt-3 text-sm font-bold text-violet-200">{{ $creatorFull ? 'Esaurito' : $capacity('creator_capacity').' posti disponibili' }}</p>
                         </div>
                     </div>
                     <p class="mt-4 rounded-2xl bg-slate-100 p-3 text-sm font-bold text-slate-600">
