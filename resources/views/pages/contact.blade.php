@@ -68,7 +68,7 @@
 
                 <div>
                     <label for="subject" class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.contact.subject') }}</label>
-                    <input type="text" id="subject" name="subject" value="{{ old('subject') }}" class="block min-h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100" placeholder="{{ __('messages.contact.subject_placeholder') }}" />
+                    <input type="text" id="subject" name="subject" value="{{ old('subject') }}" required class="block min-h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100" placeholder="{{ __('messages.contact.subject_placeholder') }}" />
                     @error('subject')<p class="mt-2 text-sm font-semibold text-rose-500">{{ $message }}</p>@enderror
                 </div>
 
@@ -76,6 +76,22 @@
                     <label for="message" class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.contact.message') }}</label>
                     <textarea id="message" name="message" rows="7" required class="block w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-base font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100" placeholder="{{ __('messages.contact.message_placeholder') }}">{{ old('message') }}</textarea>
                     @error('message')<p class="mt-2 text-sm font-semibold text-rose-500">{{ $message }}</p>@enderror
+                </div>
+
+                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                    <label for="privacy_accepted" class="flex items-start gap-3 text-sm font-semibold leading-6 text-slate-600">
+                        <input id="privacy_accepted" name="privacy_accepted" type="checkbox" value="1" required @checked(old('privacy_accepted')) class="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
+                        <span>
+                            {!! __('messages.contact.privacy_acceptance', [
+                                'privacy' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.privacy').'">'.__('messages.legal.privacy').'</a>',
+                                'terms' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.terms').'">'.__('messages.legal.terms').'</a>',
+                            ]) !!}
+                        </span>
+                    </label>
+                    <p class="mt-3 text-xs font-medium leading-relaxed text-slate-500">
+                        {{ __('messages.contact.privacy_note') }}
+                    </p>
+                    @error('privacy_accepted')<p class="mt-2 text-sm font-semibold text-rose-500">{{ $message }}</p>@enderror
                 </div>
 
                 <button type="submit" class="w-full rounded-full wayout-purple px-8 py-4 text-lg font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] sm:w-auto">

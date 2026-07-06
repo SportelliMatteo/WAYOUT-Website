@@ -4,9 +4,12 @@
 ])
 
 @section('content')
+@php
+    $checkoutPlan = session('checkout_plan') ?? request('plan');
+@endphp
 <section class="py-14 lg:py-24">
     <div class="mx-auto max-w-4xl px-5">
-        <div class="relative mt-30 mb-30 overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem] sm:p-10">
+        <div class="relative mt-2 mb-20 overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem] sm:p-10">
             <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(124,35,245,0.55),transparent_26rem),radial-gradient(circle_at_90%_10%,rgba(185,255,74,0.24),transparent_18rem)]"></div>
             <div class="relative">
                 <div class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl font-black text-violet-700">✓</div>
@@ -15,6 +18,19 @@
                 <p class="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
                     {{ __('messages.checkout_success.text') }}
                 </p>
+                <div class="mt-6 max-w-2xl rounded-3xl bg-white/[0.08] p-5">
+                    <p class="text-base font-bold leading-7 text-slate-100">
+                        {{ __('messages.checkout_success.pass_summary') }}
+                    </p>
+                    @if($checkoutPlan === 'creator')
+                        <p class="mt-3 text-sm font-semibold leading-6 text-violet-100">
+                            {{ __('messages.checkout_success.creator_summary') }}
+                        </p>
+                    @endif
+                    <a href="{{ route('legal.passes') }}" class="mt-4 inline-flex font-black text-violet-200 underline-offset-4 transition hover:text-white hover:underline">
+                        {{ __('messages.checkout_success.pass_terms_link') }}
+                    </a>
+                </div>
                 <div class="mt-8">
                     <a href="{{ route('home') }}" class="inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-4 text-base font-black text-slate-950 shadow-xl transition hover:scale-[1.02] sm:w-auto sm:text-lg">
                         {{ __('messages.checkout_success.back_home') }}

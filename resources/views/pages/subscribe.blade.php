@@ -21,19 +21,18 @@
                 {{ __('messages.subscribe.headline') }} <span class="wayout-gradient-text">{{ __('messages.subscribe.headline_highlight') }}</span> {{ __('messages.subscribe.headline_tail') }}
             </h1>
             <p class="mt-5 max-w-2xl text-base font-medium leading-7 text-slate-600 sm:mt-6 sm:text-lg sm:leading-8">
-                {{ __('messages.subscribe.intro', ['count' => $capacity('waitlist_capacity')]) }}
+                {{ __('messages.subscribe.intro') }}
+            </p>
+            <p class="mt-3 max-w-2xl text-sm font-black text-violet-700 sm:text-base">
+                {{ __('messages.subscribe.presale_microcopy') }}
             </p>
 
             <div class="mt-8 grid gap-4 sm:grid-cols-2">
                 <div class="wayout-card rounded-[2rem] p-6">
-                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.subscribe.free_trial') }}</p>
-                    <p class="mt-3 text-4xl font-black text-slate-950">60 {{ __('messages.home.days') }}</p>
-                    <p class="mt-2 text-sm font-semibold text-slate-500">{{ __('messages.subscribe.trial_active') }}</p>
+                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.subscribe.summary_join_title') }}</p>
                 </div>
                 <div class="wayout-card rounded-[2rem] p-6">
-                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.subscribe.accesses') }}</p>
-                    <p class="mt-3 text-4xl font-black text-slate-950">{{ $capacity('waitlist_capacity') }}</p>
-                    <p class="mt-2 text-sm font-semibold text-slate-500">{{ __('messages.subscribe.reserved_first') }}</p>
+                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.subscribe.summary_creator_title') }}</p>
                 </div>
             </div>
 
@@ -47,27 +46,84 @@
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     <label class="{{ $joinFull ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:border-violet-300 has-[:checked]:border-violet-600 has-[:checked]:shadow-[0_18px_45px_rgba(124,35,245,0.15)]' }} rounded-[2rem] border border-slate-200 bg-white p-5 transition">
                         <input type="radio" name="plan" value="join" @checked($defaultPlan === 'join' && ! $joinFull) @disabled($joinFull) class="sr-only" />
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <p class="text-lg font-black text-slate-950">{{ __('messages.subscribe.join_name') }}</p>
-                                <p class="mt-2 text-sm font-semibold text-slate-500">{{ $joinFull ? __('messages.subscribe.pass_sold_out') : __('messages.subscribe.join_text') }}</p>
+                        <div class="flex h-full flex-col">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-lg font-black text-slate-950">{{ __('messages.subscribe.join_card_title') }}</p>
+                                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-500">{{ __('messages.subscribe.join_card_text') }}</p>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-950">29€</span>
+                                    <p class="mt-2 max-w-[8rem] text-[0.68rem] font-bold leading-4 text-slate-500">{{ __('messages.subscribe.join_card_price_label') }}</p>
+                                </div>
                             </div>
-                            <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-950">29€</span>
+                            <p class="mt-4 text-sm font-black text-violet-700">{{ $joinFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
+                            <div class="mt-5 space-y-4 text-sm leading-6">
+                                <div class="rounded-2xl bg-slate-50 p-4">
+                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.card_capacity') }}</p>
+                                    <p class="mt-1 font-black text-slate-950">{{ __('messages.subscribe.join_card_capacity') }}</p>
+                                </div>
+                                <div>
+                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.includes') }}</p>
+                                    <ul class="mt-2 space-y-1 font-semibold text-slate-600">
+                                        @foreach(__('messages.subscribe.join_includes') as $item)
+                                            <li>{{ $item }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                                <div>
+                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.validity') }}</p>
+                                    <p class="mt-2 font-semibold text-slate-600">{{ __('messages.subscribe.join_card_validity') }}</p>
+                                </div>
+                                <div>
+                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.not_included') }}</p>
+                                    <ul class="mt-2 space-y-1 font-semibold text-slate-500">
+                                        @foreach(__('messages.subscribe.join_not_included') as $item)
+                                            <li>{{ $item }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                        <p class="mt-4 text-sm font-black text-violet-700">{{ $joinFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
                     </label>
                     <label class="{{ $creatorFull ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:border-violet-300 has-[:checked]:border-violet-600 has-[:checked]:shadow-[0_18px_45px_rgba(124,35,245,0.15)]' }} rounded-[2rem] border border-slate-200 bg-white p-5 transition">
                         <input type="radio" name="plan" value="creator" @checked($defaultPlan === 'creator' && ! $creatorFull) @disabled($creatorFull) class="sr-only" />
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <p class="text-lg font-black text-slate-950">{{ __('messages.subscribe.creator_name') }}</p>
-                                <p class="mt-2 text-sm font-semibold text-slate-500">{{ $creatorFull ? __('messages.subscribe.pass_sold_out') : __('messages.subscribe.creator_text') }}</p>
+                        <div class="flex h-full flex-col">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-lg font-black text-slate-950">{{ __('messages.subscribe.creator_card_title') }}</p>
+                                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-500">{{ __('messages.subscribe.creator_card_text') }}</p>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <span class="inline-flex rounded-full wayout-purple px-3 py-1 text-sm font-black text-white">59€</span>
+                                    <p class="mt-2 max-w-[8rem] text-[0.68rem] font-bold leading-4 text-slate-500">{{ __('messages.subscribe.creator_card_price_label') }}</p>
+                                </div>
                             </div>
-                            <span class="rounded-full wayout-purple px-3 py-1 text-sm font-black text-white">59€</span>
+                            <p class="mt-4 text-sm font-black text-violet-700">{{ $creatorFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
+                            <div class="mt-5 space-y-4 text-sm leading-6">
+                                <div class="rounded-2xl bg-slate-50 p-4">
+                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.card_capacity') }}</p>
+                                    <p class="mt-1 font-black text-slate-950">{{ __('messages.subscribe.creator_card_capacity') }}</p>
+                                </div>
+                                <div>
+                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.includes') }}</p>
+                                    <ul class="mt-2 space-y-1 font-semibold text-slate-600">
+                                        @foreach(__('messages.subscribe.creator_includes') as $item)
+                                            <li>{{ $item }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                                <div>
+                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.validity') }}</p>
+                                    <p class="mt-2 font-semibold text-slate-600">{{ __('messages.subscribe.creator_card_validity') }}</p>
+                                </div>
+                            </div>
                         </div>
-                        <p class="mt-4 text-sm font-black text-violet-700">{{ $creatorFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
                     </label>
                 </div>
+                <p class="mt-5 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-900">
+                    {{ __('messages.subscribe.price_note') }}
+                </p>
             </div>
 
             <div class="mt-6 flex flex-col gap-4 sm:flex-row">
@@ -109,6 +165,46 @@
             </div>
             
         </aside>
+    </div>
+
+    <div class="wayout-shell">
+        <section class="wayout-panel overflow-hidden rounded-[2rem] p-5 sm:rounded-[2.5rem] sm:p-8">
+            <h2 class="text-3xl font-black leading-tight text-slate-950">{{ __('messages.subscribe.compare_title') }}</h2>
+            <div class="mt-6 overflow-x-auto">
+                <table class="w-full min-w-[760px] text-left text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                            <th class="py-3 pr-4">{{ __('messages.subscribe.compare_feature') }}</th>
+                            <th class="px-4 py-3 text-right">Waitlist Pass</th>
+                            <th class="px-4 py-3 text-right">Founder Join 12M</th>
+                            <th class="py-3 pl-4 text-right">Founder Creator 12M</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 font-semibold text-slate-700">
+                        @foreach(__('messages.subscribe.compare_rows') as $row)
+                            <tr>
+                                <td class="py-3 pr-4 font-black text-slate-950">{{ $row[0] }}</td>
+                                <td class="px-4 py-3 text-right">{{ $row[1] }}</td>
+                                <td class="px-4 py-3 text-right">{{ $row[2] }}</td>
+                                <td class="py-3 pl-4 text-right">{{ $row[3] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="mt-8">
+            <h2 class="text-3xl font-black leading-tight text-slate-950">{{ __('messages.subscribe.faq_title') }}</h2>
+            <div class="mt-5 grid gap-4 md:grid-cols-2">
+                @foreach(__('messages.subscribe.faqs') as $faq)
+                    <article class="wayout-card rounded-[1.5rem] p-5">
+                        <h3 class="text-lg font-black text-slate-950">{{ $faq['question'] }}</h3>
+                        <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">{{ $faq['answer'] }}</p>
+                    </article>
+                @endforeach
+            </div>
+        </section>
     </div>
 </section>
 

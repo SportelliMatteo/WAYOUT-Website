@@ -33,8 +33,11 @@
                         <div class="flex w-full flex-wrap justify-center gap-2 text-center text-xs font-black text-slate-950 sm:text-sm lg:justify-start">
                             <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">{{ $capacity('waitlist_capacity') }}</span>{{ __('messages.home.spots') }}</div>
                             <div class="min-w-[6.25rem] rounded-2xl bg-white px-3 py-2"><span class="block text-base sm:text-lg">60</span>{{ __('messages.home.days') }}</div>
-                            <div class="min-w-[6.25rem] rounded-2xl wayout-lime px-3 py-2"><span class="block text-base sm:text-lg">{{ __('messages.home.founder_pass_short') }}</span>Founder</div>
+                            <div class="min-w-[6.25rem] rounded-2xl wayout-lime px-3 py-2"><span class="block text-base sm:text-lg">{{ __('messages.home.founder_pass_short') }}</span>{{ __('messages.home.founder_pass_short2') }}</div>
                         </div>
+                        <p class="mt-2 text-xs text-gray-500 leading-tight sm:text-sm">
+                            {{ __('messages.home.text_down_chip') }} {{ $capacity('waitlist_capacity') }}{{ __('messages.home.text_down_chip2') }}
+                        </p>
                     </div>
 
                     <form method="POST" action="{{ route('waitlist.store') }}" class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -67,7 +70,14 @@
                         <p class="mt-3 px-2 text-sm font-semibold text-rose-200">{{ session('waitlist_error') }}</p>
                     @endif
                 </div>
+                
             </div>
+            <p class="mx-auto mt-3 max-w-2xl px-4 text-center text-xs font-medium leading-relaxed text-slate-500 sm:text-sm lg:mx-0 lg:text-left">
+                {!! __('messages.home.waitlist_terms', [
+                    'privacy' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.privacy').'">'.__('messages.legal.privacy').'</a>',
+                    'terms' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.terms').'">'.__('messages.legal.terms').'</a>',
+                ]) !!}
+            </p>
         </div>
 
         <div class="relative mx-auto flex w-full max-w-[560px] flex-col items-center pb-4 pt-2 lg:max-w-full lg:pb-10 lg:pt-4">
@@ -156,16 +166,18 @@
         $alreadyRegistered = session('waitlist_status') === 'already_registered';
         $purchasedPlan = session('purchased_plan');
     @endphp
-    <div id="waitlist-offer" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-3 py-5 sm:px-4 sm:py-6">
+    <div id="waitlist-offer" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-3 py-4 sm:px-4 sm:py-8">
         <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
-        <div id="waitlist-offer-panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-offer-title" class="relative z-10 my-auto max-h-[calc(100vh-2.5rem)] w-full max-w-4xl translate-y-8 overflow-y-auto rounded-[2rem] border border-white/15 bg-slate-950/95 p-4 text-white opacity-0 shadow-2xl transition-all duration-300 sm:rounded-[2.5rem] sm:p-8">
-            <div class="mb-5 flex items-center justify-between gap-4">
+        <div class="relative z-10 flex w-full justify-center">
+        <div id="waitlist-offer-panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-offer-title" style="max-height: min(820px, calc(100dvh - 7rem));" class="flex w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/95 p-4 text-white opacity-0 shadow-2xl transition-all duration-300 sm:rounded-[2.5rem] sm:p-8">
+            <div class="mb-5 flex shrink-0 items-center justify-between gap-4">
                 <span class="inline-flex rounded-full bg-violet-500/20 px-4 py-2 text-xs font-black uppercase tracking-[0.26em] text-violet-100">{{ __('messages.home.waitlist') }}</span>
                 <button id="waitlist-close-x" aria-label="{{ __('messages.nav.close_menu') }}" class="shrink-0 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/15 hover:text-white">
                     <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <div class="space-y-5">
+            <div class="min-h-0 flex-1 overflow-y-auto pr-1 sm:pr-2">
+            <div class="space-y-5 pb-2">
                 <div class="min-w-0">
                     <h3 id="waitlist-offer-title" class="text-3xl font-black leading-tight tracking-tight sm:text-4xl">
                         @if($purchasedPlan)
@@ -183,47 +195,101 @@
                             {{ __('messages.home.confirmed_text', ['count' => $capacity('waitlist_capacity')]) }}
                         @endif
                     </p>
-                    <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-3xl bg-white/[0.08] p-4">
-                            <p class="text-sm text-slate-400">{{ __('messages.home.free_trial') }}</p>
-                            <p class="mt-1 text-2xl font-black">60 {{ __('messages.home.days') }}</p>
-                        </div>
-                        <div class="rounded-3xl bg-white/[0.08] p-4">
-                            <p class="text-sm text-slate-400">{{ __('messages.home.reserved_spots') }}</p>
-                            <p class="mt-1 text-2xl font-black">{{ $capacity('waitlist_capacity') }}</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="rounded-[2rem] bg-white p-4 text-slate-950 sm:p-5">
-                    <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.home.founder_presale') }}</p>
-                    <div class="mt-5 grid gap-3 md:grid-cols-2">
-                        <div class="rounded-3xl bg-slate-100 p-4 sm:p-5">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="font-black">{{ __('messages.home.join_pass') }}</p>
-                                    <p class="mt-1 text-sm font-semibold text-slate-500">{{ __('messages.home.join_pass_text') }}</p>
-                                </div>
-                                <span class="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-slate-950">29€</span>
-                            </div>
-                            <p class="mt-3 text-sm font-bold text-violet-700">{{ $joinFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
-                        </div>
-                        <div class="rounded-3xl bg-slate-950 p-4 text-white sm:p-5">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="font-black">{{ __('messages.home.creator_pass') }}</p>
-                                    <p class="mt-1 text-sm font-semibold text-slate-300">{{ __('messages.home.creator_pass_text') }}</p>
-                                </div>
-                                <span class="shrink-0 rounded-full wayout-lime px-3 py-1 text-sm font-black text-slate-950">59€</span>
-                            </div>
-                            <p class="mt-3 text-sm font-bold text-violet-200">{{ $creatorFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
-                        </div>
-                    </div>
-                    <p class="mt-4 rounded-2xl bg-slate-100 p-3 text-sm font-bold text-slate-600">
-                        {{ __('messages.home.both_include_trial') }}
+                    <p class="mt-4 break-words text-sm leading-6 text-slate-400">
+                        @if(!$alreadyRegistered)
+                            {{ __('messages.home.details_confirmed_text') }}
+                        @endif
                     </p>
+                    @if($purchasedPlan)
+                        <div class="mt-5 rounded-[2rem] bg-white/[0.08] p-5">
+                            <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-200">{{ __('messages.home.purchase_summary') }}</p>
+                            <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                                <div class="rounded-2xl bg-white/[0.08] p-4">
+                                    <dt class="font-bold text-slate-400">{{ __('messages.home.purchased_pass') }}</dt>
+                                    <dd class="mt-1 text-lg font-black text-white">{{ ($purchasedPlan['code'] ?? null) === 'creator' ? __('messages.home.creator_pass_summary') : __('messages.home.join_pass_summary') }}</dd>
+                                </div>
+                                <div class="rounded-2xl bg-white/[0.08] p-4">
+                                    <dt class="font-bold text-slate-400">{{ __('messages.home.pass_start') }}</dt>
+                                    <dd class="mt-1 text-lg font-black text-white">{{ __('messages.home.pass_start_value') }}</dd>
+                                </div>
+                                <div class="rounded-2xl bg-white/[0.08] p-4">
+                                    <dt class="font-bold text-slate-400">{{ __('messages.home.pass_duration') }}</dt>
+                                    <dd class="mt-1 text-lg font-black text-white">{{ __('messages.home.pass_duration_value') }}</dd>
+                                </div>
+                                <div class="rounded-2xl bg-white/[0.08] p-4">
+                                    <dt class="font-bold text-slate-400">{{ __('messages.home.pass_renewal') }}</dt>
+                                    <dd class="mt-1 text-lg font-black text-white">{{ __('messages.home.pass_renewal_value') }}</dd>
+                                </div>
+                            </dl>
+                            @if(($purchasedPlan['code'] ?? null) === 'creator')
+                                <p class="mt-4 rounded-2xl bg-violet-500/20 p-4 text-sm font-bold leading-6 text-violet-100">
+                                    {{ __('messages.home.creator_purchase_note') }}
+                                </p>
+                            @endif
+                        </div>
+                    @else
+                        <div class="mt-5 grid gap-3 {{ $alreadyRegistered ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }}">
+                            <div class="rounded-3xl bg-white/[0.08] p-4">
+                                <p class="text-sm text-slate-400">{{ __('messages.home.free_trial') }}</p>
+                                <p class="mt-1 text-2xl font-black">60 {{ __('messages.home.days') }}</p>
+                            </div>
+                            @if($alreadyRegistered)
+                                <div class="rounded-3xl bg-white/[0.08] p-4">
+                                    <p class="text-sm text-slate-400">{{ __('messages.home.pass_type') }}</p>
+                                    <p class="mt-1 text-2xl font-black">{{ __('messages.home.join_only') }}</p>
+                                </div>
+                            @endif
+                            <div class="rounded-3xl bg-white/[0.08] p-4">
+                                <p class="text-sm text-slate-400">{{ __('messages.home.reserved_spots') }}</p>
+                                <p class="mt-1 text-2xl font-black">{{ $capacity('waitlist_capacity') }}</p>
+                            </div>
+                        </div>
+                    @endif
                 </div>
+                @unless($purchasedPlan)
+                    <div class="rounded-[2rem] bg-white p-4 text-slate-950 sm:p-5">
+                        <p class="text-sm font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.home.founder_presale') }}</p>
+                        <h4 class="mt-3 text-2xl font-black leading-tight text-slate-950">{{ __('messages.home.founder_presale_title') }}</h4>
+                        <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                            {{ __('messages.home.founder_presale_subtitle') }}
+                        </p>
+                        <div class="mt-5 grid gap-3 md:grid-cols-2">
+                            <div class="rounded-3xl bg-slate-100 p-4 sm:p-5">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-black">{{ __('messages.home.join_pass') }}</p>
+                                        <p class="mt-1 text-sm font-semibold text-slate-500">{{ __('messages.home.join_pass_text') }}</p>
+                                    </div>
+                                    <span class="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-slate-950">29€</span>
+                                </div>
+                                <p class="mt-3 text-sm font-bold text-violet-700">{{ $joinFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
+                            </div>
+                            <div class="rounded-3xl bg-slate-950 p-4 text-white sm:p-5">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-black">{{ __('messages.home.creator_pass') }}</p>
+                                        <p class="mt-1 text-sm font-semibold text-slate-300">{{ __('messages.home.creator_pass_text') }}</p>
+                                    </div>
+                                    <span class="shrink-0 rounded-full wayout-lime px-3 py-1 text-sm font-black text-slate-950">59€</span>
+                                </div>
+                                <p class="mt-3 text-sm font-bold text-violet-200">{{ $creatorFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
+                            </div>
+                        </div>
+                        <p class="mt-4 rounded-2xl bg-violet-50 p-3 text-sm font-bold leading-6 text-violet-800">
+                            {{ __('messages.home.creator_pass_compliance') }}
+                        </p>
+                        <p class="mt-4 rounded-2xl bg-slate-100 p-3 text-sm font-bold text-slate-600">
+                            {{ __('messages.home.both_include_trial') }}
+                        </p>
+                        <p class="mt-3 text-xs font-semibold leading-5 text-slate-500">
+                            {!! __('messages.home.pass_terms_notice', [
+                                'passes' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.passes').'">'.__('messages.legal.passes').'</a>',
+                            ]) !!}
+                        </p>
+                    </div>
+                @endunless
             </div>
-            <div class="mt-6 flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row">
+            <div class="flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row">
                 @if($purchasedPlan)
                     <form method="POST" action="{{ route('purchase.confirmation.resend') }}" class="w-full">
                         @csrf
@@ -239,6 +305,8 @@
                     <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">{{ __('messages.home.stay_waitlist') }}</button>
                 @endif
             </div>
+            </div>
+        </div>
         </div>
     </div>
 @endif
@@ -267,6 +335,7 @@
         const modal = document.getElementById('waitlist-offer');
         const panel = document.getElementById('waitlist-offer-panel');
         if (!modal || !panel) return;
+        document.body.style.overflow = 'hidden';
         requestAnimationFrame(() => {
             panel.style.opacity = '1';
             panel.style.transform = 'translateY(0) scale(1)';
@@ -275,6 +344,7 @@
             panel.style.transition = 'all 180ms ease-in';
             panel.style.opacity = '0';
             panel.style.transform = 'translateY(12px) scale(0.98)';
+            document.body.style.overflow = '';
             setTimeout(() => modal.remove(), 200);
         };
         document.getElementById('keep-waitlist')?.addEventListener('click', closeModal);

@@ -195,6 +195,8 @@ class SubscribeController extends Controller
                 ], 422);
             }
 
+            $request->session()->put('checkout_plan', $plan);
+
             return response()->json([
                 'purchaseId' => $purchase,
                 'completed' => true,

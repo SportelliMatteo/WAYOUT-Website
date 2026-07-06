@@ -141,26 +141,36 @@
                             <a href="{{ route('about') }}" class="transition hover:text-white">{{ __('messages.nav.about') }}</a>
                             <a href="{{ route('contact') }}" class="transition hover:text-white">{{ __('messages.nav.contact') }}</a>
                         </div>
+
+                        <p class="mt-8 text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.legal.footer_heading') }}</p>
+                        <div class="mt-5 flex flex-col gap-3 text-sm font-bold text-slate-300">
+                            <a href="{{ route('legal.privacy') }}" class="transition hover:text-white">{{ __('messages.legal.privacy') }}</a>
+                            <a href="{{ route('legal.cookies') }}" class="transition hover:text-white">{{ __('messages.legal.cookies') }}</a>
+                            <a href="{{ route('legal.terms') }}" class="transition hover:text-white">{{ __('messages.legal.terms') }}</a>
+                            <a href="{{ route('legal.passes') }}" class="transition hover:text-white">{{ __('messages.legal.passes') }}</a>
+                            <a href="{{ route('legal.sales') }}" class="transition hover:text-white">{{ __('messages.legal.sales') }}</a>
+                            <a href="{{ route('legal.notice') }}" class="transition hover:text-white">{{ __('messages.legal.notice') }}</a>
+                        </div>
                     </div>
 
-                    <div class="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
+                    <div class="self-start rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
                         
                         <dl class="space-y-3 text-sm">
                             <div>
                                 <dt class="font-bold text-slate-500">{{ __('messages.footer.company_name') }}</dt>
-                                <dd class="mt-1 font-semibold text-slate-200">WAYOUT S.r.l.</dd>
+                                <dd class="mt-1 font-semibold text-slate-200">WAYOUT S.R.L.</dd>
                             </div>
                             <div>
                                 <dt class="font-bold text-slate-500">{{ __('messages.footer.vat') }}</dt>
-                                <dd class="mt-1 font-semibold text-slate-200">01482970167</dd>
+                                <dd class="mt-1 font-semibold text-slate-200">14805930964</dd>
                             </div>
                             <div>
                                 <dt class="font-bold text-slate-500">{{ __('messages.footer.rea') }}</dt>
-                                <dd class="mt-1 font-semibold text-slate-200">MI3456234</dd>
+                                <dd class="mt-1 font-semibold text-slate-200">MI2808098</dd>
                             </div>
                             <div>
                                 <dt class="font-bold text-slate-500">{{ __('messages.footer.pec') }}</dt>
-                                <dd class="mt-1 font-semibold text-slate-200">pec@pec.wayoutapp.it</dd>
+                                <dd class="mt-1 font-semibold text-slate-200">wayout@pec.wayoutapp.it</dd>
                             </div>
                         </dl>
                     </div>

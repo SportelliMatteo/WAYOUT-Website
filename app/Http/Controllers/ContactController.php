@@ -21,12 +21,20 @@ class ContactController extends Controller
                 ->with('contact_error', __('messages.messages.contact_error'));
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email:rfc', 'max:255'],
-            'subject' => ['nullable', 'string', 'max:255'],
-            'message' => ['required', 'string', 'max:5000'],
-        ]);
+        $validated = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email:rfc', 'max:255'],
+                'subject' => ['required', 'string', 'max:255'],
+                'message' => ['required', 'string', 'max:5000'],
+                'privacy_accepted' => ['accepted'],
+            ],
+            [
+                'privacy_accepted.accepted' => __('messages.contact.privacy_required'),
+            ],
+        );
+
+        unset($validated['privacy_accepted']);
 
         try {
             DB::table('contact_messages')->insert([
