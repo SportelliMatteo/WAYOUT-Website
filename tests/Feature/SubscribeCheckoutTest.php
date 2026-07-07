@@ -27,7 +27,36 @@ class SubscribeCheckoutTest extends TestCase
             ->get(route('subscribe'));
 
         $response->assertOk()
-            ->assertViewIs('pages.subscribe');
+            ->assertViewIs('pages.subscribe')
+            ->assertSee('Procedendo al pagamento dichiari di aver letto')
+            ->assertSee(route('legal.privacy'))
+            ->assertSee(route('legal.terms'));
+    }
+
+    public function test_subscribe_plan_comparison_uses_configured_capacities(): void
+    {
+        DB::table('founder_settings')->updateOrInsert(
+            ['key' => 'waitlist_capacity'],
+            ['value' => 1234]
+        );
+        DB::table('founder_settings')->updateOrInsert(
+            ['key' => 'join_capacity'],
+            ['value' => 734]
+        );
+        DB::table('founder_settings')->updateOrInsert(
+            ['key' => 'creator_capacity'],
+            ['value' => 91]
+        );
+
+        $response = $this->withSession(['subscribe_entry_allowed' => true])
+            ->get(route('subscribe'));
+
+        $response->assertOk()
+            ->assertSee('1.234 posti disponibili')
+            ->assertSee('734 posti disponibili')
+            ->assertSee('91 posti disponibili')
+            ->assertDontSee('600 pass')
+            ->assertDontSee('200 pass');
     }
 
     public function test_subscribe_page_cannot_be_opened_directly_after_checkout_was_unlocked(): void

@@ -275,12 +275,6 @@
                                 <p class="mt-3 text-sm font-bold text-violet-200">{{ $creatorFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
                             </div>
                         </div>
-                        <p class="mt-4 rounded-2xl bg-violet-50 p-3 text-sm font-bold leading-6 text-violet-800">
-                            {{ __('messages.home.creator_pass_compliance') }}
-                        </p>
-                        <p class="mt-4 rounded-2xl bg-slate-100 p-3 text-sm font-bold text-slate-600">
-                            {{ __('messages.home.both_include_trial') }}
-                        </p>
                         <p class="mt-3 text-xs font-semibold leading-5 text-slate-500">
                             {!! __('messages.home.pass_terms_notice', [
                                 'passes' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.passes').'">'.__('messages.legal.passes').'</a>',

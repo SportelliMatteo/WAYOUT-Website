@@ -137,6 +137,7 @@ return [
         'includes' => 'Includes',
         'not_included' => 'Does not include',
         'price_note' => 'Founder Passes start at the app’s go-live, last 12 months, and do not renew automatically. They cannot be combined with the free Waitlist Pass or any Launch Offer.',
+        'payment_terms_notice' => 'By proceeding to payment, you confirm that you have read the :privacy and :terms.',
         'pass_sold_out' => 'Pass sold out.',
         'sold_out' => 'Sold out',
         'spots_available' => ':count spots available',

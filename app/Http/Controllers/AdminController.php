@@ -178,7 +178,7 @@ class AdminController extends Controller
             );
         }
 
-        return back()->with('admin_success', __('messages.messages.admin_success'));
+        return back()->with('admin_success', __('messages.admin.admin_success'));
     }
 
     private function buyersForPlan(string $plan)

@@ -59,10 +59,7 @@
                             </div>
                             <p class="mt-4 text-sm font-black text-violet-700">{{ $joinFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
                             <div class="mt-5 space-y-4 text-sm leading-6">
-                                <div class="rounded-2xl bg-slate-50 p-4">
-                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.card_capacity') }}</p>
-                                    <p class="mt-1 font-black text-slate-950">{{ __('messages.subscribe.join_card_capacity') }}</p>
-                                </div>
+                                
                                 <div>
                                     <p class="font-black text-slate-950">{{ __('messages.subscribe.includes') }}</p>
                                     <ul class="mt-2 space-y-1 font-semibold text-slate-600">
@@ -101,10 +98,7 @@
                             </div>
                             <p class="mt-4 text-sm font-black text-violet-700">{{ $creatorFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
                             <div class="mt-5 space-y-4 text-sm leading-6">
-                                <div class="rounded-2xl bg-slate-50 p-4">
-                                    <p class="font-black text-slate-950">{{ __('messages.subscribe.card_capacity') }}</p>
-                                    <p class="mt-1 font-black text-slate-950">{{ __('messages.subscribe.creator_card_capacity') }}</p>
-                                </div>
+                               
                                 <div>
                                     <p class="font-black text-slate-950">{{ __('messages.subscribe.includes') }}</p>
                                     <ul class="mt-2 space-y-1 font-semibold text-slate-600">
@@ -123,6 +117,12 @@
                 </div>
                 <p class="mt-5 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-900">
                     {{ __('messages.subscribe.price_note') }}
+                </p>
+                <p class="mt-4 text-xs font-semibold leading-6 text-slate-500">
+                    {!! __('messages.subscribe.payment_terms_notice', [
+                        'privacy' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.privacy').'">'.__('messages.legal.privacy').'</a>',
+                        'terms' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.terms').'">'.__('messages.legal.terms').'</a>',
+                    ]) !!}
                 </p>
             </div>
 
@@ -181,12 +181,13 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 font-semibold text-slate-700">
-                        @foreach(__('messages.subscribe.compare_rows') as $row)
+                        @foreach(__('messages.subscribe.compare_rows') as $rowIndex => $row)
+                            @php($isCapacityRow = $rowIndex === 7)
                             <tr>
                                 <td class="py-3 pr-4 font-black text-slate-950">{{ $row[0] }}</td>
-                                <td class="px-4 py-3 text-right">{{ $row[1] }}</td>
-                                <td class="px-4 py-3 text-right">{{ $row[2] }}</td>
-                                <td class="py-3 pl-4 text-right">{{ $row[3] }}</td>
+                                <td class="px-4 py-3 text-right">{{ $isCapacityRow ? __('messages.subscribe.spots_available', ['count' => $capacity('waitlist_capacity')]) : $row[1] }}</td>
+                                <td class="px-4 py-3 text-right">{{ $isCapacityRow ? __('messages.subscribe.spots_available', ['count' => $capacity('join_capacity')]) : $row[2] }}</td>
+                                <td class="py-3 pl-4 text-right">{{ $isCapacityRow ? __('messages.subscribe.spots_available', ['count' => $capacity('creator_capacity')]) : $row[3] }}</td>
                             </tr>
                         @endforeach
                     </tbody>
