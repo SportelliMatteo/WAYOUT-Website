@@ -2,6 +2,7 @@
     $money = fn (?int $amount) => number_format(($amount ?? 0) / 100, 2, ',', '.') . '€';
     $number = fn (?int $value) => number_format($value ?? 0, 0, ',', '.');
     $date = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d/m/Y H:i') : 'Mai';
+    $birthDate = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d/m/Y') : '-';
     $planName = fn (?string $plan) => $plan ? ($planLabels[$plan] ?? ucfirst($plan)) : __('messages.admin.no_pass');
 @endphp
 
@@ -149,6 +150,9 @@
                     <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.first_name') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.last_name') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.birth_date') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.status') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.pass') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.orders') }}</th>
@@ -164,6 +168,9 @@
                             @endphp
                             <tr class="hover:bg-violet-50/50">
                                 <td class="px-4 py-3 font-black">{{ $entry->email }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-700">{{ $entry->first_name ?: '-' }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-700">{{ $entry->last_name ?: '-' }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-500">{{ $birthDate($entry->birth_date) }}</td>
                                 <td class="px-4 py-3">
                                     @if ((int) $entry->orders_succeeded > 0)
                                         <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">{{ __('messages.admin.bought') }}</span>
@@ -179,7 +186,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
+                                <td colspan="10" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -199,9 +206,14 @@
                     <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.first_name') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.last_name') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.birth_date') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.pass') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.amount') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.status') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.invoice') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.fiscal_code') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.date') }}</th>
                         </tr>
                     </thead>
@@ -209,14 +221,19 @@
                         @forelse ($recentPurchases as $purchase)
                             <tr>
                                 <td class="px-4 py-3 font-black">{{ $purchase->email }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-700">{{ $purchase->first_name ?: '-' }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-700">{{ $purchase->last_name ?: '-' }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-500">{{ $birthDate($purchase->birth_date) }}</td>
                                 <td class="px-4 py-3 font-bold">{{ $planName($purchase->plan) }}</td>
                                 <td class="px-4 py-3 font-black">{{ $money((int) $purchase->amount) }}</td>
                                 <td class="px-4 py-3 font-bold">{{ $purchase->status }}</td>
+                                <td class="px-4 py-3 font-bold">{{ $purchase->invoice_requested ? __('messages.admin.yes') : __('messages.admin.no') }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-700">{{ $purchase->invoice_requested ? ($purchase->fiscal_code ?: '-') : '-' }}</td>
                                 <td class="px-4 py-3 font-bold text-slate-500">{{ $date($purchase->created_at) }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_orders') }}</td>
+                                <td colspan="10" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_orders') }}</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -236,6 +253,7 @@
                             <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
                                 <tr>
                                     <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
+                                    <th class="px-4 py-3">{{ __('messages.admin.name') }}</th>
                                     <th class="px-4 py-3">{{ __('messages.admin.orders') }}</th>
                                     <th class="px-4 py-3">{{ __('messages.admin.total') }}</th>
                                     <th class="px-4 py-3">{{ __('messages.admin.latest_purchase') }}</th>
@@ -245,13 +263,14 @@
                                 @forelse ($buyers as $buyer)
                                     <tr>
                                         <td class="px-4 py-3 font-black">{{ $buyer->email }}</td>
+                                        <td class="px-4 py-3 font-bold text-slate-700">{{ trim(($buyer->first_name ?? '').' '.($buyer->last_name ?? '')) ?: '-' }}</td>
                                         <td class="px-4 py-3 font-bold">{{ $number((int) $buyer->orders_total) }}</td>
                                         <td class="px-4 py-3 font-black">{{ $money((int) $buyer->revenue_total) }}</td>
                                         <td class="px-4 py-3 font-bold text-slate-500">{{ $date($buyer->latest_purchase_at) }}</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_plan_orders') }}</td>
+                                        <td colspan="5" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_plan_orders') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

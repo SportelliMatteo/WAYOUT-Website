@@ -104,6 +104,9 @@ class AdminController extends Controller
             })
             ->select([
                 'waitlist_entries.email',
+                'waitlist_entries.first_name',
+                'waitlist_entries.last_name',
+                'waitlist_entries.birth_date',
                 'waitlist_entries.offer_shown',
                 'waitlist_entries.created_at',
                 'waitlist_entries.updated_at',
@@ -185,6 +188,8 @@ class AdminController extends Controller
     {
         return DB::table('purchases')
             ->select('email')
+            ->selectRaw('MAX(first_name) as first_name')
+            ->selectRaw('MAX(last_name) as last_name')
             ->selectRaw('COUNT(*) as orders_total')
             ->selectRaw('SUM(amount) as revenue_total')
             ->selectRaw('MAX(created_at) as latest_purchase_at')

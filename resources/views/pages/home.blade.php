@@ -161,6 +161,51 @@
     </div>
 </section>
 
+@if(session('waitlist_profile_prompt'))
+    @php
+        $waitlistProfile = session('waitlist_profile', []);
+        $adultMaxDate = now()->subYears(18)->toDateString();
+    @endphp
+    <div id="waitlist-profile" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-3 py-4 sm:px-4 sm:py-8">
+        <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
+        <div class="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/95 p-5 text-white opacity-0 shadow-2xl transition-all duration-300 sm:rounded-[2.5rem] sm:p-8" id="waitlist-profile-panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-profile-title">
+            <div class="mb-5 flex items-center justify-between gap-4">
+                <span class="inline-flex rounded-full bg-violet-500/20 px-4 py-2 text-xs font-black uppercase tracking-[0.26em] text-violet-100">{{ __('messages.home.waitlist') }}</span>
+                <button id="waitlist-profile-close-x" aria-label="{{ __('messages.nav.close_menu') }}" class="shrink-0 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/15 hover:text-white">
+                    <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <h3 id="waitlist-profile-title" class="text-3xl font-black leading-tight tracking-tight sm:text-4xl">{{ __('messages.home.profile_title') }}</h3>
+            @if(session('waitlist_error'))
+                <p class="mt-4 rounded-2xl bg-rose-500/15 px-4 py-3 text-sm font-bold text-rose-100">{{ session('waitlist_error') }}</p>
+            @endif
+            <form method="POST" action="{{ route('waitlist.profile') }}" class="mt-6 space-y-4">
+                @csrf
+                <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
+                <input type="hidden" name="waitlist_status" value="{{ session('waitlist_status') }}" />
+                <div class="grid gap-3 text-left sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.first_name') }}</span>
+                        <input type="text" name="first_name" value="{{ old('first_name', $waitlistProfile['first_name'] ?? '') }}" required autocomplete="given-name" class="min-h-12 w-full rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                        @error('first_name')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.last_name') }}</span>
+                        <input type="text" name="last_name" value="{{ old('last_name', $waitlistProfile['last_name'] ?? '') }}" required autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                        @error('last_name')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
+                    </label>
+                    <label class="block sm:col-span-2">
+                        <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.birth_date') }}</span>
+                        <input type="date" name="birth_date" value="{{ old('birth_date', $waitlistProfile['birth_date'] ?? '') }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                        @error('birth_date')<span class="mt-1 block text-xs font-bold text-rose-200">{{ __('messages.home.birth_date_error') }}</span>@enderror
+                    </label>
+                </div>
+                <button type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.profile_submit') }}</button>
+            </form>
+        </div>
+    </div>
+@endif
+
 @if(session('waitlist_offer'))
     @php
         $alreadyRegistered = session('waitlist_status') === 'already_registered';
@@ -294,6 +339,7 @@
                     <form method="POST" action="{{ route('subscribe.access') }}" class="w-full">
                         @csrf
                         <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
+                        <input type="hidden" name="waitlist_status" value="{{ session('waitlist_status') }}" />
                         <button id="block-discount" type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.discover_passes') }}</button>
                     </form>
                     <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">{{ __('messages.home.stay_waitlist') }}</button>
@@ -326,23 +372,28 @@
             }, 3400));
         }
 
-        const modal = document.getElementById('waitlist-offer');
-        const panel = document.getElementById('waitlist-offer-panel');
-        if (!modal || !panel) return;
-        document.body.style.overflow = 'hidden';
-        requestAnimationFrame(() => {
-            panel.style.opacity = '1';
-            panel.style.transform = 'translateY(0) scale(1)';
-        });
-        const closeModal = () => {
-            panel.style.transition = 'all 180ms ease-in';
-            panel.style.opacity = '0';
-            panel.style.transform = 'translateY(12px) scale(0.98)';
-            document.body.style.overflow = '';
-            setTimeout(() => modal.remove(), 200);
+        const bindModal = (modalId, panelId, closeIds) => {
+            const modal = document.getElementById(modalId);
+            const panel = document.getElementById(panelId);
+            if (!modal || !panel) return false;
+            document.body.style.overflow = 'hidden';
+            requestAnimationFrame(() => {
+                panel.style.opacity = '1';
+                panel.style.transform = 'translateY(0) scale(1)';
+            });
+            const closeModal = () => {
+                panel.style.transition = 'all 180ms ease-in';
+                panel.style.opacity = '0';
+                panel.style.transform = 'translateY(12px) scale(0.98)';
+                document.body.style.overflow = '';
+                setTimeout(() => modal.remove(), 200);
+            };
+            closeIds.forEach((id) => document.getElementById(id)?.addEventListener('click', closeModal));
+            return true;
         };
-        document.getElementById('keep-waitlist')?.addEventListener('click', closeModal);
-        document.getElementById('waitlist-close-x')?.addEventListener('click', closeModal);
+
+        bindModal('waitlist-profile', 'waitlist-profile-panel', ['waitlist-profile-close-x']);
+        bindModal('waitlist-offer', 'waitlist-offer-panel', ['keep-waitlist', 'waitlist-close-x']);
     })();
 </script>
 @endsection

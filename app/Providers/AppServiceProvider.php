@@ -5,7 +5,10 @@ namespace App\Providers;
 use App\Support\FounderAvailability;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('waitlist', function (Request $request) {
+            $email = Str::lower((string) $request->input('email'));
+
+            if ($request->routeIs('waitlist.store')
+                && filter_var($email, FILTER_VALIDATE_EMAIL)
+                && Schema::hasTable('waitlist_entries')
+                && DB::table('waitlist_entries')->where('email', $email)->exists()) {
+                return Limit::none();
+            }
+
             return Limit::perMinute(5)->by($request->ip());
         });
 

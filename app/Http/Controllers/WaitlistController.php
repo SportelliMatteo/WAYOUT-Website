@@ -6,6 +6,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class WaitlistController extends Controller
@@ -74,6 +75,10 @@ class WaitlistController extends Controller
                 ->where('status', 'succeeded')
                 ->latest('created_at')
                 ->first();
+
+            $waitlistEntry = DB::table('waitlist_entries')
+                ->where('email', $email)
+                ->first();
         } catch (QueryException $exception) {
             if ($this->isUniqueConstraintViolation($exception)) {
                 DB::table('waitlist_entries')
@@ -89,6 +94,9 @@ class WaitlistController extends Controller
                     ->where('status', 'succeeded')
                     ->latest('created_at')
                     ->first();
+                $waitlistEntry = DB::table('waitlist_entries')
+                    ->where('email', $email)
+                    ->first();
             } else {
                 Log::error('Waitlist signup failed.', [
                     'email' => $email,
@@ -100,10 +108,91 @@ class WaitlistController extends Controller
             }
         }
 
+        $profileRequired = ! $purchase && ! $this->profileComplete($waitlistEntry ?? null);
+        $waitlistStatus = $profileRequired ? 'registered' : ($alreadyRegistered ? 'already_registered' : 'registered');
+
+        return back()
+            ->with('waitlist_profile_prompt', $profileRequired)
+            ->with('waitlist_offer', ! $profileRequired)
+            ->with('waitlist_status', $waitlistStatus)
+            ->with('waitlist_email', $email)
+            ->with('waitlist_profile', $this->profileData($waitlistEntry ?? null))
+            ->with('waitlist_profile_required', $profileRequired)
+            ->with('purchased_plan', $purchase ? [
+                'code' => $purchase->plan,
+                'name' => $this->planName($purchase->plan),
+                'amount' => $purchase->amount,
+                'currency' => $purchase->currency,
+            ] : null);
+    }
+
+    public function completeProfile(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => ['required', 'email:rfc', 'max:255'],
+            'first_name' => ['required', 'string', 'max:120'],
+            'last_name' => ['required', 'string', 'max:120'],
+            'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
+        ]);
+
+        $email = Str::lower((string) $request->input('email'));
+        $status = 'registered';
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput()
+                ->with('waitlist_profile_prompt', true)
+                ->with('waitlist_status', $status)
+                ->with('waitlist_email', $email)
+                ->with('waitlist_profile', [
+                    'first_name' => $request->input('first_name', ''),
+                    'last_name' => $request->input('last_name', ''),
+                    'birth_date' => $request->input('birth_date', ''),
+                ]);
+        }
+
+        $validated = $validator->validated();
+        $email = Str::lower($validated['email']);
+        $profile = [
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'birth_date' => $validated['birth_date'],
+        ];
+
+        try {
+            DB::table('waitlist_entries')
+                ->where('email', $email)
+                ->update([
+                    ...$profile,
+                    'updated_at' => now(),
+                ]);
+
+            $purchase = DB::table('purchases')
+                ->where('email', $email)
+                ->where('status', 'succeeded')
+                ->latest('created_at')
+                ->first();
+        } catch (QueryException $exception) {
+            Log::error('Waitlist profile completion failed.', [
+                'email' => $email,
+                'exception' => $exception,
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('waitlist_profile_prompt', true)
+                ->with('waitlist_error', __('messages.messages.waitlist_generic_error'))
+                ->with('waitlist_status', $status)
+                ->with('waitlist_email', $email)
+                ->with('waitlist_profile', $profile);
+        }
+
         return back()
             ->with('waitlist_offer', true)
-            ->with('waitlist_status', $alreadyRegistered ? 'already_registered' : 'registered')
+            ->with('waitlist_status', $status)
             ->with('waitlist_email', $email)
+            ->with('waitlist_profile', $profile)
             ->with('purchased_plan', $purchase ? [
                 'code' => $purchase->plan,
                 'name' => $this->planName($purchase->plan),
@@ -123,5 +212,21 @@ class WaitlistController extends Controller
             'creator' => 'Founder 12M Creator Pass',
             default => 'Founder Join 12M Pass',
         };
+    }
+
+    private function profileData(?object $entry): array
+    {
+        return [
+            'first_name' => $entry->first_name ?? '',
+            'last_name' => $entry->last_name ?? '',
+            'birth_date' => $entry->birth_date ?? '',
+        ];
+    }
+
+    private function profileComplete(?object $entry): bool
+    {
+        return filled($entry?->first_name)
+            && filled($entry?->last_name)
+            && filled($entry?->birth_date);
     }
 }

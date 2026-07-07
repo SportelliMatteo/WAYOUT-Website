@@ -10,6 +10,8 @@
     $creatorFull = $founderAvailability['creator']['is_full'] ?? false;
     $allPassesFull = $joinFull && $creatorFull;
     $defaultPlan = $joinFull && ! $creatorFull ? 'creator' : 'join';
+    $waitlistProfile = session('waitlist_profile', []);
+    $adultMaxDate = now()->subYears(18)->toDateString();
 @endphp
 <section class="relative overflow-hidden py-10 lg:py-20">
     <div class="mb-20 wayout-shell grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
@@ -209,21 +211,135 @@
     </div>
 </section>
 
+<div id="payment-details-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="payment-details-title" class="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white p-5 shadow-2xl sm:p-7">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <p class="text-xs font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.subscribe.payment_details_eyebrow') }}</p>
+                <h2 id="payment-details-title" class="mt-2 text-2xl font-black leading-tight text-slate-950">{{ __('messages.subscribe.payment_details_title') }}</h2>
+            </div>
+            <button id="payment-details-close" type="button" class="rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200 hover:text-slate-950" aria-label="{{ __('messages.nav.close_menu') }}">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form id="payment-details-form" class="mt-5 space-y-4">
+            <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block sm:col-span-2">
+                    <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.email') }}</span>
+                    <input type="email" name="email" value="{{ session('waitlist_email') }}" readonly class="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 text-sm font-bold text-slate-700 outline-none" />
+                </label>
+                <label class="block">
+                    <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.first_name') }}</span>
+                    <input type="text" name="first_name" value="{{ $waitlistProfile['first_name'] ?? '' }}" required autocomplete="given-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                </label>
+                <label class="block">
+                    <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.last_name') }}</span>
+                    <input type="text" name="last_name" value="{{ $waitlistProfile['last_name'] ?? '' }}" required autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                </label>
+                <label class="block sm:col-span-2">
+                    <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.birth_date') }}</span>
+                    <input type="date" name="birth_date" value="{{ $waitlistProfile['birth_date'] ?? '' }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                </label>
+            </div>
+            <label class="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
+                <input id="invoice-requested" type="checkbox" name="invoice_requested" value="true" class="mt-1 h-5 w-5 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
+                <span>
+                    <span class="block text-sm font-black text-slate-950">{{ __('messages.subscribe.invoice_requested') }}</span>
+                    <span class="mt-1 block text-xs font-semibold leading-5 text-slate-500">{{ __('messages.subscribe.invoice_note') }}</span>
+                </span>
+            </label>
+            <label id="fiscal-code-wrap" class="mb-4 hidden">
+                <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.fiscal_code') }}</span>
+                <input type="text" name="fiscal_code" maxlength="32" autocomplete="off" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+            </label>
+            <p id="payment-details-error" class="hidden rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"></p>
+            <button id="payment-details-submit" type="submit" class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-80">
+                <span class="payment-submit-text">{{ __('messages.subscribe.confirm_and_pay') }}</span>
+                <span class="payment-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true"></span>
+            </button>
+        </form>
+    </div>
+</div>
+
 <script src="https://js.stripe.com/v3/"></script>
 <script>
     const button = document.getElementById('stripe-checkout-button');
-    button?.addEventListener('click', async function () {
+    const paymentModal = document.getElementById('payment-details-modal');
+    const paymentForm = document.getElementById('payment-details-form');
+    const paymentError = document.getElementById('payment-details-error');
+    const paymentSubmit = document.getElementById('payment-details-submit');
+    const paymentSubmitText = paymentSubmit?.querySelector('.payment-submit-text');
+    const paymentSubmitLoader = paymentSubmit?.querySelector('.payment-submit-loader');
+    const invoiceCheckbox = document.getElementById('invoice-requested');
+    const fiscalCodeWrap = document.getElementById('fiscal-code-wrap');
+    const fiscalCodeInput = fiscalCodeWrap?.querySelector('input[name="fiscal_code"]');
+    const originalButtonText = button?.textContent;
+
+    function setPaymentLoading(isLoading) {
+        if (!paymentSubmit) return;
+
+        paymentSubmit.disabled = isLoading;
+        paymentSubmitText?.classList.toggle('hidden', isLoading);
+        paymentSubmitLoader?.classList.toggle('hidden', !isLoading);
+    }
+
+    function closePaymentModal() {
+        paymentModal?.classList.add('hidden');
+        paymentModal?.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+
+    button?.addEventListener('click', function () {
+        const selectedPlan = document.querySelector('input[name="plan"]:checked')?.value;
+        if (!selectedPlan) {
+            alert(@json(__('messages.subscribe.no_passes_available')));
+            return;
+        }
+
+        paymentError?.classList.add('hidden');
+        paymentModal?.classList.remove('hidden');
+        paymentModal?.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    });
+
+    document.getElementById('payment-details-close')?.addEventListener('click', closePaymentModal);
+    invoiceCheckbox?.addEventListener('change', function () {
+        fiscalCodeWrap?.classList.toggle('hidden', !invoiceCheckbox.checked);
+        if (fiscalCodeInput) {
+            fiscalCodeInput.required = invoiceCheckbox.checked;
+            if (!invoiceCheckbox.checked) {
+                fiscalCodeInput.value = '';
+            }
+        }
+    });
+
+    paymentForm?.addEventListener('submit', async function (event) {
+        event.preventDefault();
         button.disabled = true;
         button.textContent = @json(__('messages.subscribe.loading'));
+        setPaymentLoading(true);
+        paymentError?.classList.add('hidden');
 
         const selectedPlan = document.querySelector('input[name="plan"]:checked')?.value;
         if (!selectedPlan) {
             alert(@json(__('messages.subscribe.no_passes_available')));
             button.disabled = false;
             button.textContent = @json(__('messages.subscribe.passes_sold_out'));
+            setPaymentLoading(false);
             return;
         }
         const stripeKey = @json(config('services.stripe.key'));
+        const formData = new FormData(paymentForm);
+        const payload = {
+            plan: selectedPlan,
+            direct_checkout: false,
+            first_name: formData.get('first_name'),
+            last_name: formData.get('last_name'),
+            birth_date: formData.get('birth_date'),
+            invoice_requested: invoiceCheckbox?.checked || false,
+            fiscal_code: formData.get('fiscal_code') || null,
+        };
 
         try {
             const response = await fetch("{{ route('subscribe.checkout') }}", {
@@ -233,15 +349,17 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ plan: selectedPlan }),
+                body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
             if (!response.ok || data.error) {
-                alert(data.error || @json(__('messages.subscribe.checkout_error')));
+                paymentError.textContent = data.message || data.error || @json(__('messages.subscribe.checkout_error'));
+                paymentError.classList.remove('hidden');
                 button.disabled = false;
-                button.textContent = @json(__('messages.subscribe.checkout'));
+                button.textContent = originalButtonText;
+                setPaymentLoading(false);
                 return;
             }
 
@@ -251,9 +369,11 @@
             }
 
             if (!stripeKey) {
-                alert(@json(__('messages.subscribe.stripe_key_missing')));
+                paymentError.textContent = @json(__('messages.subscribe.stripe_key_missing'));
+                paymentError.classList.remove('hidden');
                 button.disabled = false;
-                button.textContent = @json(__('messages.subscribe.checkout'));
+                button.textContent = originalButtonText;
+                setPaymentLoading(false);
                 return;
             }
 
@@ -261,14 +381,18 @@
             const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
 
             if (result.error) {
-                alert(result.error.message);
+                paymentError.textContent = result.error.message;
+                paymentError.classList.remove('hidden');
                 button.disabled = false;
-                button.textContent = @json(__('messages.subscribe.checkout'));
+                button.textContent = originalButtonText;
+                setPaymentLoading(false);
             }
         } catch (error) {
-            alert(@json(__('messages.subscribe.checkout_retry')));
+            paymentError.textContent = @json(__('messages.subscribe.checkout_retry'));
+            paymentError.classList.remove('hidden');
             button.disabled = false;
-            button.textContent = @json(__('messages.subscribe.checkout'));
+            button.textContent = originalButtonText;
+            setPaymentLoading(false);
         }
     });
 </script>
