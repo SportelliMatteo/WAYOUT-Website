@@ -11,7 +11,7 @@ class WaitlistTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_new_email_is_added_to_the_waitlist_and_shows_founder_offer(): void
+    public function test_new_email_is_added_to_the_waitlist_and_prompts_for_profile(): void
     {
         $response = $this->from(route('home'))
             ->post(route('waitlist.store'), [
@@ -19,7 +19,7 @@ class WaitlistTest extends TestCase
             ]);
 
         $response->assertRedirect(route('home'))
-            ->assertSessionHas('waitlist_offer', true)
+            ->assertSessionHas('waitlist_profile_prompt', true)
             ->assertSessionHas('waitlist_status', 'registered')
             ->assertSessionHas('waitlist_email', 'newperson@example.com');
 
@@ -29,7 +29,7 @@ class WaitlistTest extends TestCase
         ]);
     }
 
-    public function test_existing_email_is_not_inserted_again_but_still_shows_founder_offer(): void
+    public function test_existing_incomplete_email_is_not_inserted_again_but_still_prompts_for_profile(): void
     {
         DB::table('waitlist_entries')->insert([
             'email' => 'already@example.com',
@@ -44,8 +44,8 @@ class WaitlistTest extends TestCase
             ]);
 
         $response->assertRedirect(route('home'))
-            ->assertSessionHas('waitlist_offer', true)
-            ->assertSessionHas('waitlist_status', 'already_registered')
+            ->assertSessionHas('waitlist_profile_prompt', true)
+            ->assertSessionHas('waitlist_status', 'registered')
             ->assertSessionHas('waitlist_email', 'already@example.com');
 
         $this->assertSame(1, DB::table('waitlist_entries')
@@ -119,10 +119,10 @@ class WaitlistTest extends TestCase
         ])->get(route('home'));
 
         $response->assertOk()
-            ->assertSee('Sei già nella waitlist e hai già acquistato')
+            ->assertSee('Hai già acquistato un Founder Pass')
             ->assertSee('Founder 12M Creator Pass')
             ->assertSee('59,00€')
-            ->assertSee('Richiedi nuovamente email acquisto')
+            ->assertSee('Reinvia email di conferma')
             ->assertDontSee('Scopri i Founder Pass');
     }
 

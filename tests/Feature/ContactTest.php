@@ -18,6 +18,7 @@ class ContactTest extends TestCase
                 'email' => 'mario@example.com',
                 'subject' => 'Info',
                 'message' => 'Vorrei maggiori informazioni.',
+                'privacy_accepted' => '1',
             ]);
 
         $response->assertRedirect(route('contact'))
@@ -39,6 +40,7 @@ class ContactTest extends TestCase
                 'email' => 'mario@example.com',
                 'subject' => 'Info',
                 'message' => 'Vorrei maggiori informazioni.',
+                'privacy_accepted' => '1',
             ]);
 
         $response->assertRedirect(route('contact'))

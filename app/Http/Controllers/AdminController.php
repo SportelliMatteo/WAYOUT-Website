@@ -107,6 +107,8 @@ class AdminController extends Controller
                 'waitlist_entries.first_name',
                 'waitlist_entries.last_name',
                 'waitlist_entries.birth_date',
+                'waitlist_entries.phone_prefix',
+                'waitlist_entries.phone_number',
                 'waitlist_entries.offer_shown',
                 'waitlist_entries.created_at',
                 'waitlist_entries.updated_at',
@@ -190,6 +192,8 @@ class AdminController extends Controller
             ->select('email')
             ->selectRaw('MAX(first_name) as first_name')
             ->selectRaw('MAX(last_name) as last_name')
+            ->selectRaw('MAX(phone_prefix) as phone_prefix')
+            ->selectRaw('MAX(phone_number) as phone_number')
             ->selectRaw('COUNT(*) as orders_total')
             ->selectRaw('SUM(amount) as revenue_total')
             ->selectRaw('MAX(created_at) as latest_purchase_at')

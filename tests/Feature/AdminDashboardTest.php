@@ -60,7 +60,7 @@ class AdminDashboardTest extends TestCase
             ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('admin_success', 'Quantità aggiornate.');
+            ->assertSessionHas('admin_success', 'Dati aggiornati.');
 
         $this->assertDatabaseHas('founder_settings', [
             'key' => 'waitlist_capacity',

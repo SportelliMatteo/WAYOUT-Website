@@ -105,6 +105,7 @@ return [
         'first_name' => 'Nome',
         'last_name' => 'Cognome',
         'birth_date' => 'Data di nascita',
+        'phone_number' => 'Telefono',
         'profile_submit' => 'Conferma iscrizione',
     ],
     'subscribe' => [
@@ -165,6 +166,7 @@ return [
         'first_name' => 'Nome',
         'last_name' => 'Cognome',
         'birth_date' => 'Data di nascita',
+        'phone_number' => 'Telefono',
         'birth_date_note' => 'Il pagamento è riservato agli utenti maggiorenni.',
         'invoice_requested' => 'Voglio ricevere fattura',
         'invoice_note' => 'Selezionando questa opzione ti chiediamo anche il codice fiscale.',
@@ -271,6 +273,7 @@ return [
         'first_name' => 'Nome',
         'last_name' => 'Cognome',
         'birth_date' => 'Data di nascita',
+        'phone_number' => 'Telefono',
         'password' => 'Password',
         'enter' => 'Entra',
         'dashboard_title' => 'Dashboard Admin - Wayout',

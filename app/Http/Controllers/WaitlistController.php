@@ -133,6 +133,8 @@ class WaitlistController extends Controller
             'first_name' => ['required', 'string', 'max:120'],
             'last_name' => ['required', 'string', 'max:120'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
+            'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
+            'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
         ]);
 
         $email = Str::lower((string) $request->input('email'));
@@ -149,6 +151,8 @@ class WaitlistController extends Controller
                     'first_name' => $request->input('first_name', ''),
                     'last_name' => $request->input('last_name', ''),
                     'birth_date' => $request->input('birth_date', ''),
+                    'phone_prefix' => $request->input('phone_prefix', '+39'),
+                    'phone_number' => $request->input('phone_number', ''),
                 ]);
         }
 
@@ -158,6 +162,8 @@ class WaitlistController extends Controller
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'birth_date' => $validated['birth_date'],
+            'phone_prefix' => $validated['phone_prefix'],
+            'phone_number' => $validated['phone_number'],
         ];
 
         try {
@@ -220,6 +226,8 @@ class WaitlistController extends Controller
             'first_name' => $entry->first_name ?? '',
             'last_name' => $entry->last_name ?? '',
             'birth_date' => $entry->birth_date ?? '',
+            'phone_prefix' => $entry->phone_prefix ?? '+39',
+            'phone_number' => $entry->phone_number ?? '',
         ];
     }
 
@@ -227,6 +235,8 @@ class WaitlistController extends Controller
     {
         return filled($entry?->first_name)
             && filled($entry?->last_name)
-            && filled($entry?->birth_date);
+            && filled($entry?->birth_date)
+            && filled($entry?->phone_prefix)
+            && filled($entry?->phone_number);
     }
 }

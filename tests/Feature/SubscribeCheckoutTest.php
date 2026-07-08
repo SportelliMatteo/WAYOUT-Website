@@ -71,6 +71,18 @@ class SubscribeCheckoutTest extends TestCase
 
     public function test_subscribe_access_stores_the_waitlist_email_in_session(): void
     {
+        DB::table('waitlist_entries')->insert([
+            'email' => 'founder@example.com',
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+            'offer_shown' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $response = $this->from(route('home'))
             ->post(route('subscribe.access'), [
                 'email' => 'Founder@Example.com',
@@ -95,6 +107,9 @@ class SubscribeCheckoutTest extends TestCase
             'waitlist_email' => 'founder@example.com',
         ])
             ->postJson(route('subscribe.checkout'), [
+                ...$this->customerPayload(),
+                'invoice_requested' => true,
+                'fiscal_code' => 'abcxyz90a01f205z',
                 'plan' => 'creator',
                 'direct_checkout' => false,
             ]);
@@ -106,13 +121,108 @@ class SubscribeCheckoutTest extends TestCase
             $body = $request->data();
 
             return $request->url() === 'https://api.stripe.com/v1/checkout/sessions'
-                && $body['mode'] === 'subscription'
+                && $body['mode'] === 'payment'
                 && $body['line_items[0][price_data][unit_amount]'] === '5900'
                 && $body['line_items[0][price_data][product_data][name]'] === 'Founder 12M Creator Pass'
-                && $body['line_items[0][price_data][recurring][interval]'] === 'year'
                 && $body['customer_email'] === 'founder@example.com'
-                && $body['metadata[email]'] === 'founder@example.com';
+                && $body['metadata[email]'] === 'founder@example.com'
+                && $body['metadata[phone_prefix]'] === '+39'
+                && $body['metadata[phone_number]'] === '3331234567'
+                && filled($body['metadata[purchase_id]'] ?? null)
+                && $body['metadata[fiscal_code]'] === 'ABCXYZ90A01F205Z';
         });
+
+        $this->assertDatabaseHas('purchases', [
+            'email' => 'founder@example.com',
+            'plan' => 'creator',
+            'status' => 'pending',
+            'stripe_session_id' => 'cs_test_123',
+        ]);
+    }
+
+    public function test_stripe_checkout_reserves_the_last_founder_pass_before_payment(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+
+        DB::table('founder_settings')->updateOrInsert(
+            ['key' => 'join_capacity'],
+            ['value' => 1, 'created_at' => now(), 'updated_at' => now()]
+        );
+
+        DB::table('purchases')->insert([
+            'email' => 'reserved@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'cs_reserved',
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_should_not_be_created'], 200),
+        ]);
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'founder@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'plan' => 'join',
+            'direct_checkout' => false,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJson([
+                'error' => 'Founder Join 12M Pass è esaurito. Scegli un altro pass o resta in waitlist.',
+            ]);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_expired_stripe_reservations_do_not_block_a_founder_pass(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+
+        DB::table('founder_settings')->updateOrInsert(
+            ['key' => 'join_capacity'],
+            ['value' => 1, 'created_at' => now(), 'updated_at' => now()]
+        );
+
+        DB::table('purchases')->insert([
+            'email' => 'expired@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'cs_expired',
+            'status' => 'pending',
+            'created_at' => now()->subMinutes(16),
+            'updated_at' => now()->subMinutes(16),
+        ]);
+
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_new'], 200),
+        ]);
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'founder@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'plan' => 'join',
+            'direct_checkout' => false,
+        ]);
+
+        $response->assertOk()
+            ->assertJson(['sessionId' => 'cs_new']);
+
+        $this->assertDatabaseHas('purchases', [
+            'email' => 'founder@example.com',
+            'plan' => 'join',
+            'status' => 'pending',
+            'stripe_session_id' => 'cs_new',
+        ]);
     }
 
     public function test_direct_checkout_uses_the_waitlist_email(): void
@@ -121,7 +231,11 @@ class SubscribeCheckoutTest extends TestCase
             'waitlist_offer_access' => true,
             'waitlist_email' => 'founder@example.com',
         ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'invoice_requested' => true,
+            'fiscal_code' => 'abcxyz90a01f205z',
             'plan' => 'join',
+            'direct_checkout' => true,
         ]);
 
         $response->assertOk()
@@ -135,6 +249,10 @@ class SubscribeCheckoutTest extends TestCase
             'plan' => 'join',
             'amount' => 2900,
             'status' => 'succeeded',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+            'invoice_requested' => true,
+            'fiscal_code' => 'ABCXYZ90A01F205Z',
         ]);
 
         $this->assertDatabaseMissing('purchases', [
@@ -180,7 +298,9 @@ class SubscribeCheckoutTest extends TestCase
             'waitlist_email' => 'founder@example.com',
         ])
             ->postJson(route('subscribe.checkout'), [
+                ...$this->customerPayload(),
                 'plan' => 'join',
+                'direct_checkout' => true,
             ]);
 
         $response->assertStatus(500)
@@ -202,6 +322,7 @@ class SubscribeCheckoutTest extends TestCase
             'waitlist_email' => 'founder@example.com',
         ])
             ->postJson(route('subscribe.checkout'), [
+                ...$this->customerPayload(),
                 'plan' => 'join',
                 'direct_checkout' => false,
             ]);
@@ -226,6 +347,7 @@ class SubscribeCheckoutTest extends TestCase
             'waitlist_email' => 'founder@example.com',
         ])
             ->postJson(route('subscribe.checkout'), [
+                ...$this->customerPayload(),
                 'plan' => 'join',
                 'direct_checkout' => false,
             ]);
@@ -234,6 +356,88 @@ class SubscribeCheckoutTest extends TestCase
             ->assertJson([
                 'error' => 'Checkout temporaneamente non disponibile. Riprova tra qualche minuto.',
             ]);
+    }
+
+    public function test_successful_stripe_callback_confirms_the_reserved_purchase(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+
+        $purchaseId = DB::table('purchases')->insertGetId([
+            'email' => 'founder@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'cs_test_paid',
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions/cs_test_paid' => Http::response($this->paidStripeSession($purchaseId), 200),
+        ]);
+
+        $response = $this->get(route('checkout.success', ['session_id' => 'cs_test_paid']));
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('purchases', [
+            'id' => $purchaseId,
+            'status' => 'succeeded',
+            'stripe_session_id' => 'cs_test_paid',
+            'fiscal_code' => 'ABCXYZ90A01F205Z',
+        ]);
+    }
+
+    public function test_successful_stripe_callback_does_not_overbook_when_capacity_is_gone(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+
+        DB::table('founder_settings')->updateOrInsert(
+            ['key' => 'join_capacity'],
+            ['value' => 1, 'created_at' => now(), 'updated_at' => now()]
+        );
+
+        DB::table('purchases')->insert([
+            'email' => 'winner@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'cs_winner',
+            'status' => 'succeeded',
+            'created_at' => now()->subMinute(),
+            'updated_at' => now()->subMinute(),
+        ]);
+
+        $purchaseId = DB::table('purchases')->insertGetId([
+            'email' => 'late@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'cs_late',
+            'status' => 'pending',
+            'created_at' => now()->subMinutes(20),
+            'updated_at' => now()->subMinutes(20),
+        ]);
+
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions/cs_late' => Http::response($this->paidStripeSession($purchaseId, 'late@example.com'), 200),
+        ]);
+
+        $response = $this->get(route('checkout.success', ['session_id' => 'cs_late']));
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('purchases', [
+            'id' => $purchaseId,
+            'status' => 'overbooked',
+            'stripe_session_id' => 'cs_late',
+        ]);
+
+        $this->assertSame(1, DB::table('purchases')
+            ->where('plan', 'join')
+            ->where('status', 'succeeded')
+            ->count());
     }
 
     public function test_purchase_confirmation_email_can_be_requested_again(): void
@@ -293,5 +497,38 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSessionHas('purchase_confirmation_error', 'Non siamo riusciti a inviare nuovamente l’email. Riprova tra qualche minuto.');
 
         Mail::assertNothingSent();
+    }
+
+    private function customerPayload(): array
+    {
+        return [
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+        ];
+    }
+
+    private function paidStripeSession(int $purchaseId, string $email = 'founder@example.com'): array
+    {
+        return [
+            'payment_status' => 'paid',
+            'amount_total' => 2900,
+            'currency' => 'eur',
+            'customer_email' => $email,
+            'metadata' => [
+                'purchase_id' => (string) $purchaseId,
+                'email' => $email,
+                'first_name' => 'Ada',
+                'last_name' => 'Lovelace',
+                'birth_date' => '1990-01-01',
+                'phone_prefix' => '+39',
+                'phone_number' => '3331234567',
+                'plan' => 'join',
+                'invoice_requested' => 'true',
+                'fiscal_code' => 'abcxyz90a01f205z',
+            ],
+        ];
     }
 }

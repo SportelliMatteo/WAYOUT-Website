@@ -15,6 +15,8 @@ use Throwable;
 
 class SubscribeController extends Controller
 {
+    private const RESERVATION_MINUTES = 15;
+
     public function show(Request $request)
     {
         if (! $request->session()->pull('subscribe_entry_allowed')) {
@@ -42,6 +44,8 @@ class SubscribeController extends Controller
                     'first_name' => $request->input('first_name', ''),
                     'last_name' => $request->input('last_name', ''),
                     'birth_date' => $request->input('birth_date', ''),
+                    'phone_prefix' => $request->input('phone_prefix', '+39'),
+                    'phone_number' => $request->input('phone_number', ''),
                 ]);
         }
 
@@ -50,7 +54,7 @@ class SubscribeController extends Controller
             ->where('email', $email)
             ->first();
         $storedProfile = $this->profileData($waitlistEntry);
-        $profileSubmitted = $request->hasAny(['first_name', 'last_name', 'birth_date']);
+        $profileSubmitted = $request->hasAny(['first_name', 'last_name', 'birth_date', 'phone_prefix', 'phone_number']);
 
         if ($this->profileComplete($waitlistEntry) && ! $profileSubmitted) {
             $profile = $storedProfile;
@@ -83,6 +87,8 @@ class SubscribeController extends Controller
             'first_name' => ['required', 'string', 'max:120'],
             'last_name' => ['required', 'string', 'max:120'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
+            'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
+            'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
         ]);
 
         if ($validator->fails()) {
@@ -97,6 +103,8 @@ class SubscribeController extends Controller
                     'first_name' => $request->input('first_name', ''),
                     'last_name' => $request->input('last_name', ''),
                     'birth_date' => $request->input('birth_date', ''),
+                    'phone_prefix' => $request->input('phone_prefix', '+39'),
+                    'phone_number' => $request->input('phone_number', ''),
                 ]);
         }
 
@@ -106,6 +114,8 @@ class SubscribeController extends Controller
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'birth_date' => $validated['birth_date'],
+            'phone_prefix' => $validated['phone_prefix'],
+            'phone_number' => $validated['phone_number'],
         ];
     }
 
@@ -193,28 +203,6 @@ class SubscribeController extends Controller
             ], 403);
         }
 
-        $validatedCustomer = $request->validate([
-            'first_name' => ['required', 'string', 'max:120'],
-            'last_name' => ['required', 'string', 'max:120'],
-            'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
-            'invoice_requested' => ['sometimes', 'boolean'],
-            'fiscal_code' => ['required_if:invoice_requested,true', 'nullable', 'string', 'max:32'],
-        ]);
-
-        $customer = [
-            'first_name' => $validatedCustomer['first_name'],
-            'last_name' => $validatedCustomer['last_name'],
-            'birth_date' => $validatedCustomer['birth_date'],
-            'invoice_requested' => $request->boolean('invoice_requested'),
-            'fiscal_code' => $validatedCustomer['fiscal_code'] ?? null,
-        ];
-
-        $request->session()->put('waitlist_profile', [
-            'first_name' => $customer['first_name'],
-            'last_name' => $customer['last_name'],
-            'birth_date' => $customer['birth_date'],
-        ]);
-
         $plan = $request->input('plan');
 
         if (! in_array($plan, ['join', 'creator'], true)) {
@@ -223,11 +211,46 @@ class SubscribeController extends Controller
             ], 422);
         }
 
-        if ($availability->isPlanSoldOut($plan)) {
-            return response()->json([
-                'error' => __('messages.messages.pass_sold_out', ['plan' => $this->planName($plan)]),
-            ], 422);
-        }
+        $validatedCustomer = $request->validate([
+            'first_name' => ['required', 'string', 'max:120'],
+            'last_name' => ['required', 'string', 'max:120'],
+            'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
+            'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
+            'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
+            'invoice_requested' => ['sometimes', 'boolean'],
+            'fiscal_code' => ['required_if:invoice_requested,true', 'nullable', 'string', 'max:32'],
+        ]);
+
+        $customer = [
+            'first_name' => $validatedCustomer['first_name'],
+            'last_name' => $validatedCustomer['last_name'],
+            'birth_date' => $validatedCustomer['birth_date'],
+            'phone_prefix' => $validatedCustomer['phone_prefix'],
+            'phone_number' => $validatedCustomer['phone_number'],
+            'invoice_requested' => $request->boolean('invoice_requested'),
+            'fiscal_code' => $this->normalizeFiscalCode($validatedCustomer['fiscal_code'] ?? null),
+        ];
+
+        $request->session()->put('waitlist_profile', [
+            'first_name' => $customer['first_name'],
+            'last_name' => $customer['last_name'],
+            'birth_date' => $customer['birth_date'],
+            'phone_prefix' => $customer['phone_prefix'],
+            'phone_number' => $customer['phone_number'],
+        ]);
+
+        DB::table('waitlist_entries')
+            ->where('email', $email)
+            ->update([
+                'first_name' => $customer['first_name'],
+                'last_name' => $customer['last_name'],
+                'birth_date' => $customer['birth_date'],
+                'phone_prefix' => $customer['phone_prefix'],
+                'phone_number' => $customer['phone_number'],
+                'updated_at' => now(),
+            ]);
+
+        $directCheckout = $request->boolean('direct_checkout', false);
 
         $planConfig = match ($plan) {
             'creator' => [
@@ -242,8 +265,6 @@ class SubscribeController extends Controller
             ],
         };
 
-        $directCheckout = $request->boolean('direct_checkout', false);
-
         if ($directCheckout) {
             try {
                 $soldOut = false;
@@ -255,10 +276,7 @@ class SubscribeController extends Controller
                         ->lockForUpdate()
                         ->value('value') ?? config('founder.default_capacities.'.$availability->capacityKeyForPlan($plan)));
 
-                    $soldCount = DB::table('purchases')
-                        ->where('status', 'succeeded')
-                        ->where('plan', $plan)
-                        ->count();
+                    $soldCount = $this->reservedPassCount($plan);
 
                     if ($capacity <= 0 || $soldCount >= $capacity) {
                         $soldOut = true;
@@ -271,6 +289,8 @@ class SubscribeController extends Controller
                         'first_name' => $customer['first_name'],
                         'last_name' => $customer['last_name'],
                         'birth_date' => $customer['birth_date'],
+                        'phone_prefix' => $customer['phone_prefix'],
+                        'phone_number' => $customer['phone_number'],
                         'plan' => $plan,
                         'amount' => (int) $planConfig['unit_amount'],
                         'currency' => 'eur',
@@ -317,6 +337,57 @@ class SubscribeController extends Controller
         }
 
         try {
+            $soldOut = false;
+            $reservationId = null;
+
+            DB::transaction(function () use ($email, $plan, $planConfig, $availability, $customer, &$reservationId, &$soldOut) {
+                $capacity = (int) (DB::table('founder_settings')
+                    ->where('key', $availability->capacityKeyForPlan($plan))
+                    ->lockForUpdate()
+                    ->value('value') ?? config('founder.default_capacities.'.$availability->capacityKeyForPlan($plan)));
+
+                if ($capacity <= 0 || $this->reservedPassCount($plan) >= $capacity) {
+                    $soldOut = true;
+
+                    return;
+                }
+
+                $reservationId = DB::table('purchases')->insertGetId([
+                    'email' => $email,
+                    'first_name' => $customer['first_name'],
+                    'last_name' => $customer['last_name'],
+                    'birth_date' => $customer['birth_date'],
+                    'phone_prefix' => $customer['phone_prefix'],
+                    'phone_number' => $customer['phone_number'],
+                    'plan' => $plan,
+                    'amount' => (int) $planConfig['unit_amount'],
+                    'currency' => 'eur',
+                    'stripe_session_id' => null,
+                    'status' => 'pending',
+                    'invoice_requested' => $customer['invoice_requested'],
+                    'fiscal_code' => $customer['fiscal_code'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            });
+        } catch (QueryException $exception) {
+            Log::error('Stripe checkout reservation failed.', [
+                'plan' => $plan,
+                'exception' => $exception,
+            ]);
+
+            return response()->json([
+                'error' => __('messages.messages.purchase_register_error'),
+            ], 500);
+        }
+
+        if ($soldOut) {
+            return response()->json([
+                'error' => __('messages.messages.pass_sold_out', ['plan' => $this->planName($plan)]),
+            ], 422);
+        }
+
+        try {
             $response = Http::timeout(10)
                 ->retry(2, 200)
                 ->withToken($secret)
@@ -336,11 +407,16 @@ class SubscribeController extends Controller
                     'metadata[first_name]' => $customer['first_name'],
                     'metadata[last_name]' => $customer['last_name'],
                     'metadata[birth_date]' => $customer['birth_date'],
+                    'metadata[phone_prefix]' => $customer['phone_prefix'],
+                    'metadata[phone_number]' => $customer['phone_number'],
                     'metadata[plan]' => $plan,
+                    'metadata[purchase_id]' => (string) $reservationId,
                     'metadata[invoice_requested]' => $customer['invoice_requested'] ? 'true' : 'false',
                     'metadata[fiscal_code]' => $customer['fiscal_code'] ?? '',
                 ]);
         } catch (Throwable $exception) {
+            $this->markReservationFailed($reservationId);
+
             Log::error('Stripe checkout request failed.', [
                 'plan' => $plan,
                 'exception' => $exception,
@@ -352,6 +428,8 @@ class SubscribeController extends Controller
         }
 
         if ($response->failed()) {
+            $this->markReservationFailed($reservationId);
+
             Log::warning('Stripe checkout returned an error.', [
                 'plan' => $plan,
                 'status' => $response->status(),
@@ -364,6 +442,8 @@ class SubscribeController extends Controller
         }
 
         if (! $response->json('id')) {
+            $this->markReservationFailed($reservationId);
+
             Log::warning('Stripe checkout response did not include a session id.', [
                 'plan' => $plan,
                 'status' => $response->status(),
@@ -374,6 +454,14 @@ class SubscribeController extends Controller
                 'error' => __('messages.messages.checkout_unavailable'),
             ], 502);
         }
+
+        DB::table('purchases')
+            ->where('id', $reservationId)
+            ->where('status', 'pending')
+            ->update([
+                'stripe_session_id' => $response->json('id'),
+                'updated_at' => now(),
+            ]);
 
         return response()->json([
             'sessionId' => $response->json('id'),
@@ -452,29 +540,76 @@ class SubscribeController extends Controller
             'first_name' => $metadata['first_name'] ?? null,
             'last_name' => $metadata['last_name'] ?? null,
             'birth_date' => $metadata['birth_date'] ?? null,
+            'phone_prefix' => $metadata['phone_prefix'] ?? null,
+            'phone_number' => $metadata['phone_number'] ?? null,
             'plan' => $plan,
             'amount' => (int) ($response->json('amount_total') ?? ($plan === 'creator' ? 5900 : 2900)),
             'currency' => strtolower($response->json('currency') ?? 'eur'),
             'stripe_session_id' => $sessionId,
             'status' => 'succeeded',
             'invoice_requested' => ($metadata['invoice_requested'] ?? 'false') === 'true',
-            'fiscal_code' => filled($metadata['fiscal_code'] ?? null) ? $metadata['fiscal_code'] : null,
+            'fiscal_code' => $this->normalizeFiscalCode($metadata['fiscal_code'] ?? null),
             'updated_at' => now(),
         ];
 
         try {
-            $existingPurchase = DB::table('purchases')
-                ->where('stripe_session_id', $sessionId)
-                ->first();
+            $registered = false;
+            $reservationId = filled($metadata['purchase_id'] ?? null) ? (int) $metadata['purchase_id'] : null;
 
-            if ($existingPurchase) {
-                DB::table('purchases')
-                    ->where('id', $existingPurchase->id)
-                    ->update($purchaseData);
-            } else {
-                DB::table('purchases')->insert([
+            DB::transaction(function () use ($plan, $sessionId, $reservationId, $purchaseData, &$registered) {
+                $capacityKey = $this->capacityKeyForPlan($plan);
+                $capacity = (int) (DB::table('founder_settings')
+                    ->where('key', $capacityKey)
+                    ->lockForUpdate()
+                    ->value('value') ?? config('founder.default_capacities.'.$capacityKey));
+
+                $existingPurchase = $reservationId
+                    ? DB::table('purchases')->where('id', $reservationId)->lockForUpdate()->first()
+                    : null;
+
+                if (! $existingPurchase) {
+                    $existingPurchase = DB::table('purchases')
+                        ->where('stripe_session_id', $sessionId)
+                        ->lockForUpdate()
+                        ->first();
+                }
+
+                if ($existingPurchase?->status === 'succeeded') {
+                    $registered = true;
+
+                    return;
+                }
+
+                $succeededCount = DB::table('purchases')
+                    ->where('status', 'succeeded')
+                    ->where('plan', $plan)
+                    ->when($existingPurchase, fn ($query) => $query->where('id', '!=', $existingPurchase->id))
+                    ->count();
+
+                $status = ($capacity > 0 && $succeededCount < $capacity) ? 'succeeded' : 'overbooked';
+                $registered = $status === 'succeeded';
+                $data = [
                     ...$purchaseData,
-                    'created_at' => now(),
+                    'status' => $status,
+                ];
+
+                if ($existingPurchase) {
+                    DB::table('purchases')
+                        ->where('id', $existingPurchase->id)
+                        ->update($data);
+                } else {
+                    DB::table('purchases')->insert([
+                        ...$data,
+                        'created_at' => now(),
+                    ]);
+                }
+            });
+
+            if (! $registered) {
+                Log::warning('Stripe checkout payment exceeded founder pass capacity.', [
+                    'stripe_session_id' => $sessionId,
+                    'plan' => $plan,
+                    'reservation_id' => $reservationId,
                 ]);
             }
         } catch (QueryException $exception) {
@@ -487,6 +622,41 @@ class SubscribeController extends Controller
         }
 
         $request->session()->put('checkout_plan', $plan);
+    }
+
+    private function reservedPassCount(string $plan, ?int $exceptPurchaseId = null): int
+    {
+        return DB::table('purchases')
+            ->where('plan', $plan)
+            ->when($exceptPurchaseId, fn ($query) => $query->where('id', '!=', $exceptPurchaseId))
+            ->where(function ($query) {
+                $query->where('status', 'succeeded')
+                    ->orWhere(function ($query) {
+                        $query->where('status', 'pending')
+                            ->where('created_at', '>=', now()->subMinutes(self::RESERVATION_MINUTES));
+                    });
+            })
+            ->count();
+    }
+
+    private function markReservationFailed(?int $reservationId): void
+    {
+        if (! $reservationId) {
+            return;
+        }
+
+        DB::table('purchases')
+            ->where('id', $reservationId)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'failed',
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function capacityKeyForPlan(string $plan): string
+    {
+        return $plan === 'creator' ? 'creator_capacity' : 'join_capacity';
     }
 
     private function planName(string $plan): string
@@ -518,6 +688,8 @@ class SubscribeController extends Controller
             'first_name' => $entry->first_name ?? '',
             'last_name' => $entry->last_name ?? '',
             'birth_date' => $entry->birth_date ?? '',
+            'phone_prefix' => $entry->phone_prefix ?? '+39',
+            'phone_number' => $entry->phone_number ?? '',
         ];
     }
 
@@ -525,6 +697,15 @@ class SubscribeController extends Controller
     {
         return filled($entry?->first_name)
             && filled($entry?->last_name)
-            && filled($entry?->birth_date);
+            && filled($entry?->birth_date)
+            && filled($entry?->phone_prefix)
+            && filled($entry?->phone_number);
+    }
+
+    private function normalizeFiscalCode(?string $fiscalCode): ?string
+    {
+        $fiscalCode = trim((string) $fiscalCode);
+
+        return $fiscalCode === '' ? null : strtoupper($fiscalCode);
     }
 }

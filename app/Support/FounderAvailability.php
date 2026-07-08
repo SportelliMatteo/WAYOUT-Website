@@ -8,6 +8,8 @@ use Throwable;
 
 class FounderAvailability
 {
+    private const RESERVATION_MINUTES = 15;
+
     public function capacities(): array
     {
         $defaults = config('founder.default_capacities');
@@ -66,8 +68,14 @@ class FounderAvailability
     public function planCount(string $plan): int
     {
         return DB::table('purchases')
-            ->where('status', 'succeeded')
             ->where('plan', $plan)
+            ->where(function ($query) {
+                $query->where('status', 'succeeded')
+                    ->orWhere(function ($query) {
+                        $query->where('status', 'pending')
+                            ->where('created_at', '>=', now()->subMinutes(self::RESERVATION_MINUTES));
+                    });
+            })
             ->count();
     }
 

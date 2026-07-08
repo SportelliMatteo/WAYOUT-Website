@@ -105,6 +105,7 @@ return [
         'first_name' => 'First name',
         'last_name' => 'Last name',
         'birth_date' => 'Date of birth',
+        'phone_number' => 'Phone',
         'profile_submit' => 'Confirm signup',
     ],
     'subscribe' => [
@@ -165,6 +166,7 @@ return [
         'first_name' => 'First name',
         'last_name' => 'Last name',
         'birth_date' => 'Date of birth',
+        'phone_number' => 'Phone',
         'invoice_requested' => 'I want an invoice',
         'invoice_note' => 'If selected, we will also ask for your fiscal code.',
         'fiscal_code' => 'Fiscal code',
@@ -270,6 +272,7 @@ return [
         'first_name' => 'First name',
         'last_name' => 'Last name',
         'birth_date' => 'Date of birth',
+        'phone_number' => 'Phone',
         'password' => 'Password',
         'enter' => 'Enter',
         'dashboard_title' => 'Admin Dashboard - Wayout',
