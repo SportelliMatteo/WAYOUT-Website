@@ -109,6 +109,7 @@ class AdminController extends Controller
                 'waitlist_entries.birth_date',
                 'waitlist_entries.phone_prefix',
                 'waitlist_entries.phone_number',
+                'waitlist_entries.marketing_consent',
                 'waitlist_entries.offer_shown',
                 'waitlist_entries.created_at',
                 'waitlist_entries.updated_at',

@@ -16,7 +16,7 @@ class ContactTest extends TestCase
             ->post(route('contact.store'), [
                 'name' => 'Mario Rossi',
                 'email' => 'mario@example.com',
-                'subject' => 'Info',
+                'subject' => 'information',
                 'message' => 'Vorrei maggiori informazioni.',
                 'privacy_accepted' => '1',
             ]);
@@ -26,6 +26,7 @@ class ContactTest extends TestCase
 
         $this->assertDatabaseHas('contact_messages', [
             'email' => 'mario@example.com',
+            'subject' => 'Curiosità e informazioni',
             'message' => 'Vorrei maggiori informazioni.',
         ]);
     }
@@ -38,7 +39,7 @@ class ContactTest extends TestCase
             ->post(route('contact.store'), [
                 'name' => 'Mario Rossi',
                 'email' => 'mario@example.com',
-                'subject' => 'Info',
+                'subject' => 'information',
                 'message' => 'Vorrei maggiori informazioni.',
                 'privacy_accepted' => '1',
             ]);
@@ -53,7 +54,7 @@ class ContactTest extends TestCase
             ->post(route('contact.store'), [
                 'name' => 'Mario Rossi',
                 'email' => 'mario@example.com',
-                'subject' => 'Info',
+                'subject' => 'other',
                 'message' => 'Vorrei maggiori informazioni.',
                 'website' => 'https://spam.example',
             ]);

@@ -218,6 +218,7 @@ class SubscribeController extends Controller
             'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
             'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
             'invoice_requested' => ['sometimes', 'boolean'],
+            'purchase_terms_accepted' => ['required', 'accepted'],
             'fiscal_code' => ['required_if:invoice_requested,true', 'nullable', 'string', 'max:32'],
         ]);
 
@@ -346,13 +347,41 @@ class SubscribeController extends Controller
                     ->lockForUpdate()
                     ->value('value') ?? config('founder.default_capacities.'.$availability->capacityKeyForPlan($plan)));
 
-                if ($capacity <= 0 || $this->reservedPassCount($plan) >= $capacity) {
+                DB::table('purchases')
+                    ->where('status', 'pending')
+                    ->where('created_at', '<', now()->subMinutes(self::RESERVATION_MINUTES))
+                    ->update([
+                        'status' => 'expired',
+                        'updated_at' => now(),
+                    ]);
+
+                $existingReservation = DB::table('purchases')
+                    ->where('email', $email)
+                    ->where('plan', $plan)
+                    ->where('status', 'pending')
+                    ->latest('created_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existingReservation) {
+                    DB::table('purchases')
+                        ->where('email', $email)
+                        ->where('plan', $plan)
+                        ->where('status', 'pending')
+                        ->where('id', '!=', $existingReservation->id)
+                        ->update([
+                            'status' => 'expired',
+                            'updated_at' => now(),
+                        ]);
+                }
+
+                if ($capacity <= 0 || $this->reservedPassCount($plan, $existingReservation?->id) >= $capacity) {
                     $soldOut = true;
 
                     return;
                 }
 
-                $reservationId = DB::table('purchases')->insertGetId([
+                $reservationData = [
                     'email' => $email,
                     'first_name' => $customer['first_name'],
                     'last_name' => $customer['last_name'],
@@ -368,7 +397,17 @@ class SubscribeController extends Controller
                     'fiscal_code' => $customer['fiscal_code'],
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]);
+                ];
+
+                if ($existingReservation) {
+                    DB::table('purchases')
+                        ->where('id', $existingReservation->id)
+                        ->update($reservationData);
+
+                    $reservationId = $existingReservation->id;
+                } else {
+                    $reservationId = DB::table('purchases')->insertGetId($reservationData);
+                }
             });
         } catch (QueryException $exception) {
             Log::error('Stripe checkout reservation failed.', [

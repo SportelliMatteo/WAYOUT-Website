@@ -155,6 +155,7 @@
                             <th class="px-4 py-3">{{ __('messages.admin.last_name') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.birth_date') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.phone_number') }}</th>
+                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.marketing_consent') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.status') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.pass') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.orders') }}</th>
@@ -175,6 +176,13 @@
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $birthDate($entry->birth_date) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $phone($entry->phone_prefix, $entry->phone_number) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3">
+                                    @if ($entry->marketing_consent)
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-black leading-none text-emerald-800">{{ __('messages.admin.yes') }}</span>
+                                    @else
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-black leading-none text-slate-600">{{ __('messages.admin.no') }}</span>
+                                    @endif
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-3">
                                     @if ((int) $entry->orders_succeeded > 0)
                                         <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-black leading-none text-emerald-800">{{ __('messages.admin.bought') }}</span>
                                     @else
@@ -189,7 +197,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
+                                <td colspan="12" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

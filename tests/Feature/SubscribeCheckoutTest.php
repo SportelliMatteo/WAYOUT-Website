@@ -28,9 +28,10 @@ class SubscribeCheckoutTest extends TestCase
 
         $response->assertOk()
             ->assertViewIs('pages.subscribe')
-            ->assertSee('Procedendo al pagamento dichiari di aver letto')
-            ->assertSee(route('legal.privacy'))
-            ->assertSee(route('legal.terms'));
+            ->assertDontSee('Procedendo al pagamento dichiari di aver letto')
+            ->assertSee('Confermi di aver letto le')
+            ->assertSee(route('legal.sales'))
+            ->assertSee(route('legal.refunds'));
     }
 
     public function test_subscribe_plan_comparison_uses_configured_capacities(): void
@@ -222,6 +223,55 @@ class SubscribeCheckoutTest extends TestCase
             'plan' => 'join',
             'status' => 'pending',
             'stripe_session_id' => 'cs_new',
+        ]);
+
+        $this->assertDatabaseHas('purchases', [
+            'email' => 'expired@example.com',
+            'stripe_session_id' => 'cs_expired',
+            'status' => 'expired',
+        ]);
+    }
+
+    public function test_retrying_stripe_checkout_reuses_the_existing_pending_purchase(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+
+        $purchaseId = DB::table('purchases')->insertGetId([
+            'email' => 'founder@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'cs_previous',
+            'status' => 'pending',
+            'created_at' => now()->subMinutes(5),
+            'updated_at' => now()->subMinutes(5),
+        ]);
+
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_retried'], 200),
+        ]);
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'founder@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'plan' => 'join',
+            'direct_checkout' => false,
+        ]);
+
+        $response->assertOk()
+            ->assertJson(['sessionId' => 'cs_retried']);
+
+        $this->assertSame(1, DB::table('purchases')
+            ->where('email', 'founder@example.com')
+            ->where('plan', 'join')
+            ->count());
+
+        $this->assertDatabaseHas('purchases', [
+            'id' => $purchaseId,
+            'status' => 'pending',
+            'stripe_session_id' => 'cs_retried',
         ]);
     }
 
@@ -507,6 +557,7 @@ class SubscribeCheckoutTest extends TestCase
             'birth_date' => '1990-01-01',
             'phone_prefix' => '+39',
             'phone_number' => '3331234567',
+            'purchase_terms_accepted' => true,
         ];
     }
 

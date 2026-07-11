@@ -14,6 +14,7 @@ Route::view('/cookie-policy', 'pages.legal.cookies')->name('legal.cookies');
 Route::view('/termini-e-condizioni', 'pages.legal.terms')->name('legal.terms');
 Route::view('/come-funzionano-i-pass', 'pages.legal.passes')->name('legal.passes');
 Route::view('/condizioni-di-vendita', 'pages.legal.sales')->name('legal.sales');
+Route::view('/recesso-e-rimborso', 'pages.legal.refunds')->name('legal.refunds');
 Route::view('/note-legali', 'pages.legal.notice')->name('legal.notice');
 Route::get('/subscribe', [SubscribeController::class, 'show'])->name('subscribe');
 Route::get('/checkout/success', [SubscribeController::class, 'success'])->name('checkout.success');

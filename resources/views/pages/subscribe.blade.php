@@ -128,12 +128,6 @@
                 <p class="mt-5 rounded-2xl bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-900">
                     {{ __('messages.subscribe.price_note') }}
                 </p>
-                <p class="mt-4 text-xs font-semibold leading-6 text-slate-500">
-                    {!! __('messages.subscribe.payment_terms_notice', [
-                        'privacy' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.privacy').'">'.__('messages.legal.privacy').'</a>',
-                        'terms' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.terms').'">'.__('messages.legal.terms').'</a>',
-                    ]) !!}
-                </p>
             </div>
 
             <div class="mt-6 flex flex-col gap-4 sm:flex-row">
@@ -268,6 +262,15 @@
                     <span class="mt-1 block text-xs font-semibold leading-5 text-slate-500">{{ __('messages.subscribe.invoice_note') }}</span>
                 </span>
             </label>
+            <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
+                <span class="text-sm font-semibold leading-6 text-slate-700">
+                    {!! __('messages.subscribe.purchase_terms_consent', [
+                        'sales' => '<a class="font-black text-violet-700 underline underline-offset-4 hover:text-violet-900" href="'.route('legal.sales').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.sales').'</a>',
+                        'refunds' => '<a class="font-black text-violet-700 underline underline-offset-4 hover:text-violet-900" href="'.route('legal.refunds').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.refunds').'</a>',
+                    ]) !!}
+                </span>
+            </label>
             <label id="fiscal-code-wrap" class="mb-4 hidden">
                 <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.fiscal_code') }}</span>
                 <input type="text" name="fiscal_code" maxlength="32" autocomplete="off" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
@@ -362,6 +365,7 @@
             phone_prefix: formData.get('phone_prefix'),
             phone_number: formData.get('phone_number'),
             invoice_requested: invoiceCheckbox?.checked || false,
+            purchase_terms_accepted: formData.get('purchase_terms_accepted') === 'true',
             fiscal_code: formData.get('fiscal_code')?.toString().toUpperCase() || null,
         };
 

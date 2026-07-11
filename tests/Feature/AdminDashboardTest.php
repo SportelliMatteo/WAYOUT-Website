@@ -42,6 +42,7 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Waitlist e ordini')
             ->assertSee('buyer@example.com')
             ->assertSee('Founder Creator 12M')
+            ->assertSee('Marketing')
             ->assertSee('88,00€')
             ->assertSee('29,00€')
             ->assertSee('59,00€')
@@ -95,12 +96,14 @@ class AdminDashboardTest extends TestCase
         DB::table('waitlist_entries')->insert([
             [
                 'email' => 'buyer@example.com',
+                'marketing_consent' => true,
                 'offer_shown' => true,
                 'created_at' => now()->subDays(2),
                 'updated_at' => now()->subDays(2),
             ],
             [
                 'email' => 'lead@example.com',
+                'marketing_consent' => false,
                 'offer_shown' => true,
                 'created_at' => now()->subDay(),
                 'updated_at' => now()->subDay(),

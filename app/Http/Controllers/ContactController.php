@@ -6,6 +6,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class ContactController extends Controller
 {
@@ -25,7 +26,7 @@ class ContactController extends Controller
             [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email:rfc', 'max:255'],
-                'subject' => ['required', 'string', 'max:255'],
+                'subject' => ['required', Rule::in(array_keys(__('messages.contact.subject_options')))],
                 'message' => ['required', 'string', 'max:5000'],
                 'privacy_accepted' => ['accepted'],
             ],
@@ -35,6 +36,7 @@ class ContactController extends Controller
         );
 
         unset($validated['privacy_accepted']);
+        $validated['subject'] = __('messages.contact.subject_options.'.$validated['subject']);
 
         try {
             DB::table('contact_messages')->insert([

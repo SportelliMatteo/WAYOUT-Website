@@ -72,12 +72,6 @@
                 </div>
                 
             </div>
-            <p class="mx-auto mt-3 max-w-2xl px-4 text-center text-xs font-medium leading-relaxed text-slate-500 sm:text-sm lg:mx-0 lg:text-left">
-                {!! __('messages.home.waitlist_terms', [
-                    'privacy' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.privacy').'">'.__('messages.legal.privacy').'</a>',
-                    'terms' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.terms').'">'.__('messages.legal.terms').'</a>',
-                ]) !!}
-            </p>
         </div>
 
         <div class="relative mx-auto flex w-full max-w-[560px] flex-col items-center pb-4 pt-2 lg:max-w-full lg:pb-10 lg:pt-4">
@@ -221,6 +215,16 @@
                         @error('phone_number')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
                     </label>
                 </div>
+                <p class="text-left text-xs font-medium leading-relaxed text-slate-300 sm:text-sm">
+                    {!! __('messages.home.profile_terms', [
+                        'privacy' => '<a class="font-black text-violet-200 underline underline-offset-4 hover:text-white" href="'.route('legal.privacy').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.privacy').'</a>',
+                        'terms' => '<a class="font-black text-violet-200 underline underline-offset-4 hover:text-white" href="'.route('legal.terms').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.terms').'</a>',
+                    ]) !!}
+                </p>
+                <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                    <input type="checkbox" name="marketing_consent" value="1" @checked(old('marketing_consent', $waitlistProfile['marketing_consent'] ?? false)) class="mt-0.5 h-5 w-5 shrink-0 rounded border-white/20 text-violet-600 focus:ring-violet-300" />
+                    <span class="text-sm font-medium leading-6 text-slate-200">{{ __('messages.home.marketing_consent') }}</span>
+                </label>
                 <button type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.profile_submit') }}</button>
             </form>
         </div>

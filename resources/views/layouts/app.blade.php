@@ -111,8 +111,8 @@
     <footer class="overflow-hidden bg-slate-950 text-white">
         <div class="relative">
             <div class="absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(124,35,245,0.50),transparent_30rem),radial-gradient(circle_at_85%_10%,rgba(185,255,74,0.16),transparent_24rem)]"></div>
-            <div class="relative mx-auto max-w-screen-2xl px-5 py-10 lg:px-20 lg:py-14">
-                <div class="grid gap-10 lg:grid-cols-[1.1fr_0.55fr_0.85fr]">
+            <div class="relative mx-auto max-w-screen-2xl px-5 py-8 lg:px-20 lg:py-10">
+                <div class="grid gap-8 lg:grid-cols-[1fr_1.15fr_0.85fr] lg:gap-10">
                     <div>
                         <a href="{{ route('home') }}" class="inline-flex rounded-2xl bg-white px-4 py-3">
                             <img src="/logos/logo_black.png" class="h-8" alt="WAYOUT Logo" />
@@ -134,22 +134,27 @@
                         </div>
                     </div>
 
-                    <div>
-                        <p class="text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.nav.navigation') }}</p>
-                        <div class="mt-5 flex flex-col gap-3 text-base font-bold text-slate-300">
-                            <a href="{{ route('home') }}" class="transition hover:text-white">{{ __('messages.nav.home') }}</a>
-                            <a href="{{ route('about') }}" class="transition hover:text-white">{{ __('messages.nav.about') }}</a>
-                            <a href="{{ route('contact') }}" class="transition hover:text-white">{{ __('messages.nav.contact') }}</a>
+                    <div class="grid grid-cols-2 gap-6 sm:gap-8">
+                        <div>
+                            <p class="text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.nav.navigation') }}</p>
+                            <div class="mt-4 flex flex-col gap-2.5 text-base font-bold text-slate-300">
+                                <a href="{{ route('home') }}" class="transition hover:text-white">{{ __('messages.nav.home') }}</a>
+                                <a href="{{ route('about') }}" class="transition hover:text-white">{{ __('messages.nav.about') }}</a>
+                                <a href="{{ route('contact') }}" class="transition hover:text-white">{{ __('messages.nav.contact') }}</a>
+                            </div>
                         </div>
 
-                        <p class="mt-8 text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.legal.footer_heading') }}</p>
-                        <div class="mt-5 flex flex-col gap-3 text-sm font-bold text-slate-300">
-                            <a href="{{ route('legal.privacy') }}" class="transition hover:text-white">{{ __('messages.legal.privacy') }}</a>
-                            <a href="{{ route('legal.cookies') }}" class="transition hover:text-white">{{ __('messages.legal.cookies') }}</a>
-                            <a href="{{ route('legal.terms') }}" class="transition hover:text-white">{{ __('messages.legal.terms') }}</a>
-                            <a href="{{ route('legal.passes') }}" class="transition hover:text-white">{{ __('messages.legal.passes') }}</a>
-                            <a href="{{ route('legal.sales') }}" class="transition hover:text-white">{{ __('messages.legal.sales') }}</a>
-                            <a href="{{ route('legal.notice') }}" class="transition hover:text-white">{{ __('messages.legal.notice') }}</a>
+                        <div>
+                            <p class="text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.legal.footer_heading') }}</p>
+                            <div class="mt-4 flex flex-col gap-2.5 text-sm font-bold text-slate-300">
+                                <a href="{{ route('legal.privacy') }}" class="transition hover:text-white">{{ __('messages.legal.privacy') }}</a>
+                                <a href="{{ route('legal.cookies') }}" class="transition hover:text-white">{{ __('messages.legal.cookies') }}</a>
+                                <a href="{{ route('legal.terms') }}" class="transition hover:text-white">{{ __('messages.legal.terms') }}</a>
+                                <a href="{{ route('legal.passes') }}" class="transition hover:text-white">{{ __('messages.legal.passes') }}</a>
+                                <a href="{{ route('legal.sales') }}" class="transition hover:text-white">{{ __('messages.legal.sales') }}</a>
+                                <a href="{{ route('legal.refunds') }}" class="transition hover:text-white">{{ __('messages.legal.refunds') }}</a>
+                                <a href="{{ route('legal.notice') }}" class="transition hover:text-white">{{ __('messages.legal.notice') }}</a>
+                            </div>
                         </div>
                     </div>
 
@@ -176,7 +181,7 @@
                     </div>
                 </div>
 
-                <div class="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                <div class="mt-8 flex flex-col gap-4 border-t border-white/10 pt-5 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                     <p>© {{ date('Y') }} WAYOUT. {{ __('messages.footer.rights') }}</p>
                 </div>
             </div>

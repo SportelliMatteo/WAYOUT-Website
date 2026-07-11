@@ -29,6 +29,7 @@
                     <a class="rounded-lg px-3 py-2 transition hover:bg-violet-50 hover:text-violet-700 {{ request()->routeIs('legal.terms') ? 'bg-slate-950 text-white hover:bg-slate-950 hover:text-white' : 'text-slate-600' }}" href="{{ route('legal.terms') }}">Termini e condizioni</a>
                     <a class="rounded-lg px-3 py-2 transition hover:bg-violet-50 hover:text-violet-700 {{ request()->routeIs('legal.passes') ? 'bg-slate-950 text-white hover:bg-slate-950 hover:text-white' : 'text-slate-600' }}" href="{{ route('legal.passes') }}">Come funzionano i Pass</a>
                     <a class="rounded-lg px-3 py-2 transition hover:bg-violet-50 hover:text-violet-700 {{ request()->routeIs('legal.sales') ? 'bg-slate-950 text-white hover:bg-slate-950 hover:text-white' : 'text-slate-600' }}" href="{{ route('legal.sales') }}">Condizioni di vendita</a>
+                    <a class="rounded-lg px-3 py-2 transition hover:bg-violet-50 hover:text-violet-700 {{ request()->routeIs('legal.refunds') ? 'bg-slate-950 text-white hover:bg-slate-950 hover:text-white' : 'text-slate-600' }}" href="{{ route('legal.refunds') }}">Recesso e rimborso</a>
                     <a class="rounded-lg px-3 py-2 transition hover:bg-violet-50 hover:text-violet-700 {{ request()->routeIs('legal.notice') ? 'bg-slate-950 text-white hover:bg-slate-950 hover:text-white' : 'text-slate-600' }}" href="{{ route('legal.notice') }}">Note legali</a>
                 </nav>
             </aside>

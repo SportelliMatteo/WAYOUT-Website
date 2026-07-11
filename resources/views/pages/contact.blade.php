@@ -31,6 +31,10 @@
                         <p class="font-black">{{ __('messages.contact.questions_title') }}</p>
                         <p class="mt-1 text-sm text-slate-300">{{ __('messages.contact.questions_text') }}</p>
                     </div>
+                    <div class="rounded-3xl bg-white/[0.08] p-4">
+                        <p class="font-black">{{ __('messages.contact.purchase_title') }}</p>
+                        <p class="mt-1 text-sm text-slate-300">{{ __('messages.contact.purchase_text') }}</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -68,7 +72,12 @@
 
                 <div>
                     <label for="subject" class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.contact.subject') }}</label>
-                    <input type="text" id="subject" name="subject" value="{{ old('subject') }}" required class="block min-h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-semibold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100" placeholder="{{ __('messages.contact.subject_placeholder') }}" />
+                    <select id="subject" name="subject" required class="block min-h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-base font-semibold text-slate-950 outline-none transition focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100">
+                        <option value="" disabled @selected(! old('subject'))>{{ __('messages.contact.subject_placeholder') }}</option>
+                        @foreach(__('messages.contact.subject_options') as $value => $label)
+                            <option value="{{ $value }}" @selected(old('subject') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
                     @error('subject')<p class="mt-2 text-sm font-semibold text-rose-500">{{ $message }}</p>@enderror
                 </div>
 

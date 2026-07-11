@@ -135,6 +135,7 @@ class WaitlistController extends Controller
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
             'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
+            'marketing_consent' => ['nullable', 'boolean'],
         ]);
 
         $email = Str::lower((string) $request->input('email'));
@@ -153,6 +154,7 @@ class WaitlistController extends Controller
                     'birth_date' => $request->input('birth_date', ''),
                     'phone_prefix' => $request->input('phone_prefix', '+39'),
                     'phone_number' => $request->input('phone_number', ''),
+                    'marketing_consent' => $request->boolean('marketing_consent'),
                 ]);
         }
 
@@ -164,6 +166,7 @@ class WaitlistController extends Controller
             'birth_date' => $validated['birth_date'],
             'phone_prefix' => $validated['phone_prefix'],
             'phone_number' => $validated['phone_number'],
+            'marketing_consent' => $request->boolean('marketing_consent'),
         ];
 
         try {
@@ -228,6 +231,7 @@ class WaitlistController extends Controller
             'birth_date' => $entry->birth_date ?? '',
             'phone_prefix' => $entry->phone_prefix ?? '+39',
             'phone_number' => $entry->phone_number ?? '',
+            'marketing_consent' => (bool) ($entry->marketing_consent ?? false),
         ];
     }
 
