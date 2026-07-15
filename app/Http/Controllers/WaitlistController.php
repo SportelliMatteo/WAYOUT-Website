@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\WaitlistWelcomeMail;
+use App\Support\TransactionalEmailSender;
+use App\Support\ConsentAuditService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
+use Throwable;
 
 class WaitlistController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request, TransactionalEmailSender $emailSender, ConsentAuditService $audit)
     {
         if (filled($request->input('website'))) {
             Log::warning('Waitlist honeypot triggered.', [
@@ -108,8 +113,17 @@ class WaitlistController extends Controller
             }
         }
 
-        $profileRequired = ! $purchase && ! $this->profileComplete($waitlistEntry ?? null);
+        $profileRequired = ! $purchase && (
+            ! $this->profileComplete($waitlistEntry ?? null)
+            || ! $audit->hasWaitlistLegalAcceptance($waitlistEntry?->id)
+        );
         $waitlistStatus = $profileRequired ? 'registered' : ($alreadyRegistered ? 'already_registered' : 'registered');
+
+        if (! $purchase && ! $profileRequired) {
+            $this->sendWelcomeIfNeeded($waitlistEntry, $email, [
+                'first_name' => $waitlistEntry->first_name,
+            ], $emailSender);
+        }
 
         return back()
             ->with('waitlist_profile_prompt', $profileRequired)
@@ -126,7 +140,7 @@ class WaitlistController extends Controller
             ] : null);
     }
 
-    public function completeProfile(Request $request)
+    public function completeProfile(Request $request, TransactionalEmailSender $emailSender, ConsentAuditService $audit)
     {
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email:rfc', 'max:255'],
@@ -170,17 +184,71 @@ class WaitlistController extends Controller
         ];
 
         try {
-            DB::table('waitlist_entries')
-                ->where('email', $email)
-                ->update([
-                    ...$profile,
-                    'updated_at' => now(),
-                ]);
+            $waitlistEntry = DB::table('waitlist_entries')->where('email', $email)->first();
+
+            if (! $waitlistEntry) {
+                return back()
+                    ->withInput()
+                    ->with('waitlist_profile_prompt', true)
+                    ->with('waitlist_error', __('messages.messages.waitlist_entry_missing'))
+                    ->with('waitlist_status', $status)
+                    ->with('waitlist_email', $email)
+                    ->with('waitlist_profile', $profile);
+            }
+
+            DB::transaction(function () use ($request, $email, $profile, $waitlistEntry, $audit) {
+                DB::table('waitlist_entries')
+                    ->where('email', $email)
+                    ->update([
+                        ...$profile,
+                        'updated_at' => now(),
+                    ]);
+
+                $audit->record(
+                    $request,
+                    $email,
+                    'waitlist_legal',
+                    'granted',
+                    'waitlist_profile',
+                    ['privacy', 'terms', 'waitlist_acceptance'],
+                    ['waitlist_entry_id' => $waitlistEntry->id],
+                );
+
+                $latestMarketing = $audit->latestMarketingEvent($waitlistEntry->id);
+                $marketingGranted = $profile['marketing_consent'];
+
+                if ($marketingGranted && $latestMarketing?->action !== 'granted') {
+                    $audit->record(
+                        $request,
+                        $email,
+                        'marketing',
+                        'granted',
+                        'waitlist_profile',
+                        ['marketing', 'privacy'],
+                        ['waitlist_entry_id' => $waitlistEntry->id],
+                    );
+                } elseif (! $marketingGranted && ($waitlistEntry->marketing_consent || $latestMarketing?->action === 'granted')) {
+                    $audit->record(
+                        $request,
+                        $email,
+                        'marketing',
+                        'revoked',
+                        'waitlist_profile',
+                        ['marketing', 'privacy'],
+                        ['waitlist_entry_id' => $waitlistEntry->id],
+                        revokesEventId: $latestMarketing?->action === 'granted' ? $latestMarketing->id : null,
+                    );
+                }
+            });
 
             $purchase = DB::table('purchases')
                 ->where('email', $email)
                 ->where('status', 'succeeded')
                 ->latest('created_at')
+                ->first();
+
+            $waitlistEntry = DB::table('waitlist_entries')
+                ->where('email', $email)
                 ->first();
         } catch (QueryException $exception) {
             Log::error('Waitlist profile completion failed.', [
@@ -196,6 +264,8 @@ class WaitlistController extends Controller
                 ->with('waitlist_email', $email)
                 ->with('waitlist_profile', $profile);
         }
+
+        $this->sendWelcomeIfNeeded($waitlistEntry, $email, $profile, $emailSender);
 
         return back()
             ->with('waitlist_offer', true)
@@ -213,6 +283,38 @@ class WaitlistController extends Controller
     private function isUniqueConstraintViolation(QueryException $exception): bool
     {
         return in_array($exception->getCode(), ['23000', '23505'], true);
+    }
+
+    /** @param array{first_name: string} $profile */
+    private function sendWelcomeIfNeeded(
+        ?object $entry,
+        string $email,
+        array $profile,
+        TransactionalEmailSender $emailSender,
+    ): void {
+        if (! $entry || $entry->welcome_email_sent_at) {
+            return;
+        }
+
+        try {
+            if ($emailSender->send($email, new WaitlistWelcomeMail([
+                'email' => $email,
+                'first_name' => $profile['first_name'],
+                'marketing_revocation_url' => $entry->marketing_consent
+                    ? URL::signedRoute('consent.marketing.revoke.show', ['waitlist' => $entry->id])
+                    : null,
+            ]))) {
+                DB::table('waitlist_entries')
+                    ->where('id', $entry->id)
+                    ->whereNull('welcome_email_sent_at')
+                    ->update(['welcome_email_sent_at' => now()]);
+            }
+        } catch (Throwable $exception) {
+            Log::error('Waitlist welcome email failed.', [
+                'email' => $email,
+                'exception' => $exception,
+            ]);
+        }
     }
 
     private function planName(string $plan): string

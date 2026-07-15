@@ -4,15 +4,19 @@
     <meta charset="utf-8">
     <title>{{ __('messages.email.purchase_subject') }}</title>
 </head>
-<body style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.5;">
-    <h1 style="font-size: 24px;">{{ __('messages.email.purchase_subject') }}</h1>
-    <p>{{ __('messages.email.hello') }}</p>
-    <p>{!! __('messages.email.purchase_confirmed', ['plan' => '<strong>'.$purchase['plan_name'].'</strong>']) !!}</p>
-    <p>
-        {{ __('messages.email.amount') }}
-        <strong>{{ number_format($purchase['amount'] / 100, 2, ',', '.') }} {{ strtoupper($purchase['currency']) }}</strong>
-    </p>
-    <p>{!! __('messages.email.waitlist_email', ['email' => '<strong>'.$purchase['email'].'</strong>']) !!}</p>
-    <p>{{ __('messages.email.thanks') }}</p>
+<body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;line-height:1.6">
+<div style="max-width:600px;margin:0 auto;padding:32px 20px">
+    <div style="background:#0f172a;color:#fff;border-radius:20px;padding:28px"><p style="margin:0 0 8px;color:#c4b5fd;font-size:12px;font-weight:bold;letter-spacing:.12em">WAYOUT</p><h1 style="margin:0;font-size:28px">{{ __('messages.email.purchase_subject') }}</h1></div>
+    <div style="background:#fff;border-radius:20px;padding:28px;margin-top:16px">
+        <p>{{ __('messages.email.hello') }}</p>
+        <p>{!! __('messages.email.purchase_confirmed', ['plan' => '<strong>'.e($purchase['plan_name']).'</strong>']) !!}</p>
+        <p>{{ __('messages.email.amount') }} <strong>{{ number_format($purchase['amount'] / 100, 2, ',', '.') }} {{ strtoupper($purchase['currency']) }}</strong></p>
+        <p>{!! __('messages.email.waitlist_email', ['email' => '<strong>'.e($purchase['email']).'</strong>']) !!}</p>
+        <p>{{ __('messages.email.purchase_summary') }}</p>
+        <p><a href="{{ route('legal.sales') }}" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.sales_terms_link') }}</a> · <a href="{{ route('legal.refunds') }}" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.refunds_link') }}</a></p>
+        <p>{{ __('messages.email.thanks') }}</p>
+        @include('emails.partials.footer', ['reason' => __('messages.email.purchase_reason', ['email' => $purchase['email']])])
+    </div>
+</div>
 </body>
 </html>

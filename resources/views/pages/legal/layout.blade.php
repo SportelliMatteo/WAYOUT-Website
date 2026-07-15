@@ -12,7 +12,7 @@
             </span>
             <h1 class="mt-6 text-4xl font-black leading-tight text-slate-950 sm:text-6xl">{{ $title }}</h1>
             <p class="mt-4 max-w-3xl text-base font-semibold leading-7 text-slate-600">
-                Ultimo aggiornamento: {{ $updated ?? '29 giugno 2026' }}
+                {{ __('messages.legal_page.last_update') }}: {{ $updated ?? '-' }} · {{ __('messages.legal_page.version') }} {{ $version ?? '-' }}
             </p>
         </div>
 

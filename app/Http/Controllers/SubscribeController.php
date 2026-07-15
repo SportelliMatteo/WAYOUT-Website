@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PurchaseConfirmationMail;
+use App\Mail\WaitlistWelcomeMail;
 use App\Support\FounderAvailability;
+use App\Support\ConsentAuditService;
+use App\Support\TransactionalEmailSender;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Throwable;
 
@@ -26,7 +28,11 @@ class SubscribeController extends Controller
         return view('pages.subscribe');
     }
 
-    public function access(Request $request)
+    public function access(
+        Request $request,
+        TransactionalEmailSender $emailSender,
+        ConsentAuditService $audit,
+    )
     {
         $emailValidator = Validator::make($request->all(), [
             'email' => ['required', 'email:rfc', 'max:255'],
@@ -53,8 +59,16 @@ class SubscribeController extends Controller
         $waitlistEntry = DB::table('waitlist_entries')
             ->where('email', $email)
             ->first();
+
+        if (! $waitlistEntry) {
+            return back()
+                ->withErrors(['email' => __('messages.messages.waitlist_entry_missing')])
+                ->withInput();
+        }
+
         $storedProfile = $this->profileData($waitlistEntry);
         $profileSubmitted = $request->hasAny(['first_name', 'last_name', 'birth_date', 'phone_prefix', 'phone_number']);
+        $hasLegalAcceptance = $audit->hasWaitlistLegalAcceptance($waitlistEntry->id);
 
         if ($this->profileComplete($waitlistEntry) && ! $profileSubmitted) {
             $profile = $storedProfile;
@@ -66,12 +80,28 @@ class SubscribeController extends Controller
             }
         }
 
-        DB::table('waitlist_entries')
-            ->where('email', $email)
-            ->update([
-                ...$profile,
-                'updated_at' => now(),
-            ]);
+        DB::transaction(function () use ($request, $email, $profile, $waitlistEntry, $hasLegalAcceptance, $audit) {
+            DB::table('waitlist_entries')
+                ->where('id', $waitlistEntry->id)
+                ->update([
+                    ...$profile,
+                    'updated_at' => now(),
+                ]);
+
+            if (! $hasLegalAcceptance) {
+                $audit->record(
+                    $request,
+                    $email,
+                    'waitlist_legal',
+                    'granted',
+                    'offer_access',
+                    ['privacy', 'terms', 'waitlist_acceptance'],
+                    ['waitlist_entry_id' => $waitlistEntry->id],
+                );
+            }
+        });
+
+        $this->sendWaitlistWelcomeIfNeeded($email, $profile, $emailSender);
 
         $request->session()->put('waitlist_offer_access', true);
         $request->session()->put('waitlist_email', $email);
@@ -119,18 +149,18 @@ class SubscribeController extends Controller
         ];
     }
 
-    public function success(Request $request)
+    public function success(Request $request, ConsentAuditService $audit)
     {
         $sessionId = $request->query('session_id');
 
         if (is_string($sessionId) && str_starts_with($sessionId, 'cs_')) {
-            $this->registerSuccessfulStripeCheckout($sessionId, $request);
+            $this->registerSuccessfulStripeCheckout($sessionId, $request, $audit);
         }
 
         return view('pages.checkout-success');
     }
 
-    public function resendPurchaseConfirmation(Request $request)
+    public function resendPurchaseConfirmation(Request $request, TransactionalEmailSender $emailSender)
     {
         $email = $request->session()->get('waitlist_email');
 
@@ -138,12 +168,50 @@ class SubscribeController extends Controller
             return back()->with('purchase_confirmation_error', __('messages.messages.purchase_email_missing'));
         }
 
+        $claimedAt = now();
+
         try {
-            $purchase = DB::table('purchases')
-                ->where('email', $email)
-                ->where('status', 'succeeded')
-                ->latest('created_at')
-                ->first();
+            $claim = DB::transaction(function () use ($email, $emailSender, $claimedAt) {
+                $purchase = DB::table('purchases')
+                    ->where('email', $email)
+                    ->where('status', 'succeeded')
+                    ->latest('created_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $purchase) {
+                    return ['status' => 'not_found'];
+                }
+
+                if (! $emailSender->enabled()) {
+                    return ['status' => 'disabled', 'purchase' => $purchase];
+                }
+
+                $cooldown = max(1, (int) config('email.resend_cooldown_seconds', 300));
+
+                if ($purchase->confirmation_email_sent_at) {
+                    $availableAt = \Illuminate\Support\Carbon::parse($purchase->confirmation_email_sent_at)
+                        ->addSeconds($cooldown);
+
+                    if (now()->lt($availableAt)) {
+                        return [
+                            'status' => 'cooldown',
+                            'purchase' => $purchase,
+                            'retry_after' => max(1, $availableAt->timestamp - now()->timestamp),
+                        ];
+                    }
+                }
+
+                DB::table('purchases')
+                    ->where('id', $purchase->id)
+                    ->update(['confirmation_email_sent_at' => $claimedAt]);
+
+                return [
+                    'status' => 'claimed',
+                    'purchase' => $purchase,
+                    'previous_sent_at' => $purchase->confirmation_email_sent_at,
+                ];
+            });
         } catch (QueryException $exception) {
             Log::error('Purchase confirmation lookup failed.', [
                 'email' => $email,
@@ -157,8 +225,24 @@ class SubscribeController extends Controller
                 ->with('purchase_confirmation_error', __('messages.messages.purchase_resend_error'));
         }
 
-        if (! $purchase) {
+        if ($claim['status'] === 'not_found') {
             return back()->with('purchase_confirmation_error', __('messages.messages.purchase_not_found'));
+        }
+
+        $purchase = $claim['purchase'];
+
+        if ($claim['status'] === 'disabled') {
+            return back()
+                ->with($this->purchasedPlanFlashData($email, $purchase))
+                ->with('purchase_confirmation_error', __('messages.messages.email_sending_disabled'));
+        }
+
+        if ($claim['status'] === 'cooldown') {
+            return back()
+                ->with($this->purchasedPlanFlashData($email, $purchase))
+                ->with('purchase_confirmation_error', __('messages.messages.purchase_resend_throttled', [
+                    'seconds' => $claim['retry_after'],
+                ]));
         }
 
         $purchaseData = [
@@ -169,8 +253,13 @@ class SubscribeController extends Controller
         ];
 
         try {
-            Mail::to($email)->send(new PurchaseConfirmationMail($purchaseData));
+            $emailSender->send($email, new PurchaseConfirmationMail($purchaseData));
         } catch (Throwable $exception) {
+            DB::table('purchases')
+                ->where('id', $purchase->id)
+                ->where('confirmation_email_sent_at', $claimedAt)
+                ->update(['confirmation_email_sent_at' => $claim['previous_sent_at']]);
+
             Log::error('Purchase confirmation resend failed.', [
                 'email' => $email,
                 'purchase_id' => $purchase->id,
@@ -187,7 +276,12 @@ class SubscribeController extends Controller
             ->with('purchase_confirmation_success', __('messages.messages.purchase_resend_success'));
     }
 
-    public function checkout(Request $request, FounderAvailability $availability)
+    public function checkout(
+        Request $request,
+        FounderAvailability $availability,
+        TransactionalEmailSender $emailSender,
+        ConsentAuditService $audit,
+    )
     {
         if (! $request->session()->get('waitlist_offer_access')) {
             return response()->json([
@@ -251,6 +345,8 @@ class SubscribeController extends Controller
                 'updated_at' => now(),
             ]);
 
+        $waitlistEntryId = DB::table('waitlist_entries')->where('email', $email)->value('id');
+
         $directCheckout = $request->boolean('direct_checkout', false);
 
         $planConfig = match ($plan) {
@@ -271,7 +367,7 @@ class SubscribeController extends Controller
                 $soldOut = false;
                 $purchase = null;
 
-                DB::transaction(function () use ($email, $plan, $planConfig, $availability, $customer, &$purchase, &$soldOut) {
+                DB::transaction(function () use ($request, $email, $plan, $planConfig, $availability, $customer, $waitlistEntryId, $audit, &$purchase, &$soldOut) {
                     $capacity = (int) (DB::table('founder_settings')
                         ->where('key', $availability->capacityKeyForPlan($plan))
                         ->lockForUpdate()
@@ -302,6 +398,16 @@ class SubscribeController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+
+                    $this->recordSuccessfulPurchaseConsent(
+                        $request,
+                        $audit,
+                        (int) $purchase,
+                        $email,
+                        'direct_checkout',
+                        $plan,
+                        $waitlistEntryId,
+                    );
                 });
             } catch (QueryException $exception) {
                 Log::error('Direct checkout purchase insert failed.', [
@@ -321,6 +427,8 @@ class SubscribeController extends Controller
             }
 
             $request->session()->put('checkout_plan', $plan);
+
+            $this->sendAutomaticPurchaseConfirmation((int) $purchase, $emailSender);
 
             return response()->json([
                 'purchaseId' => $purchase,
@@ -395,7 +503,6 @@ class SubscribeController extends Controller
                     'status' => 'pending',
                     'invoice_requested' => $customer['invoice_requested'],
                     'fiscal_code' => $customer['fiscal_code'],
-                    'created_at' => now(),
                     'updated_at' => now(),
                 ];
 
@@ -406,7 +513,10 @@ class SubscribeController extends Controller
 
                     $reservationId = $existingReservation->id;
                 } else {
-                    $reservationId = DB::table('purchases')->insertGetId($reservationData);
+                    $reservationId = DB::table('purchases')->insertGetId([
+                        ...$reservationData,
+                        'created_at' => now(),
+                    ]);
                 }
             });
         } catch (QueryException $exception) {
@@ -507,7 +617,11 @@ class SubscribeController extends Controller
         ]);
     }
 
-    private function registerSuccessfulStripeCheckout(string $sessionId, Request $request): void
+    private function registerSuccessfulStripeCheckout(
+        string $sessionId,
+        Request $request,
+        ConsentAuditService $audit,
+    ): void
     {
         $secret = config('services.stripe.secret');
 
@@ -593,9 +707,10 @@ class SubscribeController extends Controller
 
         try {
             $registered = false;
+            $purchaseToConfirm = null;
             $reservationId = filled($metadata['purchase_id'] ?? null) ? (int) $metadata['purchase_id'] : null;
 
-            DB::transaction(function () use ($plan, $sessionId, $reservationId, $purchaseData, &$registered) {
+            DB::transaction(function () use ($request, $audit, $plan, $sessionId, $reservationId, $purchaseData, &$registered, &$purchaseToConfirm) {
                 $capacityKey = $this->capacityKeyForPlan($plan);
                 $capacity = (int) (DB::table('founder_settings')
                     ->where('key', $capacityKey)
@@ -615,6 +730,16 @@ class SubscribeController extends Controller
 
                 if ($existingPurchase?->status === 'succeeded') {
                     $registered = true;
+                    $purchaseToConfirm = $existingPurchase->confirmation_email_sent_at ? null : $existingPurchase->id;
+
+                    $this->recordSuccessfulPurchaseConsent(
+                        $request,
+                        $audit,
+                        (int) $existingPurchase->id,
+                        $purchaseData['email'],
+                        'stripe_payment_success',
+                        $plan,
+                    );
 
                     return;
                 }
@@ -636,11 +761,27 @@ class SubscribeController extends Controller
                     DB::table('purchases')
                         ->where('id', $existingPurchase->id)
                         ->update($data);
+                    $purchaseToConfirm = $registered ? $existingPurchase->id : null;
                 } else {
-                    DB::table('purchases')->insert([
+                    $purchaseToConfirm = DB::table('purchases')->insertGetId([
                         ...$data,
                         'created_at' => now(),
                     ]);
+
+                    if (! $registered) {
+                        $purchaseToConfirm = null;
+                    }
+                }
+
+                if ($registered && $purchaseToConfirm) {
+                    $this->recordSuccessfulPurchaseConsent(
+                        $request,
+                        $audit,
+                        (int) $purchaseToConfirm,
+                        $purchaseData['email'],
+                        'stripe_payment_success',
+                        $plan,
+                    );
                 }
             });
 
@@ -650,6 +791,11 @@ class SubscribeController extends Controller
                     'plan' => $plan,
                     'reservation_id' => $reservationId,
                 ]);
+            } elseif ($purchaseToConfirm) {
+                $this->sendAutomaticPurchaseConfirmation(
+                    (int) $purchaseToConfirm,
+                    app(TransactionalEmailSender::class),
+                );
             }
         } catch (QueryException $exception) {
             Log::error('Stripe checkout purchase registration failed.', [
@@ -661,6 +807,100 @@ class SubscribeController extends Controller
         }
 
         $request->session()->put('checkout_plan', $plan);
+    }
+
+    private function recordSuccessfulPurchaseConsent(
+        Request $request,
+        ConsentAuditService $audit,
+        int $purchaseId,
+        string $email,
+        string $source,
+        string $plan,
+        ?int $waitlistEntryId = null,
+    ): void {
+        $alreadyRecorded = DB::table('consent_events')
+            ->where('purchase_id', $purchaseId)
+            ->where('consent_type', 'purchase_legal')
+            ->where('action', 'granted')
+            ->exists();
+
+        if ($alreadyRecorded) {
+            return;
+        }
+
+        $audit->record(
+            $request,
+            $email,
+            'purchase_legal',
+            'granted',
+            $source,
+            ['sales', 'refunds', 'purchase_acceptance'],
+            [
+                'waitlist_entry_id' => $waitlistEntryId
+                    ?? DB::table('waitlist_entries')->where('email', $email)->value('id'),
+                'purchase_id' => $purchaseId,
+            ],
+            ['plan' => $plan],
+        );
+    }
+
+    private function sendAutomaticPurchaseConfirmation(int $purchaseId, TransactionalEmailSender $emailSender): void
+    {
+        $purchase = DB::table('purchases')->where('id', $purchaseId)->first();
+
+        if (! $purchase || $purchase->status !== 'succeeded' || $purchase->confirmation_email_sent_at) {
+            return;
+        }
+
+        try {
+            if ($emailSender->send($purchase->email, new PurchaseConfirmationMail([
+                'email' => $purchase->email,
+                'plan_name' => $this->planName($purchase->plan),
+                'amount' => $purchase->amount,
+                'currency' => $purchase->currency,
+            ]))) {
+                DB::table('purchases')
+                    ->where('id', $purchaseId)
+                    ->whereNull('confirmation_email_sent_at')
+                    ->update(['confirmation_email_sent_at' => now()]);
+            }
+        } catch (Throwable $exception) {
+            Log::error('Automatic purchase confirmation email failed.', [
+                'purchase_id' => $purchaseId,
+                'email' => $purchase->email,
+                'exception' => $exception,
+            ]);
+        }
+    }
+
+    /** @param array{first_name: string} $profile */
+    private function sendWaitlistWelcomeIfNeeded(
+        string $email,
+        array $profile,
+        TransactionalEmailSender $emailSender,
+    ): void {
+        $entry = DB::table('waitlist_entries')->where('email', $email)->first();
+
+        if (! $entry || $entry->welcome_email_sent_at) {
+            return;
+        }
+
+        try {
+            if ($emailSender->send($email, new WaitlistWelcomeMail([
+                'email' => $email,
+                'first_name' => $profile['first_name'],
+            ]))) {
+                DB::table('waitlist_entries')
+                    ->where('id', $entry->id)
+                    ->whereNull('welcome_email_sent_at')
+                    ->update(['welcome_email_sent_at' => now()]);
+            }
+        } catch (Throwable $exception) {
+            Log::error('Waitlist welcome email from offer access failed.', [
+                'email' => $email,
+                'exception' => $exception,
+            ]);
+        }
     }
 
     private function reservedPassCount(string $plan, ?int $exceptPurchaseId = null): int

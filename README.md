@@ -56,3 +56,63 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Email transazionali con Brevo
+
+Il progetto invia le email tramite il relay SMTP di Brevo. Configurare in `.env`:
+
+```dotenv
+EMAIL_SENDING_ENABLED=false
+EMAIL_RESEND_COOLDOWN_SECONDS=300
+EMAIL_LOG_CHANNEL=email
+EMAIL_LOG_LEVEL=info
+MAIL_MAILER=smtp
+MAIL_SCHEME=null
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_USERNAME=account-brevo@example.com
+MAIL_PASSWORD=chiave-smtp-brevo
+MAIL_FROM_ADDRESS=hello@dominio-verificato.example
+MAIL_FROM_NAME=WAYOUT
+MAIL_REPLY_TO_ADDRESS=hello@wayoutapp.it
+MAIL_REPLY_TO_NAME=WAYOUT
+CONTACT_EMAIL=hello@wayoutapp.it
+```
+
+Usare una chiave SMTP Brevo, non una API key. Il mittente deve essere verificato in Brevo. Con `EMAIL_SENDING_ENABLED=false` nessuna email viene consegnata al mailer. `EMAIL_RESEND_COOLDOWN_SECONDS` stabilisce il tempo minimo tra due richieste manuali per lo stesso acquisto. Dopo modifiche alla configurazione in produzione eseguire `php artisan config:clear` (oppure rigenerare la config cache).
+
+I tentativi di invio sono registrati separatamente in `storage/logs/email-YYYY-MM-DD.log`, senza password o chiavi SMTP. Il log distingue gli eventi `email.skipped`, `email.attempt`, `email.sent` ed `email.failed`.
+
+Il database conserva i timestamp in UTC. Dashboard e nuovi log li presentano in `Europe/Rome`, configurabile con `APP_DISPLAY_TIMEZONE` e `LOG_TIMEZONE`; `APP_TIMEZONE` deve restare `UTC` per evitare timestamp incoerenti e gestire correttamente l’ora legale.
+
+## Audit dei consensi
+
+I consensi sono salvati come eventi append-only in `consent_events`, con data e ora, fonte, azione (`granted`/`revoked`), email del soggetto, IP, user agent, hash della sessione e riferimenti a waitlist, ordine o messaggio di contatto. Le versioni accettate, gli hash SHA-256 e gli URL dei documenti vengono registrati nello stesso evento.
+
+Testi e versioni si gestiscono dalla sezione **Documenti legali** della dashboard admin. Il database è la fonte ufficiale per pagine pubbliche, informative mostrate nei form e audit, mentre gli identificativi di versione non vengono esposti accanto alle checkbox. Ogni pubblicazione richiede un nuovo identificativo di versione, crea una copia HTML immutabile in `legal_document_versions` e aggiorna il puntatore corrente in `legal_documents`. Le versioni già richiamate dagli eventi di consenso non vengono modificate. Nella waitlist la presa visione di Privacy policy e Termini e condizioni viene registrata con l’invio del profilo completo, senza una checkbox separata; marketing, contatti e acquisto mantengono le rispettive checkbox quando previste.
+
+L’editor accetta HTML essenziale e lo sanitizza prima del salvataggio. Script, iframe, form, attributi evento e URL non sicuri vengono rimossi. La lingua modificata è quella selezionata nella dashboard con il selettore IT/EN. I consensi storici non devono essere ricostruiti o retrodatati: gli utenti preesistenti senza evento strutturato devono accettare i testi alla successiva interazione utile.
+
+## Accesso amministrativo con TOTP
+
+La dashboard supporta fino a quattro account amministrativi separati e con gli stessi permessi (`ADMIN_MAX_USERS=4`). Non esistono ruoli Owner o gerarchie. Al primo accesso dopo la migrazione, le credenziali `ADMIN_EMAIL` e `ADMIN_PASSWORD` inizializzano il primo account; la password viene salvata nel database esclusivamente come hash. Dopo questa inizializzazione le credenziali in `.env` non vengono più usate e possono essere rimosse dalla configurazione di produzione. Qualunque amministratore autenticato può creare gli account mancanti fino al limite configurato.
+
+Ogni amministratore deve configurare un’app TOTP compatibile (Google Authenticator, 2FAS, Aegis o equivalente) scansionando il QR generato localmente dal server. Il segreto TOTP è cifrato tramite `APP_KEY`; i recovery code sono salvati solo come hash e quelli mostrati temporaneamente nella sessione sono cifrati. Un codice TOTP già utilizzato non può essere riutilizzato nello stesso intervallo temporale.
+
+Ogni amministratore può modificare autonomamente soltanto la propria password dalla sezione **Configurazione → Cambia la mia password**, inserendo password attuale, nuova password e conferma. La modifica incrementa la versione di autenticazione e invalida tutte le altre sessioni dello stesso account, mantenendo attiva quella utilizzata per il cambio. Nell’audit viene registrata l’operazione, senza password o hash.
+
+La dashboard non permette di resettare, disabilitare o eliminare altri amministratori. Ogni utente può rigenerare il proprio TOTP soltanto conoscendo password e codice corrente. Per il recupero d’emergenza di un singolo account, eseguibile esclusivamente con accesso al server:
+
+```bash
+php artisan admin:reset-otp amministratore@example.com
+```
+
+Per resettare il TOTP di tutti gli account e invalidare tutte le sessioni amministrative:
+
+```bash
+php artisan admin:reset-otp --all
+```
+
+Il reset incrementa la versione di autenticazione, invalida le sessioni precedenti e obbliga a scansionare un nuovo QR al login successivo. Accessi, errori, attivazioni e reset vengono registrati senza includere password, segreti TOTP o recovery code.
+
+La tabella append-only `admin_audit_events` conserva uno snapshot di nome ed email dell’operatore, azione, oggetto, valori precedenti e successivi, IP, user agent e timestamp. Sono sottoposte ad audit le modifiche alle capienze waitlist/Founder, la pubblicazione dei documenti legali, la creazione degli account e i reset OTP da console. Lo storico è consultabile in **Configurazione → Attività amministrative**.

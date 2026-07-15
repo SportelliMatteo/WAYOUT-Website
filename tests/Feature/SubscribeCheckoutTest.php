@@ -31,7 +31,8 @@ class SubscribeCheckoutTest extends TestCase
             ->assertDontSee('Procedendo al pagamento dichiari di aver letto')
             ->assertSee('Confermi di aver letto le')
             ->assertSee(route('legal.sales'))
-            ->assertSee(route('legal.refunds'));
+            ->assertSee(route('legal.refunds'))
+            ->assertDontSee('Versioni documenti:');
     }
 
     public function test_subscribe_plan_comparison_uses_configured_capacities(): void
@@ -72,6 +73,8 @@ class SubscribeCheckoutTest extends TestCase
 
     public function test_subscribe_access_stores_the_waitlist_email_in_session(): void
     {
+        Mail::fake();
+
         DB::table('waitlist_entries')->insert([
             'email' => 'founder@example.com',
             'first_name' => 'Ada',
@@ -93,6 +96,44 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSessionHas('waitlist_offer_access', true)
             ->assertSessionHas('waitlist_email', 'founder@example.com')
             ->assertSessionHas('subscribe_entry_allowed', true);
+
+        Mail::assertSent(\App\Mail\WaitlistWelcomeMail::class, 1);
+
+        $this->assertDatabaseHas('consent_events', [
+            'subject_email' => 'founder@example.com',
+            'consent_type' => 'waitlist_legal',
+            'action' => 'granted',
+            'source' => 'offer_access',
+        ]);
+    }
+
+    public function test_legacy_waitlist_entry_records_current_legal_versions_on_offer_access_without_checkbox(): void
+    {
+        Mail::fake();
+
+        DB::table('waitlist_entries')->insert([
+            'email' => 'legacy@example.com',
+            'first_name' => 'Legacy',
+            'last_name' => 'Member',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+            'offer_shown' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->from(route('home'))
+            ->post(route('subscribe.access'), ['email' => 'legacy@example.com'])
+            ->assertRedirect(route('subscribe'))
+            ->assertSessionHas('waitlist_offer_access', true);
+
+        $this->assertDatabaseHas('consent_events', [
+            'subject_email' => 'legacy@example.com',
+            'consent_type' => 'waitlist_legal',
+            'action' => 'granted',
+            'source' => 'offer_access',
+        ]);
     }
 
     public function test_checkout_uses_the_selected_founder_plan(): void
@@ -138,6 +179,11 @@ class SubscribeCheckoutTest extends TestCase
             'plan' => 'creator',
             'status' => 'pending',
             'stripe_session_id' => 'cs_test_123',
+        ]);
+
+        $this->assertDatabaseMissing('consent_events', [
+            'subject_email' => 'founder@example.com',
+            'consent_type' => 'purchase_legal',
         ]);
     }
 
@@ -236,6 +282,8 @@ class SubscribeCheckoutTest extends TestCase
     {
         config()->set('services.stripe.secret', 'sk_test_123');
 
+        $originalCreatedAt = now()->subMinutes(5)->startOfSecond();
+
         $purchaseId = DB::table('purchases')->insertGetId([
             'email' => 'founder@example.com',
             'plan' => 'join',
@@ -243,8 +291,8 @@ class SubscribeCheckoutTest extends TestCase
             'currency' => 'eur',
             'stripe_session_id' => 'cs_previous',
             'status' => 'pending',
-            'created_at' => now()->subMinutes(5),
-            'updated_at' => now()->subMinutes(5),
+            'created_at' => $originalCreatedAt,
+            'updated_at' => $originalCreatedAt,
         ]);
 
         Http::fake([
@@ -272,11 +320,20 @@ class SubscribeCheckoutTest extends TestCase
             'id' => $purchaseId,
             'status' => 'pending',
             'stripe_session_id' => 'cs_retried',
+            'created_at' => $originalCreatedAt,
+        ]);
+
+
+        $this->assertDatabaseMissing('consent_events', [
+            'purchase_id' => $purchaseId,
+            'consent_type' => 'purchase_legal',
         ]);
     }
 
     public function test_direct_checkout_uses_the_waitlist_email(): void
     {
+        Mail::fake();
+
         $response = $this->withSession([
             'waitlist_offer_access' => true,
             'waitlist_email' => 'founder@example.com',
@@ -308,6 +365,26 @@ class SubscribeCheckoutTest extends TestCase
         $this->assertDatabaseMissing('purchases', [
             'email' => 'placeholder@example.com',
         ]);
+
+        Mail::assertSent(PurchaseConfirmationMail::class, fn (PurchaseConfirmationMail $mail) =>
+            $mail->hasTo('founder@example.com') && $mail->purchase['plan_name'] === 'Founder Join 12M Pass'
+        );
+
+        $this->assertNotNull(DB::table('purchases')
+            ->where('email', 'founder@example.com')
+            ->value('confirmation_email_sent_at'));
+
+        $purchaseId = DB::table('purchases')->where('email', 'founder@example.com')->value('id');
+        $this->assertDatabaseHas('consent_events', [
+            'purchase_id' => $purchaseId,
+            'subject_email' => 'founder@example.com',
+            'consent_type' => 'purchase_legal',
+            'action' => 'granted',
+            'source' => 'direct_checkout',
+        ]);
+
+        $purchaseConsent = DB::table('consent_events')->where('purchase_id', $purchaseId)->first();
+        $this->assertArrayHasKey('purchase_acceptance', json_decode($purchaseConsent->document_versions, true));
     }
 
     public function test_checkout_requires_waitlist_email_in_session(): void
@@ -410,6 +487,7 @@ class SubscribeCheckoutTest extends TestCase
 
     public function test_successful_stripe_callback_confirms_the_reserved_purchase(): void
     {
+        Mail::fake();
         config()->set('services.stripe.secret', 'sk_test_123');
 
         $purchaseId = DB::table('purchases')->insertGetId([
@@ -437,6 +515,23 @@ class SubscribeCheckoutTest extends TestCase
             'stripe_session_id' => 'cs_test_paid',
             'fiscal_code' => 'ABCXYZ90A01F205Z',
         ]);
+
+        $this->assertDatabaseHas('consent_events', [
+            'purchase_id' => $purchaseId,
+            'subject_email' => 'founder@example.com',
+            'consent_type' => 'purchase_legal',
+            'action' => 'granted',
+            'source' => 'stripe_payment_success',
+        ]);
+
+        Mail::assertSent(PurchaseConfirmationMail::class, 1);
+
+        $this->get(route('checkout.success', ['session_id' => 'cs_test_paid']))->assertOk();
+        Mail::assertSent(PurchaseConfirmationMail::class, 1);
+        $this->assertSame(1, DB::table('consent_events')
+            ->where('purchase_id', $purchaseId)
+            ->where('consent_type', 'purchase_legal')
+            ->count());
     }
 
     public function test_successful_stripe_callback_does_not_overbook_when_capacity_is_gone(): void
@@ -484,6 +579,11 @@ class SubscribeCheckoutTest extends TestCase
             'stripe_session_id' => 'cs_late',
         ]);
 
+        $this->assertDatabaseMissing('consent_events', [
+            'purchase_id' => $purchaseId,
+            'consent_type' => 'purchase_legal',
+        ]);
+
         $this->assertSame(1, DB::table('purchases')
             ->where('plan', 'join')
             ->where('status', 'succeeded')
@@ -518,6 +618,51 @@ class SubscribeCheckoutTest extends TestCase
                 && $mail->purchase['plan_name'] === 'Founder 12M Creator Pass'
                 && $mail->purchase['amount'] === 5900;
         });
+    }
+
+    public function test_repeated_purchase_confirmation_requests_are_blocked_during_cooldown(): void
+    {
+        Mail::fake();
+        config()->set('email.resend_cooldown_seconds', 300);
+        $this->travelTo(now()->startOfSecond());
+
+        DB::table('purchases')->insert([
+            'email' => 'buyer@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'direct_cooldown',
+            'status' => 'succeeded',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $session = ['waitlist_email' => 'buyer@example.com'];
+
+        $this->from(route('home'))
+            ->withSession($session)
+            ->post(route('purchase.confirmation.resend'))
+            ->assertSessionHas('purchase_confirmation_success');
+
+        $this->from(route('home'))
+            ->withSession($session)
+            ->post(route('purchase.confirmation.resend'))
+            ->assertSessionHas(
+                'purchase_confirmation_error',
+                'Email già inviata. Attendi 300 secondi prima di richiederne un’altra.',
+            );
+
+        Mail::assertSent(PurchaseConfirmationMail::class, 1);
+
+        $this->travel(301)->seconds();
+
+        $this->from(route('home'))
+            ->withSession($session)
+            ->post(route('purchase.confirmation.resend'))
+            ->assertSessionHas('purchase_confirmation_success');
+
+        Mail::assertSent(PurchaseConfirmationMail::class, 2);
+        $this->travelBack();
     }
 
     public function test_purchase_confirmation_resend_requires_a_confirmed_purchase(): void

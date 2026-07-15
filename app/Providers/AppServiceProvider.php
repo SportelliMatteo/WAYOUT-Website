@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\FounderAvailability;
+use App\Support\LegalDocumentService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +62,16 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('founderCapacities', $availability['capacities'])
                 ->with('founderAvailability', $availability);
+        });
+
+        View::composer(['pages.home', 'pages.subscribe', 'pages.contact'], function ($view) {
+            if (! Schema::hasTable('legal_documents')) {
+                return;
+            }
+
+            $documents = app(LegalDocumentService::class)->allCurrent();
+
+            $view->with('legalDocumentsHtml', $documents->map->content_snapshot->all());
         });
     }
 }

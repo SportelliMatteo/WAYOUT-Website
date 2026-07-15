@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Mail\ContactMessageMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -12,6 +14,9 @@ class ContactTest extends TestCase
 
     public function test_contact_message_is_saved(): void
     {
+        Mail::fake();
+        config()->set('email.contact_recipient', 'support@wayout.test');
+
         $response = $this->from(route('contact'))
             ->post(route('contact.store'), [
                 'name' => 'Mario Rossi',
@@ -29,6 +34,30 @@ class ContactTest extends TestCase
             'subject' => 'Curiosità e informazioni',
             'message' => 'Vorrei maggiori informazioni.',
         ]);
+
+        Mail::assertSent(ContactMessageMail::class, function (ContactMessageMail $mail) {
+            return $mail->hasTo('support@wayout.test')
+                && $mail->contact['email'] === 'mario@example.com'
+                && $mail->contact['subject'] === 'Curiosità e informazioni';
+        });
+    }
+
+    public function test_contact_message_is_saved_without_email_when_sending_is_disabled(): void
+    {
+        Mail::fake();
+        config()->set('email.enabled', false);
+        config()->set('email.contact_recipient', 'support@wayout.test');
+
+        $this->post(route('contact.store'), [
+            'name' => 'Mario Rossi',
+            'email' => 'mario@example.com',
+            'subject' => 'information',
+            'message' => 'Vorrei maggiori informazioni.',
+            'privacy_accepted' => '1',
+        ])->assertSessionHas('contact_success', true);
+
+        $this->assertDatabaseHas('contact_messages', ['email' => 'mario@example.com']);
+        Mail::assertNothingSent();
     }
 
     public function test_contact_database_failure_returns_a_user_friendly_error(): void

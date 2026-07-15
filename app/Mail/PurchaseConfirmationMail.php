@@ -19,6 +19,8 @@ class PurchaseConfirmationMail extends Mailable
     public function build(): static
     {
         return $this->subject(__('messages.email.purchase_subject'))
-            ->view('emails.purchase-confirmation');
+            ->replyTo(config('email.support_address'), config('email.support_name'))
+            ->view('emails.purchase-confirmation')
+            ->text('emails.text.purchase-confirmation');
     }
 }

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Mail\WaitlistWelcomeMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -27,6 +29,12 @@ class WaitlistTest extends TestCase
             'email' => 'newperson@example.com',
             'offer_shown' => true,
         ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Completando l’iscrizione alla waitlist')
+            ->assertDontSee('name="legal_terms_accepted"', false)
+            ->assertDontSee('Versioni documenti:');
     }
 
     public function test_existing_incomplete_email_is_not_inserted_again_but_still_prompts_for_profile(): void
@@ -51,6 +59,97 @@ class WaitlistTest extends TestCase
         $this->assertSame(1, DB::table('waitlist_entries')
             ->where('email', 'already@example.com')
             ->count());
+    }
+
+    public function test_welcome_email_is_sent_only_after_the_profile_is_completed_and_only_once(): void
+    {
+        Mail::fake();
+
+        $this->post(route('waitlist.store'), ['email' => 'ada@example.com']);
+
+        Mail::assertNothingSent();
+
+        $profile = [
+            'email' => 'ada@example.com',
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+        ];
+
+        $this->post(route('waitlist.profile'), $profile);
+        $this->post(route('waitlist.profile'), $profile);
+
+        Mail::assertSent(WaitlistWelcomeMail::class, 1);
+        Mail::assertSent(WaitlistWelcomeMail::class, fn (WaitlistWelcomeMail $mail) =>
+            $mail->hasTo('ada@example.com') && $mail->member['first_name'] === 'Ada'
+        );
+
+        $this->assertNotNull(DB::table('waitlist_entries')
+            ->where('email', 'ada@example.com')
+            ->value('welcome_email_sent_at'));
+    }
+
+    public function test_disabled_email_switch_prevents_waitlist_delivery(): void
+    {
+        Mail::fake();
+        config()->set('email.enabled', false);
+
+        $this->post(route('waitlist.store'), ['email' => 'ada@example.com']);
+        $this->post(route('waitlist.profile'), [
+            'email' => 'ada@example.com',
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+        ]);
+
+        Mail::assertNothingSent();
+        $this->assertNull(DB::table('waitlist_entries')
+            ->where('email', 'ada@example.com')
+            ->value('welcome_email_sent_at'));
+    }
+
+    public function test_existing_complete_profile_collects_legal_acceptance_before_retrying_welcome_email(): void
+    {
+        Mail::fake();
+
+        DB::table('waitlist_entries')->insert([
+            'email' => 'ada@example.com',
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+            'offer_shown' => true,
+            'welcome_email_sent_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->post(route('waitlist.store'), ['email' => 'ada@example.com'])
+            ->assertSessionHas('waitlist_profile_prompt', true);
+
+        Mail::assertNothingSent();
+
+        $this->post(route('waitlist.profile'), [
+            'email' => 'ada@example.com',
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+        ]);
+
+        Mail::assertSent(WaitlistWelcomeMail::class, 1);
+        $this->assertNotNull(DB::table('waitlist_entries')
+            ->where('email', 'ada@example.com')
+            ->value('welcome_email_sent_at'));
+
+        $this->post(route('waitlist.store'), ['email' => 'ada@example.com']);
+        Mail::assertSent(WaitlistWelcomeMail::class, 1);
     }
 
     public function test_existing_email_message_is_rendered_with_the_founder_offer(): void

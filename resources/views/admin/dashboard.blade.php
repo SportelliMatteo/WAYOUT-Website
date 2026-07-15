@@ -1,10 +1,33 @@
 @php
     $money = fn (?int $amount) => number_format(($amount ?? 0) / 100, 2, ',', '.') . '€';
     $number = fn (?int $value) => number_format($value ?? 0, 0, ',', '.');
-    $date = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d/m/Y H:i') : 'Mai';
+    $date = fn ($value) => $value
+        ? \Illuminate\Support\Carbon::parse($value, 'UTC')->setTimezone(config('app.display_timezone'))->format('d/m/Y H:i')
+        : 'Mai';
     $birthDate = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d/m/Y') : '-';
     $phone = fn ($prefix, $number) => trim(($prefix ?? '').' '.($number ?? '')) ?: '-';
     $planName = fn (?string $plan) => $plan ? ($planLabels[$plan] ?? ucfirst($plan)) : __('messages.admin.no_pass');
+    $documentVersions = fn ($value) => collect(json_decode((string) $value, true) ?: [])->map(fn ($version, $document) => $document.': '.$version)->join(', ');
+    $auditValues = fn ($value) => collect(json_decode((string) $value, true) ?: [])->map(function ($item, $key) {
+        $display = is_bool($item) ? ($item ? 'true' : 'false') : (is_array($item) ? json_encode($item) : $item);
+        return $key.': '.$display;
+    })->join(', ') ?: '-';
+    $consentReference = fn ($event) => collect([
+        $event->waitlist_entry_id ? 'waitlist #'.$event->waitlist_entry_id : null,
+        $event->purchase_id ? __('messages.admin.order_reference', ['id' => $event->purchase_id]) : null,
+        $event->contact_message_id ? __('messages.admin.contact_reference', ['id' => $event->contact_message_id]) : null,
+    ])->filter()->join(', ') ?: '-';
+    $adminTabs = ['overview', 'users', 'orders', 'consents', 'legal', 'settings'];
+    $requestedAdminTab = request()->query('tab');
+    $activeAdminTab = in_array($requestedAdminTab, $adminTabs, true)
+        ? $requestedAdminTab
+        : (old('document_key') ? 'legal' : (request()->hasAny(['q', 'status', 'plan']) ? 'users' : 'overview'));
+    $legalGroups = ['policies', 'commerce', 'consent_texts'];
+    $requestedLegalGroup = request()->query('legal_group');
+    $oldDocumentGroup = old('document_key') ? config('legal.documents.'.old('document_key').'.group') : null;
+    $activeLegalGroup = in_array($requestedLegalGroup, $legalGroups, true)
+        ? $requestedLegalGroup
+        : ($oldDocumentGroup ?: 'policies');
 @endphp
 
 <!DOCTYPE html>
@@ -25,6 +48,7 @@
                 <h1 class="mt-2 text-3xl font-black sm:text-4xl">{{ __('messages.admin.heading') }}</h1>
             </div>
             <div class="flex items-center gap-2">
+                <span class="hidden text-right text-xs font-bold text-slate-500 sm:block">{{ $currentAdmin->name }}<br>{{ $currentAdmin->email }}</span>
                 <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black {{ app()->getLocale() === 'it' ? 'text-violet-700' : 'text-slate-500' }}">IT</a>
                 <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black {{ app()->getLocale() === 'en' ? 'text-violet-700' : 'text-slate-500' }}">EN</a>
             <form action="{{ route('admin.logout') }}" method="POST">
@@ -48,6 +72,23 @@
             </div>
         @endif
 
+        <nav class="sticky top-3 z-20 mt-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg shadow-slate-950/5 backdrop-blur" aria-label="{{ __('messages.admin.dashboard_sections') }}">
+            <div class="flex min-w-max gap-1" role="tablist" aria-orientation="horizontal">
+                @foreach($adminTabs as $tab)
+                    <a
+                        id="admin-tab-{{ $tab }}"
+                        href="{{ route('admin.dashboard', ['lang' => app()->getLocale(), 'tab' => $tab]) }}"
+                        role="tab"
+                        aria-selected="{{ $activeAdminTab === $tab ? 'true' : 'false' }}"
+                        tabindex="{{ $activeAdminTab === $tab ? '0' : '-1' }}"
+                        data-admin-tab="{{ $tab }}"
+                        class="rounded-xl px-4 py-3 text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-violet-200 {{ $activeAdminTab === $tab ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-950' }}"
+                    >{{ __('messages.admin.tab_'.$tab) }}</a>
+                @endforeach
+            </div>
+        </nav>
+
+        <div id="admin-panel-overview" role="tabpanel" aria-labelledby="admin-tab-overview" data-admin-panel="overview" class="{{ $activeAdminTab === 'overview' ? '' : 'hidden' }}">
         <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Waitlist</p>
@@ -85,7 +126,9 @@
                 <p class="text-sm font-bold text-slate-300">{{ __('messages.admin.successful_revenue_sum') }}</p>
             </div>
         </section>
+        </div>
 
+        <div id="admin-panel-settings" role="tabpanel" aria-labelledby="admin-tab-settings" data-admin-panel="settings" class="{{ $activeAdminTab === 'settings' ? '' : 'hidden' }}">
         <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div class="flex flex-col gap-1 border-b border-slate-200 pb-4">
                     <h2 class="text-xl font-black">{{ __('messages.admin.settings_title') }}</h2>
@@ -112,7 +155,201 @@
         </section>
 
         <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="border-b border-slate-200 pb-4">
+                <h2 class="text-xl font-black">{{ __('messages.admin.security_title') }}</h2>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.security_text') }}</p>
+            </div>
+
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        <tr>
+                            <th class="px-3 py-3">{{ __('messages.admin.user') }}</th>
+                            <th class="px-3 py-3">2FA</th>
+                            <th class="px-3 py-3">{{ __('messages.admin.last_login') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach($adminUsers as $adminUser)
+                            <tr>
+                                <td class="px-3 py-3">
+                                    <span class="font-black">{{ $adminUser->name }}</span>
+                                    <span class="block text-xs font-bold text-slate-500">{{ $adminUser->email }}</span>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <span class="rounded-full px-3 py-1 text-xs font-black {{ $adminUser->totp_confirmed_at ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
+                                        {{ $adminUser->totp_confirmed_at ? __('messages.admin.active') : __('messages.admin.to_configure') }}
+                                    </span>
+                                    @unless($adminUser->is_active)<span class="ml-1 rounded-full bg-slate-200 px-3 py-1 text-xs font-black text-slate-600">{{ __('messages.admin.disabled') }}</span>@endunless
+                                </td>
+                                <td class="whitespace-nowrap px-3 py-3 font-bold text-slate-500">{{ $date($adminUser->last_login_at) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            @if($adminUsers->count() < config('admin.max_users'))
+                <form method="POST" action="{{ route('admin.users.store') }}" class="mt-5 grid gap-3 rounded-xl bg-slate-50 p-4 lg:grid-cols-2">
+                    @csrf
+                    <h3 class="font-black lg:col-span-2">{{ __('messages.admin.add_admin_user') }} ({{ $adminUsers->count() }}/{{ config('admin.max_users') }})</h3>
+                    <input name="name" required maxlength="120" value="{{ old('name') }}" placeholder="{{ __('messages.admin.first_and_last_name') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <input name="email" type="email" required value="{{ old('email') }}" placeholder="Email" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <input name="password" type="password" required minlength="12" autocomplete="new-password" placeholder="{{ __('messages.admin.temporary_password') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <input name="password_confirmation" type="password" required minlength="12" autocomplete="new-password" placeholder="{{ __('messages.admin.confirm_password') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <button class="rounded-lg bg-slate-950 px-5 py-3 font-black text-white lg:col-span-2">{{ __('messages.admin.create_user') }}</button>
+                </form>
+            @endif
+
+            <details class="mt-5 rounded-xl border border-slate-200 p-4">
+                <summary class="cursor-pointer font-black text-slate-800">{{ __('messages.admin.change_own_password') }}</summary>
+                <p class="mt-2 text-sm font-bold text-slate-500">{{ __('messages.admin.change_own_password_help') }}</p>
+                <form method="POST" action="{{ route('admin.password.change') }}" class="mt-4 grid gap-3 lg:grid-cols-3">
+                    @csrf
+                    <input name="current_password" type="password" required autocomplete="current-password" placeholder="{{ __('messages.admin.current_password') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <input name="password" type="password" required minlength="12" autocomplete="new-password" placeholder="{{ __('messages.admin.new_password') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <input name="password_confirmation" type="password" required minlength="12" autocomplete="new-password" placeholder="{{ __('messages.admin.confirm_new_password') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <button class="rounded-lg bg-violet-700 px-5 py-3 font-black text-white lg:col-span-3">{{ __('messages.admin.update_password') }}</button>
+                </form>
+            </details>
+
+            <details class="mt-5 rounded-xl border border-slate-200 p-4">
+                <summary class="cursor-pointer font-black text-slate-800">{{ __('messages.admin.regenerate_own_otp') }}</summary>
+                <p class="mt-2 text-sm font-bold text-slate-500">{{ __('messages.admin.regenerate_own_otp_help') }}</p>
+                <form method="POST" action="{{ route('admin.otp.reset-own') }}" class="mt-4 grid gap-3 sm:grid-cols-2">
+                    @csrf
+                    <input name="password" type="password" required autocomplete="current-password" placeholder="{{ __('messages.admin.password') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <input name="code" inputmode="numeric" required maxlength="6" placeholder="{{ __('messages.admin.new_otp_code') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
+                    <button class="rounded-lg bg-amber-600 px-5 py-3 font-black text-white sm:col-span-2">{{ __('messages.admin.regenerate_otp') }}</button>
+                </form>
+            </details>
+        </section>
+
+        <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 p-4">
+                <h2 class="text-xl font-black">{{ __('messages.admin.activity_audit_title') }}</h2>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.activity_audit_text') }}</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">{{ __('messages.admin.operator') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.action') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.target') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.before') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.after') }}</th>
+                            <th class="px-4 py-3">IP</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.date') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($recentAdminAuditEvents as $event)
+                            <tr>
+                                <td class="px-4 py-3"><span class="font-black">{{ $event->actor_name }}</span><span class="block text-xs font-bold text-slate-500">{{ $event->actor_email }}</span></td>
+                                <td class="whitespace-nowrap px-4 py-3 font-black text-violet-700">{{ $event->action }}</td>
+                                <td class="px-4 py-3 font-bold">{{ $event->target_label ?: $event->target_type.($event->target_id ? ' #'.$event->target_id : '') }}</td>
+                                <td class="max-w-sm px-4 py-3 text-xs font-bold text-slate-500">{{ $auditValues($event->old_values) }}</td>
+                                <td class="max-w-sm px-4 py-3 text-xs font-bold text-slate-700">{{ $auditValues($event->new_values) }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-500">{{ $event->ip_address ?: '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-500">{{ $date($event->occurred_at) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="7" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_admin_activity') }}</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        </div>
+
+        <div id="admin-panel-legal" role="tabpanel" aria-labelledby="admin-tab-legal" data-admin-panel="legal" class="{{ $activeAdminTab === 'legal' ? '' : 'hidden' }}">
+        <section id="legal-documents" class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 class="text-xl font-black">{{ __('messages.admin.legal_documents_title') }}</h2>
+                    <p class="mt-1 max-w-4xl text-sm font-bold text-slate-500">{{ __('messages.admin.legal_documents_text') }}</p>
+                </div>
+                <span class="rounded-full bg-violet-100 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-violet-800">{{ strtoupper(app()->getLocale()) }}</span>
+            </div>
+
+            <div class="mt-4 overflow-x-auto" role="tablist" aria-label="{{ __('messages.admin.legal_categories') }}">
+                <div class="flex min-w-max gap-2 rounded-xl bg-slate-100 p-1.5">
+                    @foreach($legalGroups as $legalGroup)
+                        <a
+                            href="{{ route('admin.dashboard', ['lang' => app()->getLocale(), 'tab' => 'legal', 'legal_group' => $legalGroup]).'#legal-documents' }}"
+                            role="tab"
+                            aria-selected="{{ $activeLegalGroup === $legalGroup ? 'true' : 'false' }}"
+                            tabindex="{{ $activeLegalGroup === $legalGroup ? '0' : '-1' }}"
+                            data-legal-tab="{{ $legalGroup }}"
+                            class="rounded-lg px-4 py-2.5 text-sm font-black transition focus:outline-none focus:ring-4 focus:ring-violet-200 {{ $activeLegalGroup === $legalGroup ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500 hover:text-slate-950' }}"
+                        >{{ __('messages.admin.legal_group_'.$legalGroup) }}</a>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="mt-4 grid gap-3">
+                @foreach($legalDocuments as $documentKey => $legalDocument)
+                    @php
+                        $editingDocument = old('document_key') === $documentKey;
+                        $documentGroup = config('legal.documents.'.$documentKey.'.group', 'policies');
+                    @endphp
+                    <details data-legal-panel="{{ $documentGroup }}" class="rounded-lg border border-slate-200 bg-slate-50 {{ $activeLegalGroup === $documentGroup ? '' : 'hidden' }}" @if($editingDocument) open @endif>
+                        <summary class="flex cursor-pointer list-none flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <span>
+                                <span class="block font-black text-slate-950">{{ $legalDocument->title }}</span>
+                                <span class="mt-1 block text-xs font-bold text-slate-500">{{ $documentKey }} · {{ __('messages.legal_page.version') }} {{ $legalDocument->version }} · {{ $date($legalDocument->published_at) }}</span>
+                            </span>
+                            <span class="text-sm font-black text-violet-700">{{ __('messages.admin.legal_edit_publish') }}</span>
+                        </summary>
+
+                        <form method="POST" action="{{ route('admin.legal-documents.publish', ['document' => $documentKey]) }}" class="grid gap-4 border-t border-slate-200 bg-white p-4">
+                            @csrf
+                            <input type="hidden" name="document_key" value="{{ $documentKey }}">
+                            <input type="hidden" name="locale" value="{{ app()->getLocale() }}">
+
+                            <div class="grid gap-4 lg:grid-cols-[220px_1fr]">
+                                <label>
+                                    <span class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.legal_page.version') }}</span>
+                                    <input name="version" required maxlength="64" placeholder="{{ now()->format('Y-m-d') }}" value="{{ $editingDocument ? old('version') : '' }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                                </label>
+                                <label>
+                                    <span class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.legal_title') }}</span>
+                                    <input name="title" required maxlength="255" value="{{ $editingDocument ? old('title', $legalDocument->title) : $legalDocument->title }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                                </label>
+                            </div>
+
+                            <label>
+                                <span class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.legal_description') }}</span>
+                                <input name="description" required maxlength="1000" value="{{ $editingDocument ? old('description', $legalDocument->description) : $legalDocument->description }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                            </label>
+
+                            <label>
+                                <span class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.legal_content_html') }}</span>
+                                <textarea name="content_html" required rows="16" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-mono text-sm leading-6 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">{{ $editingDocument ? old('content_html', $legalDocument->content_snapshot) : $legalDocument->content_snapshot }}</textarea>
+                                <span class="mt-2 block text-xs font-bold leading-5 text-slate-500">{{ __('messages.admin.legal_html_help') }}</span>
+                            </label>
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="text-xs font-bold text-slate-500">
+                                    <span class="font-black text-slate-700">{{ __('messages.admin.legal_history') }}:</span>
+                                    {{ ($legalDocumentHistory->get($documentKey) ?? collect())->take(5)->pluck('version')->join(' · ') }}
+                                </div>
+                                <button type="submit" class="rounded-lg bg-slate-950 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
+                                    {{ __('messages.admin.legal_publish_new_version') }}
+                                </button>
+                            </div>
+                        </form>
+                    </details>
+                @endforeach
+            </div>
+        </section>
+        </div>
+
+        <div id="admin-panel-users" role="tabpanel" aria-labelledby="admin-tab-users" data-admin-panel="users" class="{{ $activeAdminTab === 'users' ? '' : 'hidden' }}">
+        <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <form method="GET" action="{{ route('admin.dashboard') }}" class="grid gap-3 lg:grid-cols-[1fr_180px_180px_auto] lg:items-end">
+                <input type="hidden" name="tab" value="users">
                 <div>
                     <label for="q" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.search_email') }}</label>
                     <input id="q" name="q" type="search" value="{{ $filters['q'] }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
@@ -207,7 +444,9 @@
                 {{ $waitlistEntries->links() }}
             </div>
         </section>
+        </div>
 
+        <div id="admin-panel-orders" role="tabpanel" aria-labelledby="admin-tab-orders" data-admin-panel="orders" class="{{ $activeAdminTab === 'orders' ? '' : 'hidden' }}">
         <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="border-b border-slate-200 p-4">
                 <h2 class="text-xl font-black">{{ __('messages.admin.recent_orders') }}</h2>
@@ -253,8 +492,54 @@
                 </table>
             </div>
         </section>
+        </div>
 
-        <section class="mt-6 grid gap-6 xl:grid-cols-2">
+        <div id="admin-panel-consents" role="tabpanel" aria-labelledby="admin-tab-consents" data-admin-panel="consents" class="{{ $activeAdminTab === 'consents' ? '' : 'hidden' }}">
+        <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 p-4">
+                <h2 class="text-xl font-black">{{ __('messages.admin.consent_audit') }}</h2>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.consent_audit_description') }}</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.consent_type') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.action') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.source') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.document_versions') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.reference') }}</th>
+                            <th class="px-4 py-3">IP</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.date') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse ($recentConsentEvents as $event)
+                            <tr>
+                                <td class="px-4 py-3 font-black">{{ $event->subject_email }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $event->consent_type }}</td>
+                                <td class="whitespace-nowrap px-4 py-3">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-black {{ $event->action === 'granted' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800' }}">{{ $event->action }}</span>
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $event->source }}</td>
+                                <td class="px-4 py-3 font-bold text-slate-700">{{ $documentVersions($event->document_versions) ?: '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $consentReference($event) }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $event->ip_address ?: '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $date($event->occurred_at) }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_consents') }}</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        </div>
+
+        <section data-admin-panel-extra="users" class="mt-6 grid gap-6 xl:grid-cols-2 {{ $activeAdminTab === 'users' ? '' : 'hidden' }}">
             @foreach (['join' => $joinBuyers, 'creator' => $creatorBuyers] as $planCode => $buyers)
                 <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                     <div class="border-b border-slate-200 p-4">
@@ -295,5 +580,90 @@
             @endforeach
         </section>
     </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const adminTabs = [...document.querySelectorAll('[data-admin-tab]')];
+            const adminPanels = [...document.querySelectorAll('[data-admin-panel]')];
+            const adminExtras = [...document.querySelectorAll('[data-admin-panel-extra]')];
+            const legalTabs = [...document.querySelectorAll('[data-legal-tab]')];
+            const legalPanels = [...document.querySelectorAll('[data-legal-panel]')];
+
+            const styleTab = (tab, active, dark = false) => {
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+                tab.tabIndex = active ? 0 : -1;
+
+                const activeClasses = dark
+                    ? ['bg-slate-950', 'text-white', 'shadow-sm']
+                    : ['bg-white', 'text-violet-700', 'shadow-sm'];
+                const inactiveClasses = dark
+                    ? ['text-slate-500', 'hover:bg-slate-100', 'hover:text-slate-950']
+                    : ['text-slate-500', 'hover:text-slate-950'];
+
+                activeClasses.forEach((className) => tab.classList.toggle(className, active));
+                inactiveClasses.forEach((className) => tab.classList.toggle(className, !active));
+            };
+
+            const activateAdminTab = (name, updateUrl = true) => {
+                adminPanels.forEach((panel) => {
+                    const active = panel.dataset.adminPanel === name;
+                    panel.classList.toggle('hidden', !active);
+                    panel.setAttribute('aria-hidden', active ? 'false' : 'true');
+                });
+                adminExtras.forEach((panel) => panel.classList.toggle('hidden', panel.dataset.adminPanelExtra !== name));
+                adminTabs.forEach((tab) => styleTab(tab, tab.dataset.adminTab === name, true));
+
+                if (updateUrl) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', name);
+                    history.pushState({ adminTab: name }, '', url);
+                }
+            };
+
+            const activateLegalTab = (name, updateUrl = true) => {
+                legalPanels.forEach((panel) => panel.classList.toggle('hidden', panel.dataset.legalPanel !== name));
+                legalTabs.forEach((tab) => styleTab(tab, tab.dataset.legalTab === name));
+
+                if (updateUrl) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', 'legal');
+                    url.searchParams.set('legal_group', name);
+                    url.hash = 'legal-documents';
+                    history.pushState({ adminTab: 'legal', legalTab: name }, '', url);
+                }
+            };
+
+            const bindTabs = (tabs, attribute, activate) => {
+                tabs.forEach((tab, index) => {
+                    tab.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        activate(tab.dataset[attribute]);
+                    });
+                    tab.addEventListener('keydown', (event) => {
+                        if (! ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+
+                        event.preventDefault();
+                        let targetIndex = index;
+                        if (event.key === 'ArrowLeft') targetIndex = (index - 1 + tabs.length) % tabs.length;
+                        if (event.key === 'ArrowRight') targetIndex = (index + 1) % tabs.length;
+                        if (event.key === 'Home') targetIndex = 0;
+                        if (event.key === 'End') targetIndex = tabs.length - 1;
+
+                        tabs[targetIndex].focus();
+                        activate(tabs[targetIndex].dataset[attribute]);
+                    });
+                });
+            };
+
+            bindTabs(adminTabs, 'adminTab', activateAdminTab);
+            bindTabs(legalTabs, 'legalTab', activateLegalTab);
+
+            window.addEventListener('popstate', () => {
+                const url = new URL(window.location.href);
+                activateAdminTab(url.searchParams.get('tab') || 'overview', false);
+                activateLegalTab(url.searchParams.get('legal_group') || 'policies', false);
+            });
+        });
+    </script>
 </body>
 </html>

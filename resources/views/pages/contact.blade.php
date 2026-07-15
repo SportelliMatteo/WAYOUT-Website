@@ -90,11 +90,8 @@
                 <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                     <label for="privacy_accepted" class="flex items-start gap-3 text-sm font-semibold leading-6 text-slate-600">
                         <input id="privacy_accepted" name="privacy_accepted" type="checkbox" value="1" required @checked(old('privacy_accepted')) class="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
-                        <span>
-                            {!! __('messages.contact.privacy_acceptance', [
-                                'privacy' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.privacy').'">'.__('messages.legal.privacy').'</a>',
-                                'terms' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.terms').'">'.__('messages.legal.terms').'</a>',
-                            ]) !!}
+                        <span class="[&_a]:font-black [&_a]:text-violet-700 [&_a]:underline [&_a]:underline-offset-4">
+                            {!! $legalDocumentsHtml['contact_acceptance'] !!}
                         </span>
                     </label>
                     <p class="mt-3 text-xs font-medium leading-relaxed text-slate-500">

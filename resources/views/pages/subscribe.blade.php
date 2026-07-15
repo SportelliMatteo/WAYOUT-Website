@@ -264,11 +264,8 @@
             </label>
             <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
                 <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
-                <span class="text-sm font-semibold leading-6 text-slate-700">
-                    {!! __('messages.subscribe.purchase_terms_consent', [
-                        'sales' => '<a class="font-black text-violet-700 underline underline-offset-4 hover:text-violet-900" href="'.route('legal.sales').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.sales').'</a>',
-                        'refunds' => '<a class="font-black text-violet-700 underline underline-offset-4 hover:text-violet-900" href="'.route('legal.refunds').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.refunds').'</a>',
-                    ]) !!}
+                <span class="text-sm font-semibold leading-6 text-slate-700 [&_a]:font-black [&_a]:text-violet-700 [&_a]:underline [&_a]:underline-offset-4">
+                    {!! $legalDocumentsHtml['purchase_acceptance'] !!}
                 </span>
             </label>
             <label id="fiscal-code-wrap" class="mb-4 hidden">

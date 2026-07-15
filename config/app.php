@@ -65,7 +65,10 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
+
+    /* Timezone used only when dates are presented to people. */
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Europe/Rome'),
 
     /*
     |--------------------------------------------------------------------------

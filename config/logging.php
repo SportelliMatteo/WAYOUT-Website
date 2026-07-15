@@ -1,11 +1,14 @@
 <?php
 
+use App\Logging\SetLogTimezone;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
 
 return [
+
+    'timezone' => env('LOG_TIMEZONE', env('APP_DISPLAY_TIMEZONE', 'Europe/Rome')),
 
     /*
     |--------------------------------------------------------------------------
@@ -62,6 +65,7 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
+            'tap' => [SetLogTimezone::class],
             'replace_placeholders' => true,
         ],
 
@@ -70,6 +74,16 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
+            'tap' => [SetLogTimezone::class],
+            'replace_placeholders' => true,
+        ],
+
+        'email' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/email.log'),
+            'level' => env('EMAIL_LOG_LEVEL', 'info'),
+            'days' => env('EMAIL_LOG_DAYS', 14),
+            'tap' => [SetLogTimezone::class],
             'replace_placeholders' => true,
         ],
 

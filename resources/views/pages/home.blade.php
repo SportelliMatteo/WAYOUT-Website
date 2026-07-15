@@ -215,15 +215,14 @@
                         @error('phone_number')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
                     </label>
                 </div>
-                <p class="text-left text-xs font-medium leading-relaxed text-slate-300 sm:text-sm">
-                    {!! __('messages.home.profile_terms', [
-                        'privacy' => '<a class="font-black text-violet-200 underline underline-offset-4 hover:text-white" href="'.route('legal.privacy').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.privacy').'</a>',
-                        'terms' => '<a class="font-black text-violet-200 underline underline-offset-4 hover:text-white" href="'.route('legal.terms').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.terms').'</a>',
-                    ]) !!}
-                </p>
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-left text-sm font-medium leading-6 text-slate-200 [&_a]:font-black [&_a]:text-violet-200 [&_a]:underline [&_a]:underline-offset-4">
+                    {!! $legalDocumentsHtml['waitlist_acceptance'] !!}
+                </div>
                 <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
                     <input type="checkbox" name="marketing_consent" value="1" @checked(old('marketing_consent', $waitlistProfile['marketing_consent'] ?? false)) class="mt-0.5 h-5 w-5 shrink-0 rounded border-white/20 text-violet-600 focus:ring-violet-300" />
-                    <span class="text-sm font-medium leading-6 text-slate-200">{{ __('messages.home.marketing_consent') }}</span>
+                    <span class="text-sm font-medium leading-6 text-slate-200">
+                        {!! $legalDocumentsHtml['marketing'] !!}
+                    </span>
                 </label>
                 <button type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.profile_submit') }}</button>
             </form>

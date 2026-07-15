@@ -2,57 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminUser;
+use App\Support\AdminAuditService;
+use App\Support\LegalDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
-    public function login(Request $request)
-    {
-        if ($this->isAuthenticated($request)) {
-            return redirect()->route('admin.dashboard');
-        }
-
-        return view('admin.login');
-    }
-
-    public function authenticate(Request $request)
-    {
-        $validated = $request->validate([
-            'email' => ['required', 'email:rfc'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $adminEmail = config('admin.email');
-        $adminPassword = config('admin.password');
-
-        if (! $adminEmail || ! $adminPassword) {
-            throw ValidationException::withMessages([
-                'email' => __('messages.messages.admin_missing_credentials'),
-            ]);
-        }
-
-        $passwordMatches = Str::startsWith($adminPassword, ['$2y$', '$argon2id$', '$argon2i$'])
-            ? Hash::check($validated['password'], $adminPassword)
-            : hash_equals($adminPassword, $validated['password']);
-
-        if (! hash_equals(Str::lower($adminEmail), Str::lower($validated['email'])) || ! $passwordMatches) {
-            throw ValidationException::withMessages([
-                'email' => __('messages.messages.admin_invalid_credentials'),
-            ]);
-        }
-
-        $request->session()->regenerate();
-        $request->session()->put('admin_authenticated', true);
-
-        return redirect()->intended(route('admin.dashboard'));
-    }
-
-    public function dashboard(Request $request)
+    public function dashboard(Request $request, LegalDocumentService $legalDocuments)
     {
         if (! $this->isAuthenticated($request)) {
             return redirect()->route('admin.login');
@@ -150,8 +109,24 @@ class AdminController extends Controller
             ->limit(12)
             ->get();
 
+        $recentConsentEvents = DB::table('consent_events')
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
+
         $joinBuyers = $this->buyersForPlan('join');
         $creatorBuyers = $this->buyersForPlan('creator');
+        $currentLegalDocuments = $legalDocuments->allCurrent();
+        $legalDocumentHistory = $legalDocuments->history();
+        $adminUsers = AdminUser::query()->orderBy('name')->get();
+        $recentAdminAuditEvents = Schema::hasTable('admin_audit_events')
+            ? DB::table('admin_audit_events')
+                ->orderByDesc('occurred_at')
+                ->orderByDesc('id')
+                ->limit(30)
+                ->get()
+            : collect();
 
         return view('admin.dashboard', [
             'filters' => $filters,
@@ -159,13 +134,81 @@ class AdminController extends Controller
             'capacities' => $capacities,
             'waitlistEntries' => $waitlistEntries,
             'recentPurchases' => $recentPurchases,
+            'recentConsentEvents' => $recentConsentEvents,
             'joinBuyers' => $joinBuyers,
             'creatorBuyers' => $creatorBuyers,
             'planLabels' => $this->planLabels(),
+            'legalDocuments' => $currentLegalDocuments,
+            'legalDocumentHistory' => $legalDocumentHistory,
+            'adminUsers' => $adminUsers,
+            'currentAdmin' => $request->attributes->get('admin_user'),
+            'recentAdminAuditEvents' => $recentAdminAuditEvents,
         ]);
     }
 
-    public function updateSettings(Request $request)
+    public function publishLegalDocument(
+        Request $request,
+        string $document,
+        LegalDocumentService $legalDocuments,
+        AdminAuditService $audit,
+    ) {
+        if (! $this->isAuthenticated($request)) {
+            return redirect()->route('admin.login');
+        }
+
+        abort_unless(in_array($document, $legalDocuments->keys(), true), 404);
+
+        $validated = $request->validate([
+            'locale' => ['required', 'in:it,en'],
+            'version' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string', 'max:1000'],
+            'content_html' => ['required', 'string', 'max:200000'],
+        ]);
+
+        DB::transaction(function () use ($request, $document, $validated, $legalDocuments, $audit) {
+            $previous = $legalDocuments->current($document, $validated['locale']);
+            $published = $legalDocuments->publish(
+                $document,
+                $validated['locale'],
+                $validated['version'],
+                $validated['title'],
+                $validated['description'],
+                $validated['content_html'],
+            );
+
+            $audit->record(
+                $request,
+                'legal_document.published',
+                'legal_document',
+                $published->version_id,
+                $document.' · '.$validated['locale'],
+                [
+                    'version' => $previous->version,
+                    'title' => $previous->title,
+                    'content_hash' => $previous->content_hash,
+                ],
+                [
+                    'version' => $published->version,
+                    'title' => $published->title,
+                    'content_hash' => $published->content_hash,
+                ],
+            );
+        });
+
+        return redirect()
+            ->to(route('admin.dashboard', [
+                'lang' => $validated['locale'],
+                'tab' => 'legal',
+                'legal_group' => config('legal.documents.'.$document.'.group', 'policies'),
+            ]).'#legal-documents')
+            ->with('admin_success', __('messages.admin.legal_published', [
+                'document' => $validated['title'],
+                'version' => $validated['version'],
+            ]));
+    }
+
+    public function updateSettings(Request $request, AdminAuditService $audit)
     {
         if (! $this->isAuthenticated($request)) {
             return redirect()->route('admin.login');
@@ -177,12 +220,35 @@ class AdminController extends Controller
             'creator_capacity' => ['required', 'integer', 'min:0', 'max:1000000'],
         ]);
 
-        foreach ($validated as $key => $value) {
-            DB::table('founder_settings')->updateOrInsert(
-                ['key' => $key],
-                ['value' => $value, 'updated_at' => now(), 'created_at' => now()]
+        $previous = DB::table('founder_settings')
+            ->whereIn('key', array_keys($validated))
+            ->pluck('value', 'key')
+            ->map(fn ($value) => (int) $value)
+            ->all();
+
+        DB::transaction(function () use ($request, $validated, $previous, $audit) {
+            foreach ($validated as $key => $value) {
+                $existing = DB::table('founder_settings')->where('key', $key)->exists();
+
+                DB::table('founder_settings')->updateOrInsert(
+                    ['key' => $key],
+                    [
+                        'value' => $value,
+                        'updated_at' => now(),
+                        ...($existing ? [] : ['created_at' => now()]),
+                    ]
+                );
+            }
+
+            $audit->record(
+                $request,
+                'founder_capacities.updated',
+                'founder_settings',
+                targetLabel: 'waitlist / join / creator',
+                oldValues: $previous,
+                newValues: $validated,
             );
-        }
+        });
 
         return back()->with('admin_success', __('messages.admin.admin_success'));
     }
@@ -206,14 +272,6 @@ class AdminController extends Controller
             ->get();
     }
 
-    public function logout(Request $request)
-    {
-        $request->session()->forget('admin_authenticated');
-        $request->session()->regenerateToken();
-
-        return redirect()->route('admin.login');
-    }
-
     private function isAuthenticated(Request $request): bool
     {
         return $request->session()->has('admin_authenticated');
@@ -229,6 +287,10 @@ class AdminController extends Controller
 
     private function successfulPlansExpression(): string
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return "GROUP_CONCAT(DISTINCT CASE WHEN status = 'succeeded' THEN plan END) as plans";
+        }
+
         return "STRING_AGG(DISTINCT CASE WHEN status = 'succeeded' THEN plan END, ',') as plans";
     }
 

@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdminUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class AdminDashboardTest extends TestCase
@@ -17,7 +20,7 @@ class AdminDashboardTest extends TestCase
         $response->assertRedirect(route('admin.login'));
     }
 
-    public function test_admin_can_login_with_configured_credentials(): void
+    public function test_configured_credentials_bootstrap_first_equal_admin_and_require_otp_setup(): void
     {
         config()->set('admin.email', 'admin@wayout.test');
         config()->set('admin.password', 'secret-password');
@@ -27,15 +30,18 @@ class AdminDashboardTest extends TestCase
             'password' => 'secret-password',
         ]);
 
-        $response->assertRedirect(route('admin.dashboard'));
-        $this->assertTrue(session('admin_authenticated'));
+        $response->assertRedirect(route('admin.otp.setup'));
+        $this->assertFalse(session()->has('admin_authenticated'));
+        $this->assertDatabaseHas('admin_users', [
+            'email' => 'admin@wayout.test',
+        ]);
     }
 
     public function test_admin_dashboard_shows_waitlist_purchase_and_revenue_totals(): void
     {
         $this->seedDashboardData();
 
-        $response = $this->withSession(['admin_authenticated' => true])
+        $response = $this->withSession($this->adminSession())
             ->get(route('admin.dashboard'));
 
         $response->assertOk()
@@ -51,9 +57,26 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Utenti Founder Creator 12M');
     }
 
+    public function test_admin_dashboard_sections_and_legal_categories_are_accessible_as_tabs(): void
+    {
+        $response = $this->withSession($this->adminSession())
+            ->get(route('admin.dashboard', [
+                'tab' => 'legal',
+                'legal_group' => 'consent_texts',
+            ]));
+
+        $response->assertOk()
+            ->assertSee('role="tablist"', false)
+            ->assertSee('data-admin-tab="legal"', false)
+            ->assertSee('data-admin-panel="legal" class=""', false)
+            ->assertSee('data-legal-tab="consent_texts"', false)
+            ->assertSee('data-legal-panel="consent_texts"', false)
+            ->assertSee('Testi delle checkbox');
+    }
+
     public function test_admin_can_update_founder_capacities(): void
     {
-        $response = $this->withSession(['admin_authenticated' => true])
+        $response = $this->withSession($this->adminSession())
             ->post(route('admin.settings.update'), [
                 'waitlist_capacity' => 2500,
                 'join_capacity' => 700,
@@ -77,18 +100,128 @@ class AdminDashboardTest extends TestCase
             'key' => 'creator_capacity',
             'value' => 220,
         ]);
+
+        $audit = DB::table('admin_audit_events')
+            ->where('action', 'founder_capacities.updated')
+            ->first();
+
+        $this->assertNotNull($audit);
+        $this->assertSame('admin@example.com', $audit->actor_email);
+        $this->assertSame(2500, json_decode($audit->new_values, true)['waitlist_capacity']);
+    }
+
+    public function test_admin_can_publish_a_new_legal_version_used_by_the_public_page(): void
+    {
+        $response = $this->withSession($this->adminSession())
+            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [
+                'document_key' => 'privacy',
+                'locale' => 'it',
+                'version' => '2026-07-15',
+                'title' => 'Privacy policy aggiornata',
+                'description' => 'Nuova descrizione privacy.',
+                'content_html' => '<div><h2>Nuovo testo privacy</h2><p>Contenuto pubblicato dal database.</p><script>alert(1)</script></div>',
+            ]);
+
+        $response->assertRedirect(route('admin.dashboard', [
+            'lang' => 'it',
+            'tab' => 'legal',
+            'legal_group' => 'policies',
+        ]).'#legal-documents')
+            ->assertSessionHas('admin_success');
+
+        $version = DB::table('legal_document_versions')
+            ->where('document_key', 'privacy')
+            ->where('locale', 'it')
+            ->where('version', '2026-07-15')
+            ->first();
+
+        $this->assertNotNull($version);
+        $this->assertSame('html', $version->content_format);
+        $this->assertStringNotContainsString('<script', $version->content_snapshot);
+        $this->assertDatabaseHas('legal_documents', [
+            'document_key' => 'privacy',
+            'locale' => 'it',
+            'current_version_id' => $version->id,
+        ]);
+
+        $this->assertDatabaseHas('admin_audit_events', [
+            'actor_email' => 'admin@example.com',
+            'action' => 'legal_document.published',
+            'target_type' => 'legal_document',
+            'target_id' => $version->id,
+        ]);
+
+        $this->get(route('legal.privacy'))
+            ->assertOk()
+            ->assertSee('Privacy policy aggiornata')
+            ->assertSee('Nuovo testo privacy')
+            ->assertSee('Versione 2026-07-15')
+            ->assertDontSee('alert(1)');
+    }
+
+    public function test_legal_document_publication_requires_admin_authentication(): void
+    {
+        $this->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [])
+            ->assertRedirect(route('admin.login'));
     }
 
     public function test_admin_dashboard_can_filter_waitlist_buyers(): void
     {
         $this->seedDashboardData();
 
-        $response = $this->withSession(['admin_authenticated' => true])
+        $response = $this->withSession($this->adminSession())
             ->get(route('admin.dashboard', ['status' => 'buyers']));
 
         $response->assertOk()
             ->assertSee('buyer@example.com')
             ->assertDontSee('lead@example.com');
+    }
+
+    public function test_admin_dashboard_displays_utc_consent_timestamps_in_rome_timezone(): void
+    {
+        DB::table('consent_events')->insert([
+            'subject_email' => 'timezone@example.com',
+            'consent_type' => 'marketing',
+            'action' => 'granted',
+            'source' => 'test',
+            'document_versions' => json_encode([]),
+            'document_hashes' => json_encode([]),
+            'document_urls' => json_encode([]),
+            'locale' => 'it',
+            'occurred_at' => '2026-07-15 20:00:00',
+            'created_at' => '2026-07-15 20:00:00',
+        ]);
+
+        $response = $this->withSession($this->adminSession())
+            ->get(route('admin.dashboard', ['tab' => 'consents']));
+
+        $response->assertOk()
+            ->assertSee('15/07/2026 22:00');
+    }
+
+    public function test_email_log_channel_uses_rome_timezone(): void
+    {
+        $this->assertSame(
+            'Europe/Rome',
+            Log::channel('email')->getLogger()->getTimezone()->getName()
+        );
+    }
+
+    private function adminSession(): array
+    {
+        $admin = AdminUser::query()->create([
+            'name' => 'Test Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('Testing-password-123'),
+            'is_active' => true,
+            'totp_confirmed_at' => now(),
+        ]);
+
+        return [
+            'admin_authenticated' => true,
+            'admin_user_id' => $admin->id,
+            'admin_auth_version' => $admin->auth_version,
+        ];
     }
 
     private function seedDashboardData(): void
