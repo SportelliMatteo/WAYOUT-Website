@@ -11,9 +11,12 @@
         <p>{{ __('messages.email.hello') }}</p>
         <p>{!! __('messages.email.purchase_confirmed', ['plan' => '<strong>'.e($purchase['plan_name']).'</strong>']) !!}</p>
         <p>{{ __('messages.email.amount') }} <strong>{{ number_format($purchase['amount'] / 100, 2, ',', '.') }} {{ strtoupper($purchase['currency']) }}</strong></p>
+        @if (! empty($purchase['order_reference']))
+            <p>Numero d’ordine: <strong>{{ $purchase['order_reference'] }}</strong></p>
+        @endif
         <p>{!! __('messages.email.waitlist_email', ['email' => '<strong>'.e($purchase['email']).'</strong>']) !!}</p>
         <p>{{ __('messages.email.purchase_summary') }}</p>
-        <p><a href="{{ route('legal.sales') }}" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.sales_terms_link') }}</a> · <a href="{{ route('legal.refunds') }}" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.refunds_link') }}</a></p>
+        <p><a href="{{ route('legal.sales') }}" target="_blank" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.sales_terms_link') }}</a> · <a href="{{ route('legal.presale') }}" target="_blank" style="color:#6d28d9;font-weight:bold">{{ __('messages.legal.presale') }}</a> · <a href="{{ route('legal.refunds') }}" target="_blank" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.refunds_link') }}</a> · <a href="{{ route('legal.refunds') }}#recedere" target="_blank" style="color:#6d28d9;font-weight:bold">Recedere dal contratto qui</a></p>
         <p>{{ __('messages.email.thanks') }}</p>
         @include('emails.partials.footer', ['reason' => __('messages.email.purchase_reason', ['email' => $purchase['email']])])
     </div>

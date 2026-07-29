@@ -346,7 +346,7 @@
                         </div>
                         <p class="mt-3 text-xs font-semibold leading-5 text-slate-500">
                             {!! __('messages.home.pass_terms_notice', [
-                                'passes' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.passes').'">'.__('messages.legal.passes').'</a>',
+                                'passes' => '<a class="font-black text-violet-700 underline-offset-4 hover:underline" href="'.route('legal.passes').'" target="_blank" rel="noopener noreferrer">'.__('messages.legal.passes').'</a>',
                             ]) !!}
                         </p>
                     </div>

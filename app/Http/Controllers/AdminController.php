@@ -115,6 +115,13 @@ class AdminController extends Controller
             ->limit(20)
             ->get();
 
+        $recentWithdrawals = Schema::hasTable('withdrawal_requests')
+            ? DB::table('withdrawal_requests')
+                ->orderByDesc('submitted_at')
+                ->limit(30)
+                ->get()
+            : collect();
+
         $joinBuyers = $this->buyersForPlan('join');
         $creatorBuyers = $this->buyersForPlan('creator');
         $currentLegalDocuments = $legalDocuments->allCurrent();
@@ -135,6 +142,7 @@ class AdminController extends Controller
             'waitlistEntries' => $waitlistEntries,
             'recentPurchases' => $recentPurchases,
             'recentConsentEvents' => $recentConsentEvents,
+            'recentWithdrawals' => $recentWithdrawals,
             'joinBuyers' => $joinBuyers,
             'creatorBuyers' => $creatorBuyers,
             'planLabels' => $this->planLabels(),

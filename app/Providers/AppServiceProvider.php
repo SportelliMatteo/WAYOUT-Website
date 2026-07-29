@@ -53,6 +53,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(2)->by($request->session()->getId() ?: $request->ip());
         });
 
+        RateLimiter::for('withdrawal', function (Request $request) {
+            return Limit::perMinute(5)->by($request->session()->getId() ?: $request->ip());
+        });
+
+        RateLimiter::for('withdrawal-confirm', function (Request $request) {
+            return Limit::perMinute(3)->by($request->session()->getId() ?: $request->ip());
+        });
+
         RateLimiter::for('admin', function (Request $request) {
             return Limit::perMinute(5)->by($request->ip());
         });

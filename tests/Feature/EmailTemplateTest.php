@@ -36,6 +36,7 @@ class EmailTemplateTest extends TestCase
         }
 
         $this->assertStringContainsString('29,00 EUR', $purchase);
+        $this->assertStringContainsString(route('legal.presale'), $purchase);
         $this->assertStringContainsString('ada@example.com', $contact);
     }
 }

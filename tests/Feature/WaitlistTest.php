@@ -33,6 +33,7 @@ class WaitlistTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('Completando l’iscrizione alla waitlist')
+            ->assertSee('Termini sito e waitlist')
             ->assertDontSee('name="legal_terms_accepted"', false)
             ->assertDontSee('Versioni documenti:');
     }

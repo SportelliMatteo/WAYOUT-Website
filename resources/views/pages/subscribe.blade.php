@@ -201,12 +201,21 @@
 
         <section class="mt-8">
             <h2 class="text-3xl font-black leading-tight text-slate-950">{{ __('messages.subscribe.faq_title') }}</h2>
-            <div class="mt-5 grid gap-4 md:grid-cols-2">
-                @foreach(__('messages.subscribe.faqs') as $faq)
-                    <article class="wayout-card rounded-[1.5rem] p-5">
-                        <h3 class="text-lg font-black text-slate-950">{{ $faq['question'] }}</h3>
-                        <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">{{ $faq['answer'] }}</p>
-                    </article>
+            <p class="mt-3 max-w-4xl text-sm font-semibold leading-6 text-slate-600">{{ __('messages.subscribe.faq_intro') }}</p>
+            <p class="mt-3 max-w-4xl rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm font-bold leading-6 text-violet-950">{{ __('messages.subscribe.faq_precedence') }}</p>
+            <div class="mt-8 space-y-10">
+                @foreach(collect(__('messages.subscribe.faqs'))->groupBy('category') as $category => $faqs)
+                    <section>
+                        <h3 class="text-xl font-black text-slate-950">{{ $category }}</h3>
+                        <div class="mt-4 grid gap-4 md:grid-cols-2">
+                            @foreach($faqs as $faq)
+                                <article data-legal-faq class="wayout-card rounded-[1.5rem] p-5">
+                                    <h4 class="text-lg font-black text-slate-950">{{ $faq['question'] }}</h4>
+                                    <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">{{ $faq['answer'] }}</p>
+                                </article>
+                            @endforeach
+                        </div>
+                    </section>
                 @endforeach
             </div>
         </section>

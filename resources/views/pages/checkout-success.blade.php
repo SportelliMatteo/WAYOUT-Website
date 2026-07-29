@@ -27,9 +27,25 @@
                             {{ __('messages.checkout_success.creator_summary') }}
                         </p>
                     @endif
-                    <a href="{{ route('legal.passes') }}" class="mt-4 inline-flex font-black text-violet-200 underline-offset-4 transition hover:text-white hover:underline">
-                        {{ __('messages.checkout_success.pass_terms_link') }}
-                    </a>
+                </div>
+                <div class="mt-6 max-w-2xl">
+                    <p class="text-sm font-black uppercase tracking-[0.2em] text-violet-200">
+                        {{ __('messages.checkout_success.documents_title') }}
+                    </p>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <a href="{{ route('legal.passes') }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.08] px-4 py-3 text-center text-sm font-black text-white transition hover:border-violet-300 hover:bg-white/[0.14]">
+                            {{ __('messages.legal.passes') }}
+                        </a>
+                        <a href="{{ route('legal.sales') }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.08] px-4 py-3 text-center text-sm font-black text-white transition hover:border-violet-300 hover:bg-white/[0.14]">
+                            {{ __('messages.legal.sales') }}
+                        </a>
+                        <a href="{{ route('legal.presale') }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.08] px-4 py-3 text-center text-sm font-black text-white transition hover:border-violet-300 hover:bg-white/[0.14]">
+                            {{ __('messages.legal.presale') }}
+                        </a>
+                        <a href="{{ route('legal.refunds') }}#recedere" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-xl border border-violet-300/40 bg-violet-400/15 px-4 py-3 text-center text-sm font-black text-violet-100 transition hover:border-violet-200 hover:bg-violet-400/25">
+                            {{ __('messages.checkout_success.withdrawal_link') }}
+                        </a>
+                    </div>
                 </div>
                 <div class="mt-8">
                     <a href="{{ route('home') }}" class="inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-4 text-base font-black text-slate-950 shadow-xl transition hover:scale-[1.02] sm:w-auto sm:text-lg">

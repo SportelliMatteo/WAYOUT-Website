@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'Wayout' }}</title>
     <meta name="description" content="{{ $description ?? __('messages.home.description') }}">
+    @if (! empty($robots))
+        <meta name="robots" content="{{ $robots }}">
+    @endif
     <link rel="shortcut icon" href="/favicon.jpg" type="image/jpeg" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -152,8 +155,10 @@
                                 <a href="{{ route('legal.terms') }}" class="transition hover:text-white">{{ __('messages.legal.terms') }}</a>
                                 <a href="{{ route('legal.passes') }}" class="transition hover:text-white">{{ __('messages.legal.passes') }}</a>
                                 <a href="{{ route('legal.sales') }}" class="transition hover:text-white">{{ __('messages.legal.sales') }}</a>
+                                <a href="{{ route('legal.presale') }}" class="transition hover:text-white">{{ __('messages.legal.presale') }}</a>
                                 <a href="{{ route('legal.refunds') }}" class="transition hover:text-white">{{ __('messages.legal.refunds') }}</a>
                                 <a href="{{ route('legal.notice') }}" class="transition hover:text-white">{{ __('messages.legal.notice') }}</a>
+                                <a href="{{ route('legal.refunds') }}#recedere" class="rounded-lg border border-violet-400/40 bg-violet-400/10 px-3 py-2 font-black text-white transition hover:bg-violet-400/20">Recedere dal contratto qui</a>
                             </div>
                         </div>
                     </div>
@@ -175,7 +180,15 @@
                             </div>
                             <div>
                                 <dt class="font-bold text-slate-500">{{ __('messages.footer.pec') }}</dt>
-                                <dd class="mt-1 font-semibold text-slate-200">wayout@pec.wayoutapp.it</dd>
+                                <dd class="mt-1 font-semibold text-slate-200">
+                                    <a href="mailto:wayout@pec.wayoutapp.it" class="transition hover:text-white">wayout@pec.wayoutapp.it</a>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt class="font-bold text-slate-500">{{ __('messages.footer.email') }}</dt>
+                                <dd class="mt-1 font-semibold text-slate-200">
+                                    <a href="mailto:amministrazione@wayoutapp.it" class="transition hover:text-white">amministrazione@wayoutapp.it</a>
+                                </dd>
                             </div>
                         </dl>
                     </div>

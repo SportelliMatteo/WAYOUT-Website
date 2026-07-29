@@ -9,15 +9,21 @@
     $planName = fn (?string $plan) => $plan ? ($planLabels[$plan] ?? ucfirst($plan)) : __('messages.admin.no_pass');
     $documentVersions = fn ($value) => collect(json_decode((string) $value, true) ?: [])->map(fn ($version, $document) => $document.': '.$version)->join(', ');
     $auditValues = fn ($value) => collect(json_decode((string) $value, true) ?: [])->map(function ($item, $key) {
-        $display = is_bool($item) ? ($item ? 'true' : 'false') : (is_array($item) ? json_encode($item) : $item);
-        return $key.': '.$display;
-    })->join(', ') ?: '-';
+        $full = (string) (is_bool($item) ? ($item ? 'true' : 'false') : (is_array($item) ? json_encode($item) : $item));
+        $isHash = str_contains((string) $key, 'hash') && strlen($full) > 24;
+
+        return [
+            'label' => (string) $key,
+            'full' => $full,
+            'display' => $isHash ? substr($full, 0, 12).'…'.substr($full, -8) : $full,
+        ];
+    })->values();
     $consentReference = fn ($event) => collect([
         $event->waitlist_entry_id ? 'waitlist #'.$event->waitlist_entry_id : null,
         $event->purchase_id ? __('messages.admin.order_reference', ['id' => $event->purchase_id]) : null,
         $event->contact_message_id ? __('messages.admin.contact_reference', ['id' => $event->contact_message_id]) : null,
     ])->filter()->join(', ') ?: '-';
-    $adminTabs = ['overview', 'users', 'orders', 'consents', 'legal', 'settings'];
+    $adminTabs = ['overview', 'users', 'orders', 'withdrawals', 'consents', 'legal', 'settings'];
     $requestedAdminTab = request()->query('tab');
     $activeAdminTab = in_array($requestedAdminTab, $adminTabs, true)
         ? $requestedAdminTab
@@ -231,26 +237,43 @@
                 <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.activity_audit_text') }}</p>
             </div>
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <table class="min-w-[1280px] table-fixed divide-y divide-slate-200 text-left text-sm">
                     <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
                         <tr>
-                            <th class="px-4 py-3">{{ __('messages.admin.operator') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.action') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.target') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.before') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.after') }}</th>
-                            <th class="px-4 py-3">IP</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.date') }}</th>
+                            <th class="w-52 px-4 py-3">{{ __('messages.admin.operator') }}</th>
+                            <th class="w-56 px-4 py-3">{{ __('messages.admin.action') }}</th>
+                            <th class="w-40 px-4 py-3">{{ __('messages.admin.target') }}</th>
+                            <th class="w-64 px-4 py-3">{{ __('messages.admin.before') }}</th>
+                            <th class="w-64 px-4 py-3">{{ __('messages.admin.after') }}</th>
+                            <th class="w-36 px-4 py-3">IP</th>
+                            <th class="w-36 px-4 py-3">{{ __('messages.admin.date') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse($recentAdminAuditEvents as $event)
                             <tr>
                                 <td class="px-4 py-3"><span class="font-black">{{ $event->actor_name }}</span><span class="block text-xs font-bold text-slate-500">{{ $event->actor_email }}</span></td>
-                                <td class="whitespace-nowrap px-4 py-3 font-black text-violet-700">{{ $event->action }}</td>
-                                <td class="px-4 py-3 font-bold">{{ $event->target_label ?: $event->target_type.($event->target_id ? ' #'.$event->target_id : '') }}</td>
-                                <td class="max-w-sm px-4 py-3 text-xs font-bold text-slate-500">{{ $auditValues($event->old_values) }}</td>
-                                <td class="max-w-sm px-4 py-3 text-xs font-bold text-slate-700">{{ $auditValues($event->new_values) }}</td>
+                                <td class="break-words px-4 py-3 font-black text-violet-700">{{ $event->action }}</td>
+                                <td class="break-words px-4 py-3 font-bold">{{ $event->target_label ?: $event->target_type.($event->target_id ? ' #'.$event->target_id : '') }}</td>
+                                @foreach ([$event->old_values, $event->new_values] as $valueIndex => $auditValue)
+                                    @php
+                                        $items = $auditValues($auditValue);
+                                    @endphp
+                                    <td class="px-4 py-3 text-xs {{ $valueIndex === 0 ? 'text-slate-500' : 'text-slate-700' }}">
+                                        @if ($items->isEmpty())
+                                            <span class="font-bold">-</span>
+                                        @else
+                                            <dl class="space-y-2">
+                                                @foreach ($items as $item)
+                                                    <div>
+                                                        <dt class="font-black text-slate-500">{{ $item['label'] }}</dt>
+                                                        <dd class="mt-0.5 break-all font-bold" title="{{ $item['full'] }}">{{ $item['display'] }}</dd>
+                                                    </div>
+                                                @endforeach
+                                            </dl>
+                                        @endif
+                                    </td>
+                                @endforeach
                                 <td class="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-500">{{ $event->ip_address ?: '-' }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-500">{{ $date($event->occurred_at) }}</td>
                             </tr>
@@ -487,6 +510,47 @@
                             <tr>
                                 <td colspan="11" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_orders') }}</td>
                             </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        </div>
+
+        <div id="admin-panel-withdrawals" role="tabpanel" aria-labelledby="admin-tab-withdrawals" data-admin-panel="withdrawals" class="{{ $activeAdminTab === 'withdrawals' ? '' : 'hidden' }}">
+        <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 p-4">
+                <h2 class="text-xl font-black">{{ __('messages.admin.withdrawal_requests') }}</h2>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.withdrawal_requests_help') }}</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                        <tr>
+                            <th class="px-4 py-3">{{ __('messages.admin.receipt_code') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.name') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.contract') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.status') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.refund_status') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.receipt_email') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.date') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse ($recentWithdrawals as $withdrawal)
+                            <tr>
+                                <td class="whitespace-nowrap px-4 py-3 font-black">{{ $withdrawal->receipt_number }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->first_name }} {{ $withdrawal->last_name }}</td>
+                                <td class="px-4 py-3 font-bold">{{ $withdrawal->purchase_email }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->order_reference }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->status }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->refund_status }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->receipt_email_sent_at ? __('messages.admin.sent') : __('messages.admin.not_sent') }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $date($withdrawal->submitted_at) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="8" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_withdrawals') }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>

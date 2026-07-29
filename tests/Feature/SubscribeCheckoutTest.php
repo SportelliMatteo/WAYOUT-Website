@@ -14,6 +14,17 @@ class SubscribeCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_sales_terms_use_the_canonical_url(): void
+    {
+        $this->get('/termini-di-vendita')
+            ->assertOk()
+            ->assertSee('Termini di vendita');
+
+        $this->get('/condizioni-di-vendita')
+            ->assertRedirect('/termini-di-vendita')
+            ->assertStatus(301);
+    }
+
     public function test_subscribe_page_requires_waitlist_banner_context(): void
     {
         $response = $this->get(route('subscribe'));
@@ -29,10 +40,21 @@ class SubscribeCheckoutTest extends TestCase
         $response->assertOk()
             ->assertViewIs('pages.subscribe')
             ->assertDontSee('Procedendo al pagamento dichiari di aver letto')
-            ->assertSee('Confermi di aver letto le')
+            ->assertSee('Confermi di aver letto i')
+            ->assertDontSee('href="'.route('legal.passes').'" target="_blank"', false)
+            ->assertDontSee('href="'.route('legal.sales').'" target="_blank"', false)
+            ->assertDontSee('href="'.route('legal.presale').'" target="_blank"', false)
+            ->assertDontSee('href="'.route('legal.refunds').'#recedere" target="_blank"', false)
+            ->assertSee('/condizioni-di-pre-sale', false)
             ->assertSee(route('legal.sales'))
             ->assertSee(route('legal.refunds'))
             ->assertDontSee('Versioni documenti:');
+
+        $response->assertSee('1. Che cosa acquisto con un Founder Pass?')
+            ->assertSee('26. Dove trovo le condizioni complete e chi posso contattare?')
+            ->assertSee('Non è prevista una selezione o approvazione discrezionale specifica')
+            ->assertDontSee('Che cos’è il Waitlist Pass?');
+        $this->assertSame(26, substr_count($response->getContent(), 'data-legal-faq'));
     }
 
     public function test_subscribe_plan_comparison_uses_configured_capacities(): void
@@ -507,7 +529,13 @@ class SubscribeCheckoutTest extends TestCase
 
         $response = $this->get(route('checkout.success', ['session_id' => 'cs_test_paid']));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertSee('Documenti relativi all’acquisto')
+            ->assertSee('href="'.route('legal.passes').'" target="_blank"', false)
+            ->assertSee('href="'.route('legal.sales').'" target="_blank"', false)
+            ->assertSee('href="'.route('legal.presale').'" target="_blank"', false)
+            ->assertSee('href="'.route('legal.refunds').'#recedere" target="_blank"', false)
+            ->assertSee('Recedere dal contratto');
 
         $this->assertDatabaseHas('purchases', [
             'id' => $purchaseId,

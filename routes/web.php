@@ -8,6 +8,7 @@ use App\Http\Controllers\ConsentController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\SubscribeController;
 use App\Http\Controllers\WaitlistController;
+use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'pages.home')->name('home');
@@ -17,8 +18,17 @@ Route::get('/privacy-policy', [LegalDocumentController::class, 'show'])->default
 Route::get('/cookie-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'cookies')->name('legal.cookies');
 Route::get('/termini-e-condizioni', [LegalDocumentController::class, 'show'])->defaults('document', 'terms')->name('legal.terms');
 Route::get('/come-funzionano-i-pass', [LegalDocumentController::class, 'show'])->defaults('document', 'passes')->name('legal.passes');
-Route::get('/condizioni-di-vendita', [LegalDocumentController::class, 'show'])->defaults('document', 'sales')->name('legal.sales');
-Route::get('/recesso-e-rimborso', [LegalDocumentController::class, 'show'])->defaults('document', 'refunds')->name('legal.refunds');
+Route::get('/termini-di-vendita', [LegalDocumentController::class, 'show'])->defaults('document', 'sales')->name('legal.sales');
+Route::redirect('/condizioni-di-vendita', '/termini-di-vendita', 301);
+Route::get('/condizioni-di-pre-sale', [LegalDocumentController::class, 'show'])->defaults('document', 'presale')->name('legal.presale');
+Route::get('/recedere-dal-contratto', [WithdrawalController::class, 'create'])->name('legal.refunds');
+Route::get('/documenti/modulo-tipo-recesso', [WithdrawalController::class, 'downloadTemplate'])->name('withdrawal.template.download');
+Route::post('/recedere-dal-contratto/verifica', [WithdrawalController::class, 'storeReview'])->middleware('throttle:withdrawal')->name('withdrawal.review.store');
+Route::get('/recedere-dal-contratto/conferma', [WithdrawalController::class, 'review'])->name('withdrawal.review');
+Route::post('/recedere-dal-contratto/conferma', [WithdrawalController::class, 'confirm'])->middleware('throttle:withdrawal-confirm')->name('withdrawal.confirm');
+Route::get('/recedere-dal-contratto/ricevuta/{token}', [WithdrawalController::class, 'receipt'])->name('withdrawal.receipt');
+Route::get('/recedere-dal-contratto/ricevuta/{token}/download', [WithdrawalController::class, 'download'])->name('withdrawal.receipt.download');
+Route::redirect('/recesso-e-rimborso', '/recedere-dal-contratto', 301);
 Route::get('/note-legali', [LegalDocumentController::class, 'show'])->defaults('document', 'notice')->name('legal.notice');
 Route::get('/subscribe', [SubscribeController::class, 'show'])->name('subscribe');
 Route::get('/checkout/success', [SubscribeController::class, 'success'])->name('checkout.success');

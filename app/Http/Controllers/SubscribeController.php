@@ -246,6 +246,7 @@ class SubscribeController extends Controller
         }
 
         $purchaseData = [
+            'order_reference' => 'WO-'.\Illuminate\Support\Carbon::parse($purchase->created_at)->format('Y').'-'.str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
             'email' => $email,
             'plan_name' => $this->planName($purchase->plan),
             'amount' => $purchase->amount,
@@ -854,6 +855,7 @@ class SubscribeController extends Controller
 
         try {
             if ($emailSender->send($purchase->email, new PurchaseConfirmationMail([
+                'order_reference' => 'WO-'.\Illuminate\Support\Carbon::parse($purchase->created_at)->format('Y').'-'.str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
                 'email' => $purchase->email,
                 'plan_name' => $this->planName($purchase->plan),
                 'amount' => $purchase->amount,

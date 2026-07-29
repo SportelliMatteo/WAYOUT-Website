@@ -12,7 +12,7 @@ class PurchaseConfirmationMail extends Mailable
     use SerializesModels;
 
     /**
-     * @param  array{email: string, plan_name: string, amount: int, currency: string}  $purchase
+     * @param  array{order_reference?: string, email: string, plan_name: string, amount: int, currency: string}  $purchase
      */
     public function __construct(public array $purchase) {}
 
