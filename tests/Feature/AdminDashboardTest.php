@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AdminUser;
+use App\Support\LegalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -54,7 +55,9 @@ class AdminDashboardTest extends TestCase
             ->assertSee('59,00€')
             ->assertSee('Capienze Founder')
             ->assertSee('Utenti Founder Join 12M')
-            ->assertSee('Utenti Founder Creator 12M');
+            ->assertSee('Utenti Founder Creator 12M')
+            ->assertSee('Verificato')
+            ->assertSee('Non verificato');
     }
 
     public function test_admin_dashboard_sections_and_legal_categories_are_accessible_as_tabs(): void
@@ -165,6 +168,45 @@ class AdminDashboardTest extends TestCase
             ->assertRedirect(route('admin.login'));
     }
 
+    public function test_admin_can_publish_multiple_legal_revisions_on_the_same_date(): void
+    {
+        $date = now()->toDateString();
+        $session = $this->adminSession();
+        $payload = [
+            'document_key' => 'privacy',
+            'locale' => 'it',
+            'version' => $date,
+            'title' => 'Privacy aggiornata oggi',
+            'description' => 'Descrizione aggiornata oggi.',
+            'content_html' => '<div><h2>Prima revisione</h2></div>',
+        ];
+
+        $this->withSession($session)
+            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), $payload)
+            ->assertSessionHas('admin_success');
+
+        $this->withSession($session)
+            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [
+                ...$payload,
+                'content_html' => '<div><h2>Seconda revisione</h2></div>',
+            ])->assertSessionHas('admin_success', fn (string $message) => str_contains($message, $date.'.3'));
+
+        $this->assertDatabaseHas('legal_document_versions', [
+            'document_key' => 'privacy',
+            'locale' => 'it',
+            'version' => $date.'.2',
+        ]);
+        $this->assertDatabaseHas('legal_document_versions', [
+            'document_key' => 'privacy',
+            'locale' => 'it',
+            'version' => $date.'.3',
+        ]);
+        $this->assertSame(
+            $date.'.3',
+            app(LegalDocumentService::class)->current('privacy', 'it')->version,
+        );
+    }
+
     public function test_admin_dashboard_can_filter_waitlist_buyers(): void
     {
         $this->seedDashboardData();
@@ -229,6 +271,7 @@ class AdminDashboardTest extends TestCase
         DB::table('waitlist_entries')->insert([
             [
                 'email' => 'buyer@example.com',
+                'phone_verified_at' => now()->subDay(),
                 'marketing_consent' => true,
                 'offer_shown' => true,
                 'created_at' => now()->subDays(2),
@@ -236,6 +279,7 @@ class AdminDashboardTest extends TestCase
             ],
             [
                 'email' => 'lead@example.com',
+                'phone_verified_at' => null,
                 'marketing_consent' => false,
                 'offer_shown' => true,
                 'created_at' => now()->subDay(),

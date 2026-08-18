@@ -47,6 +47,7 @@ Route::post('/preferenze/marketing/{waitlist}', [ConsentController::class, 'revo
 
 Route::get('/admin/login', [AdminAuthController::class, 'login'])->middleware('throttle:admin')->name('admin.login');
 Route::post('/admin/login', [AdminAuthController::class, 'authenticate'])->middleware('throttle:admin')->name('admin.authenticate');
+Route::post('/admin/recover', [AdminAuthController::class, 'recover'])->middleware('throttle:admin')->name('admin.recover');
 Route::get('/admin/otp/setup', [AdminAuthController::class, 'showSetup'])->middleware('throttle:admin')->name('admin.otp.setup');
 Route::post('/admin/otp/setup', [AdminAuthController::class, 'confirmSetup'])->middleware('throttle:admin')->name('admin.otp.setup.confirm');
 Route::get('/admin/otp/challenge', [AdminAuthController::class, 'showChallenge'])->middleware('throttle:admin')->name('admin.otp.challenge');
@@ -60,6 +61,8 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/admin/security/password', [AdminAuthController::class, 'changePassword'])->middleware('throttle:admin')->name('admin.password.change');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::post('/admin/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+    Route::post('/admin/purchases/{purchase}/invoice/retry', [AdminController::class, 'retryInvoice'])->name('admin.purchases.invoice.retry');
+    Route::post('/admin/purchases/{purchase}/invoice/sync', [AdminController::class, 'syncInvoice'])->name('admin.purchases.invoice.sync');
     Route::post('/admin/legal-documents/{document}', [AdminController::class, 'publishLegalDocument'])->name('admin.legal-documents.publish');
     Route::get('/admin', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 });

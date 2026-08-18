@@ -7,6 +7,13 @@
     $birthDate = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d/m/Y') : '-';
     $phone = fn ($prefix, $number) => trim(($prefix ?? '').' '.($number ?? '')) ?: '-';
     $planName = fn (?string $plan) => $plan ? ($planLabels[$plan] ?? ucfirst($plan)) : __('messages.admin.no_pass');
+    $invoiceStatusLabel = fn (?string $status) => __('messages.admin.invoice_status_'.($status ?: 'not_requested'));
+    $invoiceStatusClass = fn (?string $status) => match ($status) {
+        'sent', 'test_created' => 'bg-emerald-100 text-emerald-800',
+        'failed' => 'bg-rose-100 text-rose-800',
+        'pending', 'processing' => 'bg-amber-100 text-amber-800',
+        default => 'bg-slate-100 text-slate-600',
+    };
     $documentVersions = fn ($value) => collect(json_decode((string) $value, true) ?: [])->map(fn ($version, $document) => $document.': '.$version)->join(', ');
     $auditValues = fn ($value) => collect(json_decode((string) $value, true) ?: [])->map(function ($item, $key) {
         $full = (string) (is_bool($item) ? ($item ? 'true' : 'false') : (is_array($item) ? json_encode($item) : $item));
@@ -334,7 +341,8 @@
                             <div class="grid gap-4 lg:grid-cols-[220px_1fr]">
                                 <label>
                                     <span class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.legal_page.version') }}</span>
-                                    <input name="version" required maxlength="64" placeholder="{{ now()->format('Y-m-d') }}" value="{{ $editingDocument ? old('version') : '' }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                                    <input name="version" type="date" required value="{{ $editingDocument ? old('version', now()->toDateString()) : now()->toDateString() }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                                    <span class="mt-2 block text-xs font-bold leading-5 text-slate-500">{{ __('messages.admin.legal_version_help') }}</span>
                                 </label>
                                 <label>
                                     <span class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.legal_title') }}</span>
@@ -415,6 +423,7 @@
                             <th class="px-4 py-3">{{ __('messages.admin.last_name') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.birth_date') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.phone_number') }}</th>
+                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.phone_verification') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.marketing_consent') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.status') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.pass') }}</th>
@@ -435,6 +444,14 @@
                                 <td class="px-4 py-3 font-bold text-slate-700">{{ $entry->last_name ?: '-' }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $birthDate($entry->birth_date) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $phone($entry->phone_prefix, $entry->phone_number) }}</td>
+                                <td class="whitespace-nowrap px-4 py-3">
+                                    <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-black leading-none {{ $entry->phone_verified_at ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
+                                        {{ $entry->phone_verified_at ? __('messages.admin.phone_verified') : __('messages.admin.phone_not_verified') }}
+                                    </span>
+                                    @if($entry->phone_verified_at)
+                                        <span class="mt-1 block text-xs font-bold text-slate-500">{{ $date($entry->phone_verified_at) }}</span>
+                                    @endif
+                                </td>
                                 <td class="whitespace-nowrap px-4 py-3">
                                     @if ($entry->marketing_consent)
                                         <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-black leading-none text-emerald-800">{{ __('messages.admin.yes') }}</span>
@@ -457,7 +474,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="12" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
+                                <td colspan="13" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -470,12 +487,12 @@
         </div>
 
         <div id="admin-panel-orders" role="tabpanel" aria-labelledby="admin-tab-orders" data-admin-panel="orders" class="{{ $activeAdminTab === 'orders' ? '' : 'hidden' }}">
-        <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <section id="orders" class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div class="border-b border-slate-200 p-4">
                 <h2 class="text-xl font-black">{{ __('messages.admin.recent_orders') }}</h2>
             </div>
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                <table class="min-w-[1500px] divide-y divide-slate-200 text-left text-sm">
                     <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
@@ -487,28 +504,81 @@
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.amount') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.status') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.invoice') }}</th>
-                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.fiscal_code') }}</th>
+                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.invoice_progress') }}</th>
+                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.invoice_actions') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.date') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($recentPurchases as $purchase)
-                            <tr>
-                                <td class="px-4 py-3 font-black">{{ $purchase->email }}</td>
-                                <td class="px-4 py-3 font-bold text-slate-700">{{ $purchase->first_name ?: '-' }}</td>
-                                <td class="px-4 py-3 font-bold text-slate-700">{{ $purchase->last_name ?: '-' }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $birthDate($purchase->birth_date) }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $phone($purchase->phone_prefix, $purchase->phone_number) }}</td>
-                                <td class="px-4 py-3 font-bold">{{ $planName($purchase->plan) }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-black">{{ $money((int) $purchase->amount) }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $purchase->status }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $purchase->invoice_requested ? __('messages.admin.yes') : __('messages.admin.no') }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $purchase->invoice_requested ? ($purchase->fiscal_code ?: '-') : '-' }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $date($purchase->created_at) }}</td>
+                            <tr class="align-middle transition hover:bg-slate-50/70">
+                                <td class="align-middle px-4 py-4 font-black">{{ $purchase->email }}</td>
+                                <td class="align-middle px-4 py-4 font-bold text-slate-700">{{ $purchase->first_name ?: '-' }}</td>
+                                <td class="align-middle px-4 py-4 font-bold text-slate-700">{{ $purchase->last_name ?: '-' }}</td>
+                                <td class="align-middle whitespace-nowrap px-4 py-4 font-bold text-slate-500">{{ $birthDate($purchase->birth_date) }}</td>
+                                <td class="align-middle whitespace-nowrap px-4 py-4 font-bold text-slate-700">{{ $phone($purchase->phone_prefix, $purchase->phone_number) }}</td>
+                                <td class="align-middle px-4 py-4 font-bold">{{ $planName($purchase->plan) }}</td>
+                                <td class="align-middle whitespace-nowrap px-4 py-4 font-black">{{ $money((int) $purchase->amount) }}</td>
+                                <td class="align-middle whitespace-nowrap px-4 py-4 font-bold">{{ $purchase->status }}</td>
+                                <td class="align-middle px-4 py-4 font-bold text-slate-700">
+                                    @if($purchase->invoice_requested)
+                                        <span class="font-black">{{ $purchase->billing_customer_type === 'legal_entity' ? __('messages.admin.legal_entity') : __('messages.admin.individual') }}</span>
+                                        <span class="mt-1 block text-xs text-slate-500">
+                                            {{ $purchase->billing_customer_type === 'legal_entity'
+                                                ? (($purchase->company_name ?: '-').' · '.($purchase->vat_number ?: '-'))
+                                                : ($purchase->fiscal_code ?: '-') }}
+                                        </span>
+                                    @else
+                                        {{ __('messages.admin.no') }}
+                                    @endif
+                                </td>
+                                <td class="align-middle px-4 py-4">
+                                    @if($purchase->invoice_requested)
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-black {{ $invoiceStatusClass($purchase->electronic_invoice_status) }}">
+                                            {{ $invoiceStatusLabel($purchase->electronic_invoice_status) }}
+                                        </span>
+                                        @if($purchase->qonto_invoice_number)
+                                            <span class="mt-2 block font-black">{{ $purchase->qonto_invoice_number }}</span>
+                                        @endif
+                                        <span class="mt-1 block text-xs font-bold text-slate-500">
+                                            Qonto: {{ $purchase->qonto_invoice_status ?: '-' }} · SdI: {{ $purchase->qonto_einvoicing_status ?: '-' }}
+                                        </span>
+                                        <span class="mt-1 block text-xs font-bold text-slate-400">{{ __('messages.admin.last_sync') }}: {{ $date($purchase->qonto_invoice_synced_at) }}</span>
+                                        @if($purchase->qonto_invoice_error)
+                                            <details class="mt-2 max-w-md rounded-lg bg-rose-50 p-2 text-xs text-rose-800">
+                                                <summary class="cursor-pointer font-black">{{ __('messages.admin.invoice_error') }}</summary>
+                                                <p class="mt-2 break-words font-mono leading-5">{{ $purchase->qonto_invoice_error }}</p>
+                                            </details>
+                                        @endif
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="align-middle px-4 py-4">
+                                    @if($purchase->invoice_requested)
+                                        <div class="flex min-w-36 flex-col gap-2">
+                                            @if($purchase->electronic_invoice_status === 'failed')
+                                                <form method="POST" action="{{ route('admin.purchases.invoice.retry', $purchase->id) }}">
+                                                    @csrf
+                                                    <button class="w-full rounded-lg bg-rose-700 px-3 py-2 text-xs font-black text-white">{{ __('messages.admin.retry_invoice') }}</button>
+                                                </form>
+                                            @endif
+                                            @if($purchase->qonto_invoice_id)
+                                                <form method="POST" action="{{ route('admin.purchases.invoice.sync', $purchase->id) }}">
+                                                    @csrf
+                                                    <button class="w-full rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white">{{ __('messages.admin.sync_invoice') }}</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="align-middle whitespace-nowrap px-4 py-4 font-bold text-slate-500">{{ $date($purchase->created_at) }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_orders') }}</td>
+                                <td colspan="12" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_orders') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

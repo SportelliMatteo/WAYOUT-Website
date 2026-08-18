@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class ConsentController extends Controller
 {
-    public function showMarketingRevocation(int $waitlist)
+    public function showMarketingRevocation(string $waitlist)
     {
         $entry = DB::table('waitlist_entries')->where('id', $waitlist)->first();
 
@@ -17,7 +17,7 @@ class ConsentController extends Controller
         return view('pages.consent.marketing-revoke', ['entry' => $entry]);
     }
 
-    public function revokeMarketing(Request $request, int $waitlist, ConsentAuditService $audit)
+    public function revokeMarketing(Request $request, string $waitlist, ConsentAuditService $audit)
     {
         $entry = DB::table('waitlist_entries')->where('id', $waitlist)->first();
 

@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Mail\PurchaseConfirmationMail;
+use App\Mail\WaitlistWelcomeMail;
+use App\Support\DatabaseUuid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -119,7 +121,7 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSessionHas('waitlist_email', 'founder@example.com')
             ->assertSessionHas('subscribe_entry_allowed', true);
 
-        Mail::assertSent(\App\Mail\WaitlistWelcomeMail::class, 1);
+        Mail::assertSent(WaitlistWelcomeMail::class, 1);
 
         $this->assertDatabaseHas('consent_events', [
             'subject_email' => 'founder@example.com',
@@ -172,8 +174,7 @@ class SubscribeCheckoutTest extends TestCase
         ])
             ->postJson(route('subscribe.checkout'), [
                 ...$this->customerPayload(),
-                'invoice_requested' => true,
-                'fiscal_code' => 'abcxyz90a01f205z',
+                ...$this->individualInvoicePayload(),
                 'plan' => 'creator',
                 'direct_checkout' => false,
             ]);
@@ -193,7 +194,7 @@ class SubscribeCheckoutTest extends TestCase
                 && $body['metadata[phone_prefix]'] === '+39'
                 && $body['metadata[phone_number]'] === '3331234567'
                 && filled($body['metadata[purchase_id]'] ?? null)
-                && $body['metadata[fiscal_code]'] === 'ABCXYZ90A01F205Z';
+                && $body['metadata[fiscal_code]'] === 'RSSMRA85T10A562S';
         });
 
         $this->assertDatabaseHas('purchases', [
@@ -306,7 +307,7 @@ class SubscribeCheckoutTest extends TestCase
 
         $originalCreatedAt = now()->subMinutes(5)->startOfSecond();
 
-        $purchaseId = DB::table('purchases')->insertGetId([
+        $purchaseId = DatabaseUuid::insert('purchases', [
             'email' => 'founder@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -345,7 +346,6 @@ class SubscribeCheckoutTest extends TestCase
             'created_at' => $originalCreatedAt,
         ]);
 
-
         $this->assertDatabaseMissing('consent_events', [
             'purchase_id' => $purchaseId,
             'consent_type' => 'purchase_legal',
@@ -361,8 +361,7 @@ class SubscribeCheckoutTest extends TestCase
             'waitlist_email' => 'founder@example.com',
         ])->postJson(route('subscribe.checkout'), [
             ...$this->customerPayload(),
-            'invoice_requested' => true,
-            'fiscal_code' => 'abcxyz90a01f205z',
+            ...$this->individualInvoicePayload(),
             'plan' => 'join',
             'direct_checkout' => true,
         ]);
@@ -381,15 +380,16 @@ class SubscribeCheckoutTest extends TestCase
             'phone_prefix' => '+39',
             'phone_number' => '3331234567',
             'invoice_requested' => true,
-            'fiscal_code' => 'ABCXYZ90A01F205Z',
+            'fiscal_code' => 'RSSMRA85T10A562S',
+            'billing_customer_type' => 'individual',
+            'billing_city' => 'Milano',
         ]);
 
         $this->assertDatabaseMissing('purchases', [
             'email' => 'placeholder@example.com',
         ]);
 
-        Mail::assertSent(PurchaseConfirmationMail::class, fn (PurchaseConfirmationMail $mail) =>
-            $mail->hasTo('founder@example.com') && $mail->purchase['plan_name'] === 'Founder Join 12M Pass'
+        Mail::assertSent(PurchaseConfirmationMail::class, fn (PurchaseConfirmationMail $mail) => $mail->hasTo('founder@example.com') && $mail->purchase['plan_name'] === 'Founder Join 12M Pass'
         );
 
         $this->assertNotNull(DB::table('purchases')
@@ -407,6 +407,115 @@ class SubscribeCheckoutTest extends TestCase
 
         $purchaseConsent = DB::table('consent_events')->where('purchase_id', $purchaseId)->first();
         $this->assertArrayHasKey('purchase_acceptance', json_decode($purchaseConsent->document_versions, true));
+    }
+
+    public function test_legal_entity_invoice_details_are_validated_and_saved(): void
+    {
+        Mail::fake();
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'company@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'plan' => 'creator',
+            'direct_checkout' => true,
+            'invoice_requested' => true,
+            'billing_customer_type' => 'legal_entity',
+            'billing_address' => 'Via Impresa 10',
+            'billing_postal_code' => '00100',
+            'billing_city' => 'Roma',
+            'billing_province' => 'RM',
+            'billing_country' => 'IT',
+            'company_name' => 'Example S.r.l.',
+            'vat_number' => '14805930964',
+            'sdi_code' => 'ABC1234',
+            'pec' => 'example@pec.example.it',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('purchases', [
+            'email' => 'company@example.com',
+            'billing_customer_type' => 'legal_entity',
+            'billing_address' => 'Via Impresa 10',
+            'company_name' => 'Example S.r.l.',
+            'vat_number' => '14805930964',
+            'sdi_code' => 'ABC1234',
+            'pec' => 'example@pec.example.it',
+            'fiscal_code' => null,
+            'electronic_invoice_status' => 'pending',
+        ]);
+    }
+
+    public function test_invalid_invoice_fields_stop_before_payment_email_and_database_writes(): void
+    {
+        Mail::fake();
+        Http::fake();
+        config()->set('services.stripe.secret', 'sk_test_must_not_be_used');
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'invalid-company@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'plan' => 'creator',
+            'direct_checkout' => false,
+            'invoice_requested' => true,
+            'billing_customer_type' => 'legal_entity',
+            'billing_address' => 'Via Impresa 10',
+            'billing_postal_code' => '12',
+            'billing_city' => 'Roma',
+            'billing_province' => 'Roma',
+            'billing_country' => 'IT',
+            'company_name' => 'Example S.r.l.',
+            'vat_number' => '12345678901',
+            'sdi_code' => 'ABC',
+            'pec' => 'not-an-email',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'billing_postal_code',
+                'billing_province',
+                'vat_number',
+                'sdi_code',
+                'pec',
+            ]);
+
+        Http::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertDatabaseMissing('purchases', ['email' => 'invalid-company@example.com']);
+    }
+
+    public function test_checkout_rejects_a_phone_different_from_the_verified_waitlist_number(): void
+    {
+        Mail::fake();
+        Http::fake();
+        config()->set('services.firebase.phone_verification_enabled', true);
+
+        DB::table('waitlist_entries')->insert([
+            'email' => 'verified@example.com',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
+            'phone_verified_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'verified@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'phone_number' => '3337654321',
+            'plan' => 'join',
+            'direct_checkout' => false,
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('phone_number');
+        Http::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertDatabaseMissing('purchases', ['email' => 'verified@example.com']);
     }
 
     public function test_checkout_requires_waitlist_email_in_session(): void
@@ -512,7 +621,7 @@ class SubscribeCheckoutTest extends TestCase
         Mail::fake();
         config()->set('services.stripe.secret', 'sk_test_123');
 
-        $purchaseId = DB::table('purchases')->insertGetId([
+        $purchaseId = DatabaseUuid::insert('purchases', [
             'email' => 'founder@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -541,7 +650,7 @@ class SubscribeCheckoutTest extends TestCase
             'id' => $purchaseId,
             'status' => 'succeeded',
             'stripe_session_id' => 'cs_test_paid',
-            'fiscal_code' => 'ABCXYZ90A01F205Z',
+            'fiscal_code' => 'RSSMRA85T10A562S',
         ]);
 
         $this->assertDatabaseHas('consent_events', [
@@ -582,7 +691,7 @@ class SubscribeCheckoutTest extends TestCase
             'updated_at' => now()->subMinute(),
         ]);
 
-        $purchaseId = DB::table('purchases')->insertGetId([
+        $purchaseId = DatabaseUuid::insert('purchases', [
             'email' => 'late@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -644,8 +753,37 @@ class SubscribeCheckoutTest extends TestCase
         Mail::assertSent(PurchaseConfirmationMail::class, function (PurchaseConfirmationMail $mail) {
             return $mail->hasTo('buyer@example.com')
                 && $mail->purchase['plan_name'] === 'Founder 12M Creator Pass'
-                && $mail->purchase['amount'] === 5900;
+                && $mail->purchase['amount'] === 5900
+                && $mail->purchase['attachment_kind'] === 'order_summary'
+                && str_starts_with($mail->pdfAttachment['data'], '%PDF-')
+                && str_starts_with($mail->pdfAttachment['filename'], 'riepilogo-ordine-');
         });
+    }
+
+    public function test_purchase_confirmation_resend_returns_visible_json_feedback(): void
+    {
+        Mail::fake();
+
+        DB::table('purchases')->insert([
+            'email' => 'ajax-buyer@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'direct_ajax_feedback',
+            'status' => 'succeeded',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->withSession(['waitlist_email' => 'ajax-buyer@example.com'])
+            ->postJson(route('purchase.confirmation.resend'))
+            ->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'message' => 'Ti abbiamo inviato nuovamente l’email di conferma acquisto.',
+            ]);
+
+        Mail::assertSent(PurchaseConfirmationMail::class, 1);
     }
 
     public function test_repeated_purchase_confirmation_requests_are_blocked_during_cooldown(): void
@@ -734,7 +872,7 @@ class SubscribeCheckoutTest extends TestCase
         ];
     }
 
-    private function paidStripeSession(int $purchaseId, string $email = 'founder@example.com'): array
+    private function paidStripeSession(string $purchaseId, string $email = 'founder@example.com'): array
     {
         return [
             'payment_status' => 'paid',
@@ -751,8 +889,32 @@ class SubscribeCheckoutTest extends TestCase
                 'phone_number' => '3331234567',
                 'plan' => 'join',
                 'invoice_requested' => 'true',
-                'fiscal_code' => 'abcxyz90a01f205z',
+                'fiscal_code' => 'rssmra85t10a562s',
+                'billing_customer_type' => 'individual',
+                'billing_address' => 'Via Roma 1',
+                'billing_postal_code' => '20100',
+                'billing_city' => 'Milano',
+                'billing_province' => 'MI',
+                'billing_country' => 'IT',
+                'company_name' => '',
+                'vat_number' => '',
+                'sdi_code' => '',
+                'pec' => '',
             ],
+        ];
+    }
+
+    private function individualInvoicePayload(): array
+    {
+        return [
+            'invoice_requested' => true,
+            'billing_customer_type' => 'individual',
+            'billing_address' => 'Via Roma 1',
+            'billing_postal_code' => '20100',
+            'billing_city' => 'Milano',
+            'billing_province' => 'MI',
+            'billing_country' => 'IT',
+            'fiscal_code' => 'rssmra85t10a562s',
         ];
     }
 }

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class AdminUser extends Model
 {
+    use HasUuids;
+
     protected $attributes = [
         'auth_version' => 1,
         'is_active' => true,

@@ -63,6 +63,83 @@ class AdminAuthController extends Controller
         return redirect()->route($admin->totp_confirmed_at ? 'admin.otp.challenge' : 'admin.otp.setup');
     }
 
+    public function recover(Request $request, TotpService $totp)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email:rfc'],
+            'recovery_code' => ['required', 'string', 'max:32'],
+            'password' => ['required', 'confirmed', Password::min(12)->letters()->mixedCase()->numbers()],
+        ]);
+
+        $email = Str::lower($validated['email']);
+        $admin = Schema::hasTable('admin_users')
+            ? AdminUser::query()->where('email', $email)->first()
+            : null;
+
+        if (! $admin || ! $admin->is_active) {
+            Log::warning('Admin password recovery failed.', [
+                'email' => $email,
+                'ip_address' => $request->ip(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'recovery_code' => __('messages.admin.recovery_invalid'),
+            ]);
+        }
+
+        if (Hash::check($validated['password'], $admin->password)) {
+            throw ValidationException::withMessages([
+                'password' => __('messages.admin.password_must_change'),
+            ]);
+        }
+
+        $recoveredAdmin = DB::transaction(function () use ($admin, $totp, $validated) {
+            $lockedAdmin = AdminUser::query()->lockForUpdate()->find($admin->id);
+
+            if (! $lockedAdmin || ! $lockedAdmin->is_active) {
+                return null;
+            }
+
+            $remainingCodes = $totp->consumeRecoveryCode(
+                $validated['recovery_code'],
+                $lockedAdmin->recovery_codes ?? [],
+            );
+
+            if ($remainingCodes === null) {
+                return null;
+            }
+
+            $lockedAdmin->forceFill([
+                'password' => Hash::make($validated['password']),
+                'recovery_codes' => $remainingCodes,
+                'auth_version' => $lockedAdmin->auth_version + 1,
+            ])->save();
+
+            return $lockedAdmin;
+        });
+
+        if (! $recoveredAdmin) {
+            Log::warning('Invalid admin recovery code.', [
+                'admin_user_id' => $admin->id,
+                'ip_address' => $request->ip(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'recovery_code' => __('messages.admin.recovery_invalid'),
+            ]);
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        Log::warning('Admin password reset with a recovery code.', [
+            'admin_user_id' => $recoveredAdmin->id,
+        ]);
+
+        return redirect()->route('admin.login')
+            ->with('admin_recovery_success', __('messages.admin.password_recovery_success'));
+    }
+
     public function showSetup(Request $request, TotpService $totp)
     {
         $admin = $this->pendingAdmin($request);

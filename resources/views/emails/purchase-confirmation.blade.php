@@ -16,6 +16,22 @@
         @endif
         <p>{!! __('messages.email.waitlist_email', ['email' => '<strong>'.e($purchase['email']).'</strong>']) !!}</p>
         <p>{{ __('messages.email.purchase_summary') }}</p>
+        @if (($purchase['attachment_kind'] ?? null) === 'order_summary')
+            <p style="border-left:4px solid #7c3aed;background:#f5f3ff;padding:12px 14px">{{ __('messages.email.order_summary_attached') }}</p>
+        @elseif (! empty($purchase['invoice_requested']))
+            @if (($purchase['invoice_status'] ?? null) === 'test_created')
+                <p style="border-left:4px solid #f59e0b;background:#fffbeb;padding:12px 14px">{{ __('messages.email.invoice_test_created') }}</p>
+            @elseif (($purchase['invoice_status'] ?? null) === 'sent')
+                <p style="border-left:4px solid #16a34a;background:#f0fdf4;padding:12px 14px">{{ __('messages.email.invoice_submitted') }}</p>
+            @elseif (($purchase['invoice_status'] ?? null) === 'failed')
+                <p style="border-left:4px solid #dc2626;background:#fef2f2;padding:12px 14px">{{ __('messages.email.invoice_failed') }}</p>
+            @else
+                <p style="border-left:4px solid #64748b;background:#f8fafc;padding:12px 14px">{{ __('messages.email.invoice_processing') }}</p>
+            @endif
+            @if (($purchase['attachment_kind'] ?? null) === 'courtesy_invoice')
+                <p>{{ __('messages.email.courtesy_invoice_attached') }}</p>
+            @endif
+        @endif
         <p><a href="{{ route('legal.sales') }}" target="_blank" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.sales_terms_link') }}</a> · <a href="{{ route('legal.presale') }}" target="_blank" style="color:#6d28d9;font-weight:bold">{{ __('messages.legal.presale') }}</a> · <a href="{{ route('legal.refunds') }}" target="_blank" style="color:#6d28d9;font-weight:bold">{{ __('messages.email.refunds_link') }}</a> · <a href="{{ route('legal.refunds') }}#recedere" target="_blank" style="color:#6d28d9;font-weight:bold">Recedere dal contratto qui</a></p>
         <p>{{ __('messages.email.thanks') }}</p>
         @include('emails.partials.footer', ['reason' => __('messages.email.purchase_reason', ['email' => $purchase['email']])])

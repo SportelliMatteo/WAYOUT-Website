@@ -40,4 +40,32 @@ return [
         'secret' => env('STRIPE_SECRET'),
     ],
 
+    'qonto' => [
+        'invoicing_enabled' => env('QONTO_INVOICING_ENABLED', false),
+        'environment' => env('QONTO_ENVIRONMENT', 'sandbox'),
+        'base_url' => env('QONTO_BASE_URL') ?: (
+            env('QONTO_ENVIRONMENT', 'sandbox') === 'production'
+                ? 'https://thirdparty.qonto.com'
+                : 'https://thirdparty-sandbox.staging.qonto.co'
+        ),
+        'auth_method' => env('QONTO_AUTH_METHOD', 'api_key'),
+        'login' => env('QONTO_LOGIN'),
+        'secret_key' => env('QONTO_SECRET_KEY'),
+        'access_token' => env('QONTO_ACCESS_TOKEN'),
+        'staging_token' => env('QONTO_STAGING_TOKEN'),
+        'iban' => env('QONTO_INVOICE_IBAN'),
+        'vat_rate' => env('QONTO_INVOICE_VAT_RATE', 0.22),
+    ],
+
+    'firebase' => [
+        'phone_verification_enabled' => env('FIREBASE_PHONE_VERIFICATION_ENABLED', false),
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials' => env('FIREBASE_CREDENTIALS'),
+        'client' => [
+            'api_key' => env('FIREBASE_API_KEY'),
+            'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),
+            'app_id' => env('FIREBASE_APP_ID'),
+        ],
+    ],
+
 ];

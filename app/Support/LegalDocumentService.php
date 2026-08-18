@@ -93,20 +93,10 @@ class LegalDocumentService
             ]);
         }
 
-        $duplicate = DB::table('legal_document_versions')
-            ->where('document_key', $document)
-            ->where('locale', $locale)
-            ->where('version', $version)
-            ->exists();
-
-        if ($duplicate) {
-            throw ValidationException::withMessages([
-                'version' => __('messages.admin.legal_version_duplicate'),
-            ]);
-        }
+        $version = $this->nextAvailableVersion($document, $locale, $version);
 
         DB::transaction(function () use ($document, $locale, $version, $title, $description, $contentHtml) {
-            $versionId = DB::table('legal_document_versions')->insertGetId([
+            $versionId = DatabaseUuid::insert('legal_document_versions', [
                 'document_key' => $document,
                 'version' => $version,
                 'locale' => $locale,
@@ -153,7 +143,7 @@ class LegalDocumentService
                 $existing = null;
             }
 
-            $versionId = $existing?->id ?? DB::table('legal_document_versions')->insertGetId([
+            $versionId = $existing?->id ?? DatabaseUuid::insert('legal_document_versions', [
                 'document_key' => $document,
                 'version' => $version,
                 'locale' => $locale,
@@ -227,6 +217,22 @@ class LegalDocumentService
             ->where('version', $candidate)
             ->exists()) {
             $candidate = $base.'-dashboard-'.$suffix++;
+        }
+
+        return $candidate;
+    }
+
+    private function nextAvailableVersion(string $document, string $locale, string $base): string
+    {
+        $candidate = $base;
+        $revision = 2;
+
+        while (DB::table('legal_document_versions')
+            ->where('document_key', $document)
+            ->where('locale', $locale)
+            ->where('version', $candidate)
+            ->exists()) {
+            $candidate = $base.'.'.$revision++;
         }
 
         return $candidate;

@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Mail\ContactMessageMail;
-use App\Support\TransactionalEmailSender;
 use App\Support\ConsentAuditService;
+use App\Support\DatabaseUuid;
+use App\Support\TransactionalEmailSender;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +45,7 @@ class ContactController extends Controller
 
         try {
             DB::transaction(function () use ($request, $validated, $audit) {
-                $contactId = DB::table('contact_messages')->insertGetId([
+                $contactId = DatabaseUuid::insert('contact_messages', [
                     ...$validated,
                     'created_at' => now(),
                     'updated_at' => now(),

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class WithdrawalRequest extends Model
 {
+    use HasUuids;
+
     protected $fillable = [
         'purchase_id', 'receipt_number', 'public_token_hash', 'idempotency_key',
         'first_name', 'last_name', 'purchase_email', 'receipt_email',

@@ -30,6 +30,7 @@ class ConsentAuditTest extends TestCase
             'birth_date' => '1990-01-01',
             'phone_prefix' => '+39',
             'phone_number' => '3331234567',
+            'firebase_id_token' => 'valid-firebase-id-token',
             'marketing_consent' => '1',
         ])->assertSessionHas('waitlist_offer', true);
 
@@ -140,6 +141,7 @@ class ConsentAuditTest extends TestCase
             'birth_date' => '1990-01-01',
             'phone_prefix' => '+39',
             'phone_number' => '3331234567',
+            'firebase_id_token' => 'valid-firebase-id-token',
         ]);
 
         $event = DB::table('consent_events')

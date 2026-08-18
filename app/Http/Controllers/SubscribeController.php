@@ -4,15 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Mail\PurchaseConfirmationMail;
 use App\Mail\WaitlistWelcomeMail;
-use App\Support\FounderAvailability;
 use App\Support\ConsentAuditService;
+use App\Support\DatabaseUuid;
+use App\Support\FounderAvailability;
+use App\Support\ItalianFiscalData;
+use App\Support\PurchasePdfService;
+use App\Support\QontoInvoiceService;
 use App\Support\TransactionalEmailSender;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class SubscribeController extends Controller
@@ -32,8 +38,7 @@ class SubscribeController extends Controller
         Request $request,
         TransactionalEmailSender $emailSender,
         ConsentAuditService $audit,
-    )
-    {
+    ) {
         $emailValidator = Validator::make($request->all(), [
             'email' => ['required', 'email:rfc', 'max:255'],
         ]);
@@ -118,7 +123,19 @@ class SubscribeController extends Controller
             'last_name' => ['required', 'string', 'max:120'],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
-            'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
+            'phone_number' => [
+                'required',
+                'string',
+                'max:32',
+                'regex:/^[0-9\s().-]{5,32}$/',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    $internationalNumber = (string) $request->input('phone_prefix').(preg_replace('/\D+/', '', (string) $value) ?? '');
+
+                    if (preg_match('/^\+[1-9]\d{6,14}$/', $internationalNumber) !== 1) {
+                        $fail(__('messages.subscribe.invalid_phone_number'));
+                    }
+                },
+            ],
         ]);
 
         if ($validator->fails()) {
@@ -162,10 +179,16 @@ class SubscribeController extends Controller
 
     public function resendPurchaseConfirmation(Request $request, TransactionalEmailSender $emailSender)
     {
-        $email = $request->session()->get('waitlist_email');
+        $email = $request->session()->get('purchase_confirmation_email')
+            ?? $request->session()->get('waitlist_email');
 
         if (! $email) {
-            return back()->with('purchase_confirmation_error', __('messages.messages.purchase_email_missing'));
+            return $this->purchaseConfirmationResponse(
+                $request,
+                __('messages.messages.purchase_email_missing'),
+                false,
+                status: 422,
+            );
         }
 
         $claimedAt = now();
@@ -190,7 +213,7 @@ class SubscribeController extends Controller
                 $cooldown = max(1, (int) config('email.resend_cooldown_seconds', 300));
 
                 if ($purchase->confirmation_email_sent_at) {
-                    $availableAt = \Illuminate\Support\Carbon::parse($purchase->confirmation_email_sent_at)
+                    $availableAt = Carbon::parse($purchase->confirmation_email_sent_at)
                         ->addSeconds($cooldown);
 
                     if (now()->lt($availableAt)) {
@@ -218,43 +241,53 @@ class SubscribeController extends Controller
                 'exception' => $exception,
             ]);
 
-            return back()
-                ->with('waitlist_offer', true)
-                ->with('waitlist_status', 'already_registered')
-                ->with('waitlist_email', $email)
-                ->with('purchase_confirmation_error', __('messages.messages.purchase_resend_error'));
+            return $this->purchaseConfirmationResponse(
+                $request,
+                __('messages.messages.purchase_resend_error'),
+                false,
+                $email,
+                status: 500,
+            );
         }
 
         if ($claim['status'] === 'not_found') {
-            return back()->with('purchase_confirmation_error', __('messages.messages.purchase_not_found'));
+            return $this->purchaseConfirmationResponse(
+                $request,
+                __('messages.messages.purchase_not_found'),
+                false,
+                $email,
+                status: 404,
+            );
         }
 
         $purchase = $claim['purchase'];
 
         if ($claim['status'] === 'disabled') {
-            return back()
-                ->with($this->purchasedPlanFlashData($email, $purchase))
-                ->with('purchase_confirmation_error', __('messages.messages.email_sending_disabled'));
+            return $this->purchaseConfirmationResponse(
+                $request,
+                __('messages.messages.email_sending_disabled'),
+                false,
+                $email,
+                $purchase,
+                503,
+            );
         }
 
         if ($claim['status'] === 'cooldown') {
-            return back()
-                ->with($this->purchasedPlanFlashData($email, $purchase))
-                ->with('purchase_confirmation_error', __('messages.messages.purchase_resend_throttled', [
+            return $this->purchaseConfirmationResponse(
+                $request,
+                __('messages.messages.purchase_resend_throttled', [
                     'seconds' => $claim['retry_after'],
-                ]));
+                ]),
+                false,
+                $email,
+                $purchase,
+                429,
+            );
         }
 
-        $purchaseData = [
-            'order_reference' => 'WO-'.\Illuminate\Support\Carbon::parse($purchase->created_at)->format('Y').'-'.str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
-            'email' => $email,
-            'plan_name' => $this->planName($purchase->plan),
-            'amount' => $purchase->amount,
-            'currency' => $purchase->currency,
-        ];
-
         try {
-            $emailSender->send($email, new PurchaseConfirmationMail($purchaseData));
+            $emailSender->send($email, $this->purchaseConfirmationMailable($purchase));
         } catch (Throwable $exception) {
             DB::table('purchases')
                 ->where('id', $purchase->id)
@@ -267,14 +300,23 @@ class SubscribeController extends Controller
                 'exception' => $exception,
             ]);
 
-            return back()
-                ->with($this->purchasedPlanFlashData($email, $purchase))
-                ->with('purchase_confirmation_error', __('messages.messages.purchase_resend_error'));
+            return $this->purchaseConfirmationResponse(
+                $request,
+                __('messages.messages.purchase_resend_error'),
+                false,
+                $email,
+                $purchase,
+                502,
+            );
         }
 
-        return back()
-            ->with($this->purchasedPlanFlashData($email, $purchase))
-            ->with('purchase_confirmation_success', __('messages.messages.purchase_resend_success'));
+        return $this->purchaseConfirmationResponse(
+            $request,
+            __('messages.messages.purchase_resend_success'),
+            true,
+            $email,
+            $purchase,
+        );
     }
 
     public function checkout(
@@ -282,8 +324,8 @@ class SubscribeController extends Controller
         FounderAvailability $availability,
         TransactionalEmailSender $emailSender,
         ConsentAuditService $audit,
-    )
-    {
+        QontoInvoiceService $qontoInvoices,
+    ) {
         if (! $request->session()->get('waitlist_offer_access')) {
             return response()->json([
                 'error' => __('messages.messages.checkout_unauthorized'),
@@ -306,26 +348,151 @@ class SubscribeController extends Controller
             ], 422);
         }
 
-        $validatedCustomer = $request->validate([
-            'first_name' => ['required', 'string', 'max:120'],
-            'last_name' => ['required', 'string', 'max:120'],
+        $validator = Validator::make($request->all(), [
+            'first_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
+            'last_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
             'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
             'invoice_requested' => ['sometimes', 'boolean'],
             'purchase_terms_accepted' => ['required', 'accepted'],
-            'fiscal_code' => ['required_if:invoice_requested,true', 'nullable', 'string', 'max:32'],
+            'billing_customer_type' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', Rule::in(['individual', 'legal_entity'])],
+            'billing_address' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', 'string', 'max:255'],
+            'billing_postal_code' => [
+                Rule::requiredIf($request->boolean('invoice_requested')),
+                'nullable',
+                'string',
+                'max:20',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    if ($request->boolean('invoice_requested')
+                        && strtoupper((string) $request->input('billing_country')) === 'IT'
+                        && preg_match('/^\d{5}$/', (string) $value) !== 1) {
+                        $fail(__('messages.subscribe.invalid_postal_code'));
+                    }
+                },
+            ],
+            'billing_city' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', 'string', 'max:120'],
+            'billing_province' => [
+                Rule::requiredIf($request->boolean('invoice_requested')),
+                'nullable',
+                'string',
+                'max:8',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    if ($request->boolean('invoice_requested')
+                        && strtoupper((string) $request->input('billing_country')) === 'IT'
+                        && preg_match('/^[A-Z]{2}$/i', (string) $value) !== 1) {
+                        $fail(__('messages.subscribe.invalid_province'));
+                    }
+                },
+            ],
+            'billing_country' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', 'string', 'size:2', 'alpha'],
+            'fiscal_code' => [
+                Rule::requiredIf($request->boolean('invoice_requested') && $request->input('billing_customer_type') === 'individual'),
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    if ($request->boolean('invoice_requested')
+                        && $request->input('billing_customer_type') === 'individual'
+                        && ! ItalianFiscalData::isValidFiscalCode((string) $value)) {
+                        $fail(__('messages.subscribe.invalid_fiscal_code'));
+                    }
+                },
+            ],
+            'company_name' => [Rule::requiredIf($request->boolean('invoice_requested') && $request->input('billing_customer_type') === 'legal_entity'), 'nullable', 'string', 'max:255'],
+            'vat_number' => [
+                Rule::requiredIf($request->boolean('invoice_requested') && $request->input('billing_customer_type') === 'legal_entity'),
+                'nullable',
+                'string',
+                'max:20',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    if ($request->boolean('invoice_requested')
+                        && $request->input('billing_customer_type') === 'legal_entity'
+                        && ! ItalianFiscalData::isValidVatNumber((string) $value, (string) $request->input('billing_country'))) {
+                        $fail(__('messages.subscribe.invalid_vat_number'));
+                    }
+                },
+            ],
+            'sdi_code' => ['nullable', 'string', 'size:7', 'regex:/^[A-Z0-9]{7}$/i'],
+            'pec' => [Rule::requiredIf($request->boolean('invoice_requested') && $request->input('billing_customer_type') === 'legal_entity'), 'nullable', 'email:rfc', 'max:255'],
+        ], [
+            'required' => __('messages.subscribe.field_required', ['field' => ':attribute']),
+            'accepted' => __('messages.subscribe.checkout_validation_error'),
+            'before_or_equal' => __('messages.subscribe.birth_date_note'),
+            'sdi_code.size' => __('messages.subscribe.invalid_sdi_code'),
+            'sdi_code.regex' => __('messages.subscribe.invalid_sdi_code'),
+        ], [
+            'first_name' => __('messages.subscribe.first_name'),
+            'last_name' => __('messages.subscribe.last_name'),
+            'birth_date' => __('messages.subscribe.birth_date'),
+            'phone_prefix' => __('messages.subscribe.phone_number'),
+            'phone_number' => __('messages.subscribe.phone_number'),
+            'purchase_terms_accepted' => __('messages.subscribe.purchase_terms'),
+            'billing_customer_type' => __('messages.subscribe.invoice_holder_type'),
+            'billing_address' => __('messages.subscribe.billing_address'),
+            'billing_postal_code' => __('messages.subscribe.postal_code'),
+            'billing_city' => __('messages.subscribe.city'),
+            'billing_province' => __('messages.subscribe.province'),
+            'billing_country' => __('messages.subscribe.country'),
+            'fiscal_code' => __('messages.subscribe.fiscal_code'),
+            'company_name' => __('messages.subscribe.company_name'),
+            'vat_number' => __('messages.subscribe.vat_number'),
+            'sdi_code' => __('messages.subscribe.sdi_code'),
+            'pec' => __('messages.subscribe.pec'),
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $validatedCustomer = $validator->validated();
+
+        $invoiceRequested = $request->boolean('invoice_requested');
+        $billingCustomerType = $invoiceRequested ? $validatedCustomer['billing_customer_type'] : null;
         $customer = [
             'first_name' => $validatedCustomer['first_name'],
             'last_name' => $validatedCustomer['last_name'],
             'birth_date' => $validatedCustomer['birth_date'],
             'phone_prefix' => $validatedCustomer['phone_prefix'],
-            'phone_number' => $validatedCustomer['phone_number'],
-            'invoice_requested' => $request->boolean('invoice_requested'),
-            'fiscal_code' => $this->normalizeFiscalCode($validatedCustomer['fiscal_code'] ?? null),
+            'phone_number' => preg_replace('/\D+/', '', $validatedCustomer['phone_number']),
+            'invoice_requested' => $invoiceRequested,
+            'billing_customer_type' => $billingCustomerType,
+            'billing_address' => $invoiceRequested ? trim($validatedCustomer['billing_address']) : null,
+            'billing_postal_code' => $invoiceRequested ? strtoupper(trim($validatedCustomer['billing_postal_code'])) : null,
+            'billing_city' => $invoiceRequested ? trim($validatedCustomer['billing_city']) : null,
+            'billing_province' => $invoiceRequested ? strtoupper(trim($validatedCustomer['billing_province'])) : null,
+            'billing_country' => $invoiceRequested ? strtoupper($validatedCustomer['billing_country']) : null,
+            'fiscal_code' => $billingCustomerType === 'individual' ? $this->normalizeFiscalCode($validatedCustomer['fiscal_code'] ?? null) : null,
+            'company_name' => $billingCustomerType === 'legal_entity' ? trim($validatedCustomer['company_name']) : null,
+            'vat_number' => $billingCustomerType === 'legal_entity'
+                ? ItalianFiscalData::normalizeVatNumber($validatedCustomer['vat_number'], $validatedCustomer['billing_country'])
+                : null,
+            'sdi_code' => $billingCustomerType === 'legal_entity' ? $this->normalizeFiscalCode($validatedCustomer['sdi_code'] ?? null) : null,
+            'pec' => $billingCustomerType === 'legal_entity' ? strtolower(trim($validatedCustomer['pec'])) : null,
+            'electronic_invoice_status' => $invoiceRequested ? 'pending' : 'not_requested',
         ];
+
+        $waitlistEntry = DB::table('waitlist_entries')->where('email', $email)->first();
+        $submittedPhone = $customer['phone_prefix'].$customer['phone_number'];
+        $storedPhone = $waitlistEntry
+            ? $waitlistEntry->phone_prefix.(preg_replace('/\D+/', '', (string) $waitlistEntry->phone_number) ?? '')
+            : null;
+
+        if ($waitlistEntry?->phone_verified_at && ! hash_equals((string) $storedPhone, $submittedPhone)) {
+            return response()->json([
+                'message' => __('messages.subscribe.verified_phone_mismatch'),
+                'errors' => ['phone_number' => [__('messages.subscribe.verified_phone_mismatch')]],
+            ], 422);
+        }
+
+        if (config('services.firebase.phone_verification_enabled') && ! $waitlistEntry?->phone_verified_at) {
+            return response()->json([
+                'message' => __('messages.subscribe.verified_phone_required'),
+                'errors' => ['phone_number' => [__('messages.subscribe.verified_phone_required')]],
+            ], 422);
+        }
 
         $request->session()->put('waitlist_profile', [
             'first_name' => $customer['first_name'],
@@ -382,7 +549,10 @@ class SubscribeController extends Controller
                         return;
                     }
 
-                    $purchase = DB::table('purchases')->insertGetId([
+                    $purchase = DatabaseUuid::new();
+                    DB::table('purchases')->insert([
+                        'id' => $purchase,
+                        'order_reference' => $this->orderReference($purchase),
                         'email' => $email,
                         'first_name' => $customer['first_name'],
                         'last_name' => $customer['last_name'],
@@ -396,6 +566,7 @@ class SubscribeController extends Controller
                         'status' => 'succeeded',
                         'invoice_requested' => $customer['invoice_requested'],
                         'fiscal_code' => $customer['fiscal_code'],
+                        ...$this->billingPurchaseData($customer),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -403,7 +574,7 @@ class SubscribeController extends Controller
                     $this->recordSuccessfulPurchaseConsent(
                         $request,
                         $audit,
-                        (int) $purchase,
+                        $purchase,
                         $email,
                         'direct_checkout',
                         $plan,
@@ -429,7 +600,8 @@ class SubscribeController extends Controller
 
             $request->session()->put('checkout_plan', $plan);
 
-            $this->sendAutomaticPurchaseConfirmation((int) $purchase, $emailSender);
+            $qontoInvoices->sendForPurchase($purchase);
+            $this->sendAutomaticPurchaseConfirmation($purchase, $emailSender);
 
             return response()->json([
                 'purchaseId' => $purchase,
@@ -504,6 +676,7 @@ class SubscribeController extends Controller
                     'status' => 'pending',
                     'invoice_requested' => $customer['invoice_requested'],
                     'fiscal_code' => $customer['fiscal_code'],
+                    ...$this->billingPurchaseData($customer),
                     'updated_at' => now(),
                 ];
 
@@ -514,7 +687,10 @@ class SubscribeController extends Controller
 
                     $reservationId = $existingReservation->id;
                 } else {
-                    $reservationId = DB::table('purchases')->insertGetId([
+                    $reservationId = DatabaseUuid::new();
+                    DB::table('purchases')->insert([
+                        'id' => $reservationId,
+                        'order_reference' => $this->orderReference($reservationId),
                         ...$reservationData,
                         'created_at' => now(),
                     ]);
@@ -563,6 +739,16 @@ class SubscribeController extends Controller
                     'metadata[purchase_id]' => (string) $reservationId,
                     'metadata[invoice_requested]' => $customer['invoice_requested'] ? 'true' : 'false',
                     'metadata[fiscal_code]' => $customer['fiscal_code'] ?? '',
+                    'metadata[billing_customer_type]' => $customer['billing_customer_type'] ?? '',
+                    'metadata[billing_address]' => $customer['billing_address'] ?? '',
+                    'metadata[billing_postal_code]' => $customer['billing_postal_code'] ?? '',
+                    'metadata[billing_city]' => $customer['billing_city'] ?? '',
+                    'metadata[billing_province]' => $customer['billing_province'] ?? '',
+                    'metadata[billing_country]' => $customer['billing_country'] ?? '',
+                    'metadata[company_name]' => $customer['company_name'] ?? '',
+                    'metadata[vat_number]' => $customer['vat_number'] ?? '',
+                    'metadata[sdi_code]' => $customer['sdi_code'] ?? '',
+                    'metadata[pec]' => $customer['pec'] ?? '',
                 ]);
         } catch (Throwable $exception) {
             $this->markReservationFailed($reservationId);
@@ -622,8 +808,7 @@ class SubscribeController extends Controller
         string $sessionId,
         Request $request,
         ConsentAuditService $audit,
-    ): void
-    {
+    ): void {
         $secret = config('services.stripe.secret');
 
         if (! $secret) {
@@ -703,15 +888,27 @@ class SubscribeController extends Controller
             'status' => 'succeeded',
             'invoice_requested' => ($metadata['invoice_requested'] ?? 'false') === 'true',
             'fiscal_code' => $this->normalizeFiscalCode($metadata['fiscal_code'] ?? null),
+            'billing_customer_type' => ($metadata['billing_customer_type'] ?? '') ?: null,
+            'billing_address' => ($metadata['billing_address'] ?? '') ?: null,
+            'billing_postal_code' => ($metadata['billing_postal_code'] ?? '') ?: null,
+            'billing_city' => ($metadata['billing_city'] ?? '') ?: null,
+            'billing_province' => ($metadata['billing_province'] ?? '') ?: null,
+            'billing_country' => ($metadata['billing_country'] ?? '') ?: null,
+            'company_name' => ($metadata['company_name'] ?? '') ?: null,
+            'vat_number' => ($metadata['vat_number'] ?? '') ?: null,
+            'sdi_code' => ($metadata['sdi_code'] ?? '') ?: null,
+            'pec' => ($metadata['pec'] ?? '') ?: null,
+            'electronic_invoice_status' => ($metadata['invoice_requested'] ?? 'false') === 'true' ? 'pending' : 'not_requested',
             'updated_at' => now(),
         ];
 
         try {
             $registered = false;
             $purchaseToConfirm = null;
-            $reservationId = filled($metadata['purchase_id'] ?? null) ? (int) $metadata['purchase_id'] : null;
+            $purchaseToInvoice = null;
+            $reservationId = filled($metadata['purchase_id'] ?? null) ? (string) $metadata['purchase_id'] : null;
 
-            DB::transaction(function () use ($request, $audit, $plan, $sessionId, $reservationId, $purchaseData, &$registered, &$purchaseToConfirm) {
+            DB::transaction(function () use ($request, $audit, $plan, $sessionId, $reservationId, $purchaseData, &$registered, &$purchaseToConfirm, &$purchaseToInvoice) {
                 $capacityKey = $this->capacityKeyForPlan($plan);
                 $capacity = (int) (DB::table('founder_settings')
                     ->where('key', $capacityKey)
@@ -732,11 +929,12 @@ class SubscribeController extends Controller
                 if ($existingPurchase?->status === 'succeeded') {
                     $registered = true;
                     $purchaseToConfirm = $existingPurchase->confirmation_email_sent_at ? null : $existingPurchase->id;
+                    $purchaseToInvoice = $existingPurchase->id;
 
                     $this->recordSuccessfulPurchaseConsent(
                         $request,
                         $audit,
-                        (int) $existingPurchase->id,
+                        $existingPurchase->id,
                         $purchaseData['email'],
                         'stripe_payment_success',
                         $plan,
@@ -763,14 +961,20 @@ class SubscribeController extends Controller
                         ->where('id', $existingPurchase->id)
                         ->update($data);
                     $purchaseToConfirm = $registered ? $existingPurchase->id : null;
+                    $purchaseToInvoice = $registered ? $existingPurchase->id : null;
                 } else {
-                    $purchaseToConfirm = DB::table('purchases')->insertGetId([
+                    $purchaseToConfirm = DatabaseUuid::new();
+                    DB::table('purchases')->insert([
+                        'id' => $purchaseToConfirm,
+                        'order_reference' => $this->orderReference($purchaseToConfirm),
                         ...$data,
                         'created_at' => now(),
                     ]);
 
                     if (! $registered) {
                         $purchaseToConfirm = null;
+                    } else {
+                        $purchaseToInvoice = $purchaseToConfirm;
                     }
                 }
 
@@ -778,7 +982,7 @@ class SubscribeController extends Controller
                     $this->recordSuccessfulPurchaseConsent(
                         $request,
                         $audit,
-                        (int) $purchaseToConfirm,
+                        $purchaseToConfirm,
                         $purchaseData['email'],
                         'stripe_payment_success',
                         $plan,
@@ -792,11 +996,19 @@ class SubscribeController extends Controller
                     'plan' => $plan,
                     'reservation_id' => $reservationId,
                 ]);
-            } elseif ($purchaseToConfirm) {
-                $this->sendAutomaticPurchaseConfirmation(
-                    (int) $purchaseToConfirm,
-                    app(TransactionalEmailSender::class),
-                );
+            } else {
+                if ($purchaseToConfirm) {
+                    if ($purchaseToInvoice) {
+                        app(QontoInvoiceService::class)->sendForPurchase($purchaseToInvoice);
+                    }
+
+                    $this->sendAutomaticPurchaseConfirmation(
+                        $purchaseToConfirm,
+                        app(TransactionalEmailSender::class),
+                    );
+                } elseif ($purchaseToInvoice) {
+                    app(QontoInvoiceService::class)->sendForPurchase($purchaseToInvoice);
+                }
             }
         } catch (QueryException $exception) {
             Log::error('Stripe checkout purchase registration failed.', [
@@ -813,11 +1025,11 @@ class SubscribeController extends Controller
     private function recordSuccessfulPurchaseConsent(
         Request $request,
         ConsentAuditService $audit,
-        int $purchaseId,
+        string $purchaseId,
         string $email,
         string $source,
         string $plan,
-        ?int $waitlistEntryId = null,
+        ?string $waitlistEntryId = null,
     ): void {
         $alreadyRecorded = DB::table('consent_events')
             ->where('purchase_id', $purchaseId)
@@ -845,7 +1057,7 @@ class SubscribeController extends Controller
         );
     }
 
-    private function sendAutomaticPurchaseConfirmation(int $purchaseId, TransactionalEmailSender $emailSender): void
+    private function sendAutomaticPurchaseConfirmation(string $purchaseId, TransactionalEmailSender $emailSender): void
     {
         $purchase = DB::table('purchases')->where('id', $purchaseId)->first();
 
@@ -854,13 +1066,7 @@ class SubscribeController extends Controller
         }
 
         try {
-            if ($emailSender->send($purchase->email, new PurchaseConfirmationMail([
-                'order_reference' => 'WO-'.\Illuminate\Support\Carbon::parse($purchase->created_at)->format('Y').'-'.str_pad((string) $purchase->id, 6, '0', STR_PAD_LEFT),
-                'email' => $purchase->email,
-                'plan_name' => $this->planName($purchase->plan),
-                'amount' => $purchase->amount,
-                'currency' => $purchase->currency,
-            ]))) {
+            if ($emailSender->send($purchase->email, $this->purchaseConfirmationMailable($purchase))) {
                 DB::table('purchases')
                     ->where('id', $purchaseId)
                     ->whereNull('confirmation_email_sent_at')
@@ -905,7 +1111,7 @@ class SubscribeController extends Controller
         }
     }
 
-    private function reservedPassCount(string $plan, ?int $exceptPurchaseId = null): int
+    private function reservedPassCount(string $plan, ?string $exceptPurchaseId = null): int
     {
         return DB::table('purchases')
             ->where('plan', $plan)
@@ -920,7 +1126,7 @@ class SubscribeController extends Controller
             ->count();
     }
 
-    private function markReservationFailed(?int $reservationId): void
+    private function markReservationFailed(?string $reservationId): void
     {
         if (! $reservationId) {
             return;
@@ -938,6 +1144,11 @@ class SubscribeController extends Controller
     private function capacityKeyForPlan(string $plan): string
     {
         return $plan === 'creator' ? 'creator_capacity' : 'join_capacity';
+    }
+
+    private function orderReference(string $purchaseId): string
+    {
+        return 'WO-'.now()->format('Y').'-'.strtoupper($purchaseId);
     }
 
     private function planName(string $plan): string
@@ -961,6 +1172,38 @@ class SubscribeController extends Controller
                 'currency' => $purchase->currency,
             ],
         ];
+    }
+
+    private function purchaseConfirmationResponse(
+        Request $request,
+        string $message,
+        bool $successful,
+        ?string $email = null,
+        ?object $purchase = null,
+        int $status = 200,
+    ) {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => $successful,
+                'message' => $message,
+            ], $status);
+        }
+
+        $response = back();
+
+        if ($email && $purchase) {
+            $response->with($this->purchasedPlanFlashData($email, $purchase));
+        } elseif ($email) {
+            $response
+                ->with('waitlist_offer', true)
+                ->with('waitlist_status', 'already_registered')
+                ->with('waitlist_email', $email);
+        }
+
+        return $response->with(
+            $successful ? 'purchase_confirmation_success' : 'purchase_confirmation_error',
+            $message,
+        );
     }
 
     private function profileData(?object $entry): array
@@ -988,5 +1231,52 @@ class SubscribeController extends Controller
         $fiscalCode = trim((string) $fiscalCode);
 
         return $fiscalCode === '' ? null : strtoupper($fiscalCode);
+    }
+
+    private function purchaseConfirmationMailable(object $purchase): PurchaseConfirmationMail
+    {
+        $purchase->order_reference = $purchase->order_reference ?? $this->orderReference($purchase->id);
+        $attachment = null;
+        $attachmentKind = null;
+
+        if ($purchase->invoice_requested) {
+            $attachment = app(QontoInvoiceService::class)->courtesyPdfForPurchase($purchase->id);
+            $attachmentKind = $attachment ? 'courtesy_invoice' : null;
+        } else {
+            $attachment = [
+                'data' => app(PurchasePdfService::class)->orderSummary($purchase),
+                'filename' => 'riepilogo-ordine-'.$purchase->order_reference.'.pdf',
+            ];
+            $attachmentKind = 'order_summary';
+        }
+
+        return new PurchaseConfirmationMail([
+            'order_reference' => $purchase->order_reference,
+            'email' => $purchase->email,
+            'plan_name' => $this->planName($purchase->plan),
+            'amount' => $purchase->amount,
+            'currency' => $purchase->currency,
+            'invoice_requested' => (bool) $purchase->invoice_requested,
+            'invoice_status' => $purchase->electronic_invoice_status ?? 'not_requested',
+            'attachment_kind' => $attachmentKind,
+        ], $attachment);
+    }
+
+    /** @param array<string, mixed> $customer */
+    private function billingPurchaseData(array $customer): array
+    {
+        return [
+            'billing_customer_type' => $customer['billing_customer_type'],
+            'billing_address' => $customer['billing_address'],
+            'billing_postal_code' => $customer['billing_postal_code'],
+            'billing_city' => $customer['billing_city'],
+            'billing_province' => $customer['billing_province'],
+            'billing_country' => $customer['billing_country'],
+            'company_name' => $customer['company_name'],
+            'vat_number' => $customer['vat_number'],
+            'sdi_code' => $customer['sdi_code'],
+            'pec' => $customer['pec'],
+            'electronic_invoice_status' => $customer['electronic_invoice_status'],
+        ];
     }
 }

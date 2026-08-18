@@ -230,9 +230,9 @@ class WithdrawalController extends Controller
             ->whereRaw('LOWER(email) = ?', [$review['purchase_email']])
             ->where('status', 'succeeded');
 
-        if (preg_match('/^WO-(\d{4})-(\d{6,})$/i', $review['order_reference'], $matches)) {
-            return $query->where('id', (int) $matches[2])
-                ->whereYear('created_at', (int) $matches[1])->first();
+        $byOrderReference = (clone $query)->whereRaw('UPPER(order_reference) = ?', [strtoupper($review['order_reference'])])->first();
+        if ($byOrderReference) {
+            return $byOrderReference;
         }
 
         $byStripeReference = (clone $query)->where('stripe_session_id', $review['order_reference'])->first();

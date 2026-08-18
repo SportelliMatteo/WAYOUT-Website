@@ -11,7 +11,7 @@ return new class extends Migration
     {
         if (! Schema::hasTable('founder_settings')) {
             Schema::create('founder_settings', function (Blueprint $table) {
-                $table->id();
+                $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
                 $table->string('key')->unique();
                 $table->unsignedInteger('value');
                 $table->timestamps();

@@ -4,7 +4,6 @@ namespace App\Support;
 
 use App\Models\AdminUser;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AdminAuditService
 {
@@ -20,20 +19,20 @@ class AdminAuditService
         ?string $targetLabel = null,
         array $oldValues = [],
         array $newValues = [],
-    ): int {
+    ): string {
         /** @var AdminUser|null $actor */
         $actor = $request->attributes->get('admin_user');
 
         abort_unless($actor, 403);
 
-        return DB::table('admin_audit_events')->insertGetId([
+        return DatabaseUuid::insert('admin_audit_events', [
             'admin_user_id' => $actor->id,
             'actor_name' => $actor->name,
             'actor_email' => $actor->email,
             'action' => $action,
             'target_type' => $targetType,
-            'target_id' => is_numeric($targetId) ? (int) $targetId : null,
-            'target_label' => $targetLabel ?? (is_string($targetId) ? $targetId : null),
+            'target_id' => filled($targetId) ? (string) $targetId : null,
+            'target_label' => $targetLabel,
             'old_values' => $oldValues === [] ? null : json_encode($oldValues, JSON_THROW_ON_ERROR),
             'new_values' => $newValues === [] ? null : json_encode($newValues, JSON_THROW_ON_ERROR),
             'ip_address' => $request->ip(),

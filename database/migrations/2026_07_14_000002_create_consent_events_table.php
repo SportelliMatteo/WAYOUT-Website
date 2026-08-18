@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -9,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('legal_document_versions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
             $table->string('document_key', 64);
             $table->string('version', 64);
             $table->string('locale', 10);
@@ -24,11 +25,11 @@ return new class extends Migration
         });
 
         Schema::create('consent_events', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('waitlist_entry_id')->nullable()->constrained('waitlist_entries')->nullOnDelete();
-            $table->foreignId('purchase_id')->nullable()->constrained('purchases')->nullOnDelete();
-            $table->foreignId('contact_message_id')->nullable()->constrained('contact_messages')->nullOnDelete();
-            $table->foreignId('revokes_event_id')->nullable()->constrained('consent_events')->nullOnDelete();
+            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->foreignUuid('waitlist_entry_id')->nullable()->constrained('waitlist_entries')->nullOnDelete();
+            $table->foreignUuid('purchase_id')->nullable()->constrained('purchases')->nullOnDelete();
+            $table->foreignUuid('contact_message_id')->nullable()->constrained('contact_messages')->nullOnDelete();
+            $table->foreignUuid('revokes_event_id')->nullable()->constrained('consent_events')->nullOnDelete();
             $table->string('subject_email')->index();
             $table->string('consent_type', 64)->index();
             $table->string('action', 16)->index();

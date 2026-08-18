@@ -40,7 +40,7 @@
                         </p>
                     </div>
 
-                    <form method="POST" action="{{ route('waitlist.store') }}" class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <form id="waitlist-join-form" method="POST" action="{{ route('waitlist.store') }}" class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
                         @csrf
                         <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
                         <input
@@ -51,8 +51,9 @@
                             required
                             class="min-h-14 w-full rounded-full border border-white/10 bg-white px-5 text-base font-bold text-slate-950 placeholder-slate-400 outline-none transition focus:ring-4 focus:ring-violet-300/40"
                         />
-                        <button type="submit" class="min-h-14 w-full rounded-full wayout-purple px-7 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] sm:w-auto">
-                            {{ $waitlistFull ? __('messages.home.verify_email') : __('messages.home.join_button') }}
+                        <button id="waitlist-join-submit" type="submit" class="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-80 sm:w-auto">
+                            <span class="waitlist-submit-text">{{ $waitlistFull ? __('messages.home.verify_email') : __('messages.home.join_button') }}</span>
+                            <span class="waitlist-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true"></span>
                         </button>
                     </form>
 
@@ -170,7 +171,7 @@
     @endphp
     <div id="waitlist-profile" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-3 py-4 sm:px-4 sm:py-8">
         <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
-        <div class="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/95 p-5 text-white opacity-0 shadow-2xl transition-all duration-300 sm:rounded-[2.5rem] sm:p-8" id="waitlist-profile-panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-profile-title">
+        <div class="relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-white/15 bg-slate-950/95 p-5 text-white opacity-0 shadow-2xl transition-all duration-300 sm:max-h-[calc(100dvh-4rem)] sm:rounded-[2.5rem] sm:p-8" id="waitlist-profile-panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-profile-title">
             <div class="mb-5 flex items-center justify-between gap-4">
                 <span class="inline-flex rounded-full bg-violet-500/20 px-4 py-2 text-xs font-black uppercase tracking-[0.26em] text-violet-100">{{ __('messages.home.waitlist') }}</span>
                 <button id="waitlist-profile-close-x" aria-label="{{ __('messages.nav.close_menu') }}" class="shrink-0 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/15 hover:text-white">
@@ -181,10 +182,11 @@
             @if(session('waitlist_error'))
                 <p class="mt-4 rounded-2xl bg-rose-500/15 px-4 py-3 text-sm font-bold text-rose-100">{{ session('waitlist_error') }}</p>
             @endif
-            <form method="POST" action="{{ route('waitlist.profile') }}" class="mt-6 space-y-4">
+            <form id="waitlist-profile-form" method="POST" action="{{ route('waitlist.profile') }}" class="mt-6 space-y-4">
                 @csrf
                 <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
                 <input type="hidden" name="waitlist_status" value="{{ session('waitlist_status') }}" />
+                <input id="firebase-id-token" type="hidden" name="firebase_id_token" value="" />
                 <div class="grid gap-3 text-left sm:grid-cols-2">
                     <label class="block">
                         <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.first_name') }}</span>
@@ -201,20 +203,36 @@
                         <input type="date" name="birth_date" value="{{ old('birth_date', $waitlistProfile['birth_date'] ?? '') }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
                         @error('birth_date')<span class="mt-1 block text-xs font-bold text-rose-200">{{ __('messages.home.birth_date_error') }}</span>@enderror
                     </label>
-                    <label class="block">
+                    <div class="block">
                         <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.phone_number') }}</span>
                         <div class="flex gap-2">
-                            <select name="phone_prefix" required autocomplete="tel-country-code" class="min-h-12 w-28 rounded-2xl border border-white/10 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30">
+                            <select id="waitlist-phone-prefix" name="phone_prefix" required autocomplete="tel-country-code" class="min-h-12 w-28 rounded-2xl border border-white/10 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30">
                                 @foreach($phonePrefixes as $prefix => $label)
                                     <option value="{{ $prefix }}" @selected(old('phone_prefix', $waitlistProfile['phone_prefix'] ?? '+39') === $prefix)>{{ $label }}</option>
                                 @endforeach
                             </select>
-                            <input type="tel" name="phone_number" value="{{ old('phone_number', $waitlistProfile['phone_number'] ?? '') }}" required autocomplete="tel-national" inputmode="tel" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                            <input id="waitlist-phone-number" type="tel" name="phone_number" value="{{ old('phone_number', $waitlistProfile['phone_number'] ?? '') }}" required autocomplete="tel-national" inputmode="tel" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
                         </div>
+                        @if(config('services.firebase.phone_verification_enabled'))
+                            <button id="waitlist-phone-send" type="button" class="mt-2 w-full rounded-2xl border border-violet-300/30 bg-violet-500/20 px-4 py-3 text-sm font-black text-violet-100 transition hover:bg-violet-500/30 disabled:cursor-not-allowed disabled:opacity-50">{{ __('messages.home.phone_send_code') }}</button>
+                            <div id="waitlist-phone-recaptcha"></div>
+                            <p class="mt-2 text-xs font-medium leading-5 text-slate-400">{{ __('messages.home.phone_sms_notice') }}</p>
+                        @endif
                         @error('phone_prefix')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
                         @error('phone_number')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
-                    </label>
+                    </div>
                 </div>
+                @if(config('services.firebase.phone_verification_enabled'))
+                <div id="waitlist-phone-code-panel" class="hidden rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-left">
+                    <label for="waitlist-phone-code" class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-violet-100">{{ __('messages.home.phone_code') }}</label>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <input id="waitlist-phone-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-center text-lg font-black tracking-[0.3em] text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                        <button id="waitlist-phone-verify" type="button" class="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 disabled:cursor-wait disabled:opacity-60">{{ __('messages.home.phone_verify_code') }}</button>
+                    </div>
+                </div>
+                <p id="waitlist-phone-status" class="hidden rounded-2xl px-4 py-3 text-left text-sm font-bold" role="status" aria-live="polite"></p>
+                @error('firebase_id_token')<span class="block text-left text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
+                @endif
                 <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-left text-sm font-medium leading-6 text-slate-200 [&_a]:font-black [&_a]:text-violet-200 [&_a]:underline [&_a]:underline-offset-4">
                     {!! $legalDocumentsHtml['waitlist_acceptance'] !!}
                 </div>
@@ -224,7 +242,10 @@
                         {!! $legalDocumentsHtml['marketing'] !!}
                     </span>
                 </label>
-                <button type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.profile_submit') }}</button>
+                <button id="waitlist-profile-submit" type="submit" @disabled(config('services.firebase.phone_verification_enabled')) data-loading-text="{{ __('messages.home.profile_submitting') }}" class="inline-flex w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 transition disabled:cursor-wait disabled:opacity-60 sm:text-lg">
+                    <span class="waitlist-profile-submit-text">{{ __('messages.home.profile_submit') }}</span>
+                    <span class="waitlist-profile-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950" aria-hidden="true"></span>
+                </button>
             </form>
         </div>
     </div>
@@ -296,6 +317,17 @@
                                 </p>
                             @endif
                         </div>
+                        @php
+                            $purchaseConfirmationMessage = session('purchase_confirmation_error')
+                                ?? session('purchase_confirmation_success');
+                            $purchaseConfirmationFailed = session()->has('purchase_confirmation_error');
+                        @endphp
+                        <div
+                            id="purchase-confirmation-feedback"
+                            role="{{ $purchaseConfirmationFailed ? 'alert' : 'status' }}"
+                            aria-live="polite"
+                            class="mt-4 rounded-2xl border px-4 py-3 text-sm font-bold leading-6 {{ $purchaseConfirmationMessage ? '' : 'hidden' }} {{ $purchaseConfirmationFailed ? 'border-rose-300/30 bg-rose-400/15 text-rose-100' : 'border-emerald-300/30 bg-emerald-400/15 text-emerald-100' }}"
+                        >{{ $purchaseConfirmationMessage }}</div>
                     @else
                         <div class="mt-5 grid gap-3 {{ $alreadyRegistered ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }}">
                             <div class="rounded-3xl bg-white/[0.08] p-4">
@@ -354,9 +386,15 @@
             </div>
             <div class="flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row">
                 @if($purchasedPlan)
-                    <form method="POST" action="{{ route('purchase.confirmation.resend') }}" class="w-full">
+                    <form id="purchase-confirmation-resend-form" method="POST" action="{{ route('purchase.confirmation.resend') }}" class="w-full">
                         @csrf
-                        <button type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.resend_purchase_email') }}</button>
+                        <button id="purchase-confirmation-resend-submit" type="submit" class="flex w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 transition disabled:cursor-wait disabled:opacity-70 sm:text-lg">
+                            <svg class="purchase-confirmation-resend-loader hidden h-5 w-5 animate-spin" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                            <span class="purchase-confirmation-resend-text">{{ __('messages.home.resend_purchase_email') }}</span>
+                        </button>
                     </form>
                     <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">{{ __('messages.home.understood') }}</button>
                 @else
@@ -376,7 +414,105 @@
 @endif
 
 <script>
+    window.wayoutFirebaseConfig = {{ Illuminate\Support\Js::from([
+        'apiKey' => config('services.firebase.client.api_key'),
+        'authDomain' => config('services.firebase.client.auth_domain'),
+        'projectId' => config('services.firebase.project_id'),
+        'appId' => config('services.firebase.client.app_id'),
+    ]) }};
+    window.wayoutPhoneVerificationMessages = {{ Illuminate\Support\Js::from([
+        'sendCode' => __('messages.home.phone_send_code'),
+        'resendCode' => __('messages.home.phone_resend_code'),
+        'codeSent' => __('messages.home.phone_code_sent'),
+        'verified' => __('messages.home.phone_verified'),
+        'verifying' => __('messages.home.phone_verifying'),
+        'configurationError' => __('messages.home.phone_configuration_error'),
+        'sendError' => __('messages.home.phone_send_error'),
+        'codeError' => __('messages.home.phone_code_error'),
+        'required' => __('messages.home.phone_verification_required'),
+    ]) }};
     (function(){
+        const waitlistForm = document.getElementById('waitlist-join-form');
+        const waitlistSubmit = document.getElementById('waitlist-join-submit');
+        const waitlistSubmitText = waitlistSubmit?.querySelector('.waitlist-submit-text');
+        const waitlistSubmitLoader = waitlistSubmit?.querySelector('.waitlist-submit-loader');
+
+        const setWaitlistSubmitting = (isSubmitting) => {
+            if (!waitlistSubmit || !waitlistSubmitText || !waitlistSubmitLoader) return;
+
+            waitlistSubmit.disabled = isSubmitting;
+            waitlistSubmit.setAttribute('aria-busy', isSubmitting ? 'true' : 'false');
+            waitlistSubmitText.classList.toggle('opacity-70', isSubmitting);
+            waitlistSubmitLoader.classList.toggle('hidden', !isSubmitting);
+        };
+
+        waitlistForm?.addEventListener('submit', () => setWaitlistSubmitting(true));
+        window.addEventListener('pageshow', () => setWaitlistSubmitting(false));
+
+        const resendForm = document.getElementById('purchase-confirmation-resend-form');
+        const resendSubmit = document.getElementById('purchase-confirmation-resend-submit');
+        const resendSubmitText = resendSubmit?.querySelector('.purchase-confirmation-resend-text');
+        const resendSubmitLoader = resendSubmit?.querySelector('.purchase-confirmation-resend-loader');
+        const resendFeedback = document.getElementById('purchase-confirmation-feedback');
+        const resendDefaultText = resendSubmitText?.textContent;
+
+        const setResendSubmitting = (isSubmitting) => {
+            if (!resendSubmit || !resendSubmitText || !resendSubmitLoader) return;
+
+            resendSubmit.disabled = isSubmitting;
+            resendSubmit.setAttribute('aria-busy', isSubmitting ? 'true' : 'false');
+            resendSubmitText.textContent = isSubmitting
+                ? @json(__('messages.home.resending_purchase_email'))
+                : resendDefaultText;
+            resendSubmitLoader.classList.toggle('hidden', !isSubmitting);
+        };
+
+        const showResendFeedback = (message, successful) => {
+            if (!resendFeedback) return;
+
+            resendFeedback.textContent = message;
+            resendFeedback.classList.remove(
+                'hidden',
+                'border-emerald-300/30', 'bg-emerald-400/15', 'text-emerald-100',
+                'border-rose-300/30', 'bg-rose-400/15', 'text-rose-100',
+            );
+            resendFeedback.classList.add(...(successful
+                ? ['border-emerald-300/30', 'bg-emerald-400/15', 'text-emerald-100']
+                : ['border-rose-300/30', 'bg-rose-400/15', 'text-rose-100']));
+            resendFeedback.setAttribute('role', successful ? 'status' : 'alert');
+            resendFeedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        };
+
+        resendForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (resendSubmit?.disabled) return;
+
+            setResendSubmitting(true);
+
+            try {
+                const response = await fetch(resendForm.action, {
+                    method: 'POST',
+                    body: new FormData(resendForm),
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                const payload = await response.json().catch(() => ({}));
+                const successful = response.ok && payload.ok === true;
+
+                showResendFeedback(
+                    payload.message || @json(__('messages.messages.purchase_resend_error')),
+                    successful,
+                );
+            } catch (error) {
+                showResendFeedback(@json(__('messages.messages.purchase_resend_error')), false);
+            } finally {
+                setResendSubmitting(false);
+            }
+        });
+        window.addEventListener('pageshow', () => setResendSubmitting(false));
+
         const container = document.getElementById('feature-slideshow');
         if (container) {
             const slides = Array.from(container.querySelectorAll('img'));

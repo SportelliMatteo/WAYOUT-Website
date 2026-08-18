@@ -39,4 +39,41 @@ class EmailTemplateTest extends TestCase
         $this->assertStringContainsString(route('legal.presale'), $purchase);
         $this->assertStringContainsString('ada@example.com', $contact);
     }
+
+    public function test_purchase_confirmation_can_attach_a_courtesy_invoice_pdf(): void
+    {
+        $mail = new PurchaseConfirmationMail([
+            'email' => 'ada@example.com',
+            'plan_name' => 'Founder Join 12M Pass',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'invoice_requested' => true,
+            'invoice_status' => 'sent',
+            'attachment_kind' => 'courtesy_invoice',
+        ], [
+            'data' => '%PDF-1.7 test',
+            'filename' => 'fattura-cortesia-1.pdf',
+        ]);
+
+        $mail->assertHasAttachedData('%PDF-1.7 test', 'fattura-cortesia-1.pdf', [
+            'mime' => 'application/pdf',
+        ]);
+        $this->assertStringContainsString('copia PDF di cortesia', $mail->render());
+        $this->assertStringContainsString('formato XML', $mail->render());
+    }
+
+    public function test_failed_invoice_email_does_not_claim_that_processing_is_in_progress(): void
+    {
+        $html = (new PurchaseConfirmationMail([
+            'email' => 'ada@example.com',
+            'plan_name' => 'Founder Join 12M Pass',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'invoice_requested' => true,
+            'invoice_status' => 'failed',
+        ]))->render();
+
+        $this->assertStringContainsString('Qonto non ha accettato', $html);
+        $this->assertStringNotContainsString('elaborazione elettronica è in corso', $html);
+    }
 }

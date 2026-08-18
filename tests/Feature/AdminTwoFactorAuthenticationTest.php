@@ -92,6 +92,44 @@ class AdminTwoFactorAuthenticationTest extends TestCase
         $this->assertFalse(session()->has('admin_authenticated'));
     }
 
+    public function test_admin_can_reset_the_password_from_the_login_screen_with_a_recovery_code(): void
+    {
+        $totp = app(TotpService::class);
+        $recovery = $totp->generateRecoveryCodes();
+        $admin = $this->admin(['recovery_codes' => $recovery['hashes']]);
+        $previousAuthVersion = $admin->auth_version;
+
+        $this->get(route('admin.login'))
+            ->assertOk()
+            ->assertSee('Hai dimenticato la password?');
+
+        $this->post(route('admin.recover'), [
+            'email' => $admin->email,
+            'recovery_code' => strtolower(str_replace('-', ' ', $recovery['plain'][0])),
+            'password' => 'New-testing-password-456',
+            'password_confirmation' => 'New-testing-password-456',
+            'recovery_mode' => '1',
+        ])->assertRedirect(route('admin.login'))
+            ->assertSessionHas('admin_recovery_success');
+
+        $admin->refresh();
+        $this->assertTrue(Hash::check('New-testing-password-456', $admin->password));
+        $this->assertNotNull($admin->totp_secret);
+        $this->assertNotNull($admin->totp_confirmed_at);
+        $this->assertCount(9, $admin->recovery_codes);
+        $this->assertSame($previousAuthVersion + 1, $admin->auth_version);
+        $this->assertFalse(session()->has('admin_authenticated'));
+        $this->assertFalse(session()->has('admin_pending_id'));
+
+        $this->post(route('admin.recover'), [
+            'email' => $admin->email,
+            'recovery_code' => $recovery['plain'][0],
+            'password' => 'Another-password-789',
+            'password_confirmation' => 'Another-password-789',
+            'recovery_mode' => '1',
+        ])->assertSessionHasErrors('recovery_code');
+    }
+
     public function test_every_admin_can_create_accounts_up_to_the_shared_limit_of_four(): void
     {
         $creator = $this->admin(['email' => 'creator@example.com']);

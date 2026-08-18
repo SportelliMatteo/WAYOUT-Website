@@ -222,9 +222,9 @@
     </div>
 </section>
 
-<div id="payment-details-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-6">
-    <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
-    <div role="dialog" aria-modal="true" aria-labelledby="payment-details-title" class="relative z-10 w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white p-5 shadow-2xl sm:p-7">
+<div id="payment-details-modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto px-4 py-6">
+    <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="payment-details-title" class="relative z-10 my-auto max-h-[calc(100dvh-3rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-[2rem] bg-white p-5 shadow-2xl sm:p-7">
         <div class="flex items-start justify-between gap-4">
             <div>
                 <p class="text-xs font-black uppercase tracking-[0.22em] text-violet-700">{{ __('messages.subscribe.payment_details_eyebrow') }}</p>
@@ -242,11 +242,11 @@
                 </label>
                 <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.first_name') }}</span>
-                    <input type="text" name="first_name" value="{{ $waitlistProfile['first_name'] ?? '' }}" required autocomplete="given-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    <input type="text" name="first_name" value="{{ $waitlistProfile['first_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="given-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
                 <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.last_name') }}</span>
-                    <input type="text" name="last_name" value="{{ $waitlistProfile['last_name'] ?? '' }}" required autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    <input type="text" name="last_name" value="{{ $waitlistProfile['last_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
                 <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.birth_date') }}</span>
@@ -260,7 +260,7 @@
                                 <option value="{{ $prefix }}" @selected(($waitlistProfile['phone_prefix'] ?? '+39') === $prefix)>{{ $label }}</option>
                             @endforeach
                         </select>
-                        <input type="tel" name="phone_number" value="{{ $waitlistProfile['phone_number'] ?? '' }}" required autocomplete="tel-national" inputmode="tel" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                        <input type="tel" name="phone_number" value="{{ $waitlistProfile['phone_number'] ?? '' }}" required minlength="5" maxlength="32" pattern="[0-9 .()\-]{5,32}" autocomplete="tel-national" inputmode="tel" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                     </div>
                 </label>
             </div>
@@ -271,17 +271,77 @@
                     <span class="mt-1 block text-xs font-semibold leading-5 text-slate-500">{{ __('messages.subscribe.invoice_note') }}</span>
                 </span>
             </label>
+            <section id="invoice-details" class="hidden space-y-4 rounded-2xl border border-slate-200 p-4 sm:p-5">
+                <fieldset>
+                    <legend class="mb-3 text-sm font-black text-slate-950">{{ __('messages.subscribe.invoice_holder_type') }}</legend>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-800">
+                            <input type="radio" name="billing_customer_type" value="individual" checked class="h-5 w-5 border-slate-300 text-violet-700 focus:ring-violet-500" />
+                            {{ __('messages.subscribe.individual') }}
+                        </label>
+                        <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-800">
+                            <input type="radio" name="billing_customer_type" value="legal_entity" class="h-5 w-5 border-slate-300 text-violet-700 focus:ring-violet-500" />
+                            {{ __('messages.subscribe.legal_entity') }}
+                        </label>
+                    </div>
+                </fieldset>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block sm:col-span-2">
+                        <span id="billing-address-label" class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.billing_address') }}</span>
+                        <input type="text" name="billing_address" autocomplete="street-address" class="invoice-common-field min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.postal_code') }}</span>
+                        <input type="text" name="billing_postal_code" autocomplete="postal-code" maxlength="20" inputmode="numeric" class="invoice-common-field min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.city') }}</span>
+                        <input type="text" name="billing_city" autocomplete="address-level2" class="invoice-common-field min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.province') }}</span>
+                        <input type="text" name="billing_province" autocomplete="address-level1" maxlength="8" class="invoice-common-field min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.country') }}</span>
+                        <input type="text" name="billing_country" value="IT" autocomplete="country" maxlength="2" class="invoice-common-field min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                </div>
+
+                <div id="individual-invoice-fields">
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.fiscal_code') }}</span>
+                        <input type="text" name="fiscal_code" minlength="16" maxlength="16" autocomplete="off" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                </div>
+
+                <div id="legal-entity-invoice-fields" class="hidden grid gap-4 sm:grid-cols-2">
+                    <label class="block sm:col-span-2">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.company_name') }}</span>
+                        <input type="text" name="company_name" autocomplete="organization" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.vat_number') }}</span>
+                        <input type="text" name="vat_number" maxlength="20" autocomplete="off" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.sdi_code') }}</span>
+                        <input type="text" name="sdi_code" minlength="7" maxlength="7" pattern="[A-Za-z0-9]{7}" autocomplete="off" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                    <label class="block sm:col-span-2">
+                        <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.pec') }}</span>
+                        <input type="email" name="pec" autocomplete="email" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    </label>
+                </div>
+            </section>
             <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
                 <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
                 <span class="text-sm font-semibold leading-6 text-slate-700 [&_a]:font-black [&_a]:text-violet-700 [&_a]:underline [&_a]:underline-offset-4">
                     {!! $legalDocumentsHtml['purchase_acceptance'] !!}
                 </span>
             </label>
-            <label id="fiscal-code-wrap" class="mb-4 hidden">
-                <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.fiscal_code') }}</span>
-                <input type="text" name="fiscal_code" maxlength="32" autocomplete="off" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold uppercase text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-            </label>
-            <p id="payment-details-error" class="hidden rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"></p>
+            <p id="payment-details-error" role="alert" class="hidden whitespace-pre-line rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"></p>
             <button id="payment-details-submit" type="submit" class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-80">
                 <span class="payment-submit-text">{{ __('messages.subscribe.confirm_and_pay') }}</span>
                 <span class="payment-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true"></span>
@@ -300,9 +360,35 @@
     const paymentSubmitText = paymentSubmit?.querySelector('.payment-submit-text');
     const paymentSubmitLoader = paymentSubmit?.querySelector('.payment-submit-loader');
     const invoiceCheckbox = document.getElementById('invoice-requested');
-    const fiscalCodeWrap = document.getElementById('fiscal-code-wrap');
-    const fiscalCodeInput = fiscalCodeWrap?.querySelector('input[name="fiscal_code"]');
+    const invoiceDetails = document.getElementById('invoice-details');
+    const individualInvoiceFields = document.getElementById('individual-invoice-fields');
+    const legalEntityInvoiceFields = document.getElementById('legal-entity-invoice-fields');
+    const billingAddressLabel = document.getElementById('billing-address-label');
+    const billingTypeInputs = document.querySelectorAll('input[name="billing_customer_type"]');
+    const fiscalCodeInput = invoiceDetails?.querySelector('input[name="fiscal_code"]');
     const originalButtonText = button?.textContent;
+
+    function updateInvoiceFields() {
+        const requested = invoiceCheckbox?.checked || false;
+        const customerType = document.querySelector('input[name="billing_customer_type"]:checked')?.value || 'individual';
+        const isLegalEntity = requested && customerType === 'legal_entity';
+
+        invoiceDetails?.classList.toggle('hidden', !requested);
+        individualInvoiceFields?.classList.toggle('hidden', !requested || isLegalEntity);
+        legalEntityInvoiceFields?.classList.toggle('hidden', !isLegalEntity);
+
+        invoiceDetails?.querySelectorAll('.invoice-common-field').forEach((input) => input.required = requested);
+        invoiceDetails?.querySelectorAll('#individual-invoice-fields input').forEach((input) => input.required = requested && !isLegalEntity);
+        invoiceDetails?.querySelectorAll('#legal-entity-invoice-fields input').forEach((input) => {
+            input.required = isLegalEntity && input.name !== 'sdi_code';
+        });
+
+        if (billingAddressLabel) {
+            billingAddressLabel.textContent = isLegalEntity
+                ? @json(__('messages.subscribe.registered_office_address'))
+                : @json(__('messages.subscribe.billing_address'));
+        }
+    }
 
     function setPaymentLoading(isLoading) {
         if (!paymentSubmit) return;
@@ -310,6 +396,95 @@
         paymentSubmit.disabled = isLoading;
         paymentSubmitText?.classList.toggle('hidden', isLoading);
         paymentSubmitLoader?.classList.toggle('hidden', !isLoading);
+    }
+
+    function normalizeFiscalValue(value) {
+        return (value || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
+    function isValidItalianVat(value) {
+        const vat = normalizeFiscalValue(value).replace(/^IT/, '');
+        if (!/^\d{11}$/.test(vat)) return false;
+
+        let sum = 0;
+        for (let index = 0; index < 10; index++) {
+            const digit = Number(vat[index]);
+            if (index % 2 === 0) {
+                sum += digit;
+            } else {
+                const doubled = digit * 2;
+                sum += doubled > 9 ? doubled - 9 : doubled;
+            }
+        }
+
+        return ((10 - (sum % 10)) % 10) === Number(vat[10]);
+    }
+
+    function isValidItalianFiscalCode(value) {
+        const fiscalCode = normalizeFiscalValue(value);
+        if (!/^[A-Z0-9]{16}$/.test(fiscalCode)) return false;
+
+        const oddValues = {
+            0: 1, 1: 0, 2: 5, 3: 7, 4: 9, 5: 13, 6: 15, 7: 17, 8: 19, 9: 21,
+            A: 1, B: 0, C: 5, D: 7, E: 9, F: 13, G: 15, H: 17, I: 19, J: 21,
+            K: 2, L: 4, M: 18, N: 20, O: 11, P: 3, Q: 6, R: 8, S: 12, T: 14,
+            U: 16, V: 10, W: 22, X: 25, Y: 24, Z: 23,
+        };
+        let sum = 0;
+
+        for (let index = 0; index < 15; index++) {
+            const character = fiscalCode[index];
+            sum += index % 2 === 0 ? oddValues[character] : parseInt(character, 10) >= 0
+                ? Number(character)
+                : character.charCodeAt(0) - 65;
+        }
+
+        return String.fromCharCode((sum % 26) + 65) === fiscalCode[15];
+    }
+
+    function validatePaymentFields() {
+        updateInvoiceFields();
+        paymentForm?.querySelectorAll('input, select').forEach((field) => {
+            field.setCustomValidity('');
+            field.removeAttribute('aria-invalid');
+        });
+
+        if (!invoiceCheckbox?.checked) return paymentForm?.checkValidity() ?? false;
+
+        const country = paymentForm.elements.billing_country?.value?.trim().toUpperCase();
+        const customerType = paymentForm.elements.billing_customer_type?.value;
+        const postalCode = paymentForm.elements.billing_postal_code;
+        const province = paymentForm.elements.billing_province;
+        const fiscalCode = paymentForm.elements.fiscal_code;
+        const vatNumber = paymentForm.elements.vat_number;
+
+        if (country === 'IT' && !/^\d{5}$/.test(postalCode?.value || '')) {
+            postalCode?.setCustomValidity(@json(__('messages.subscribe.invalid_postal_code')));
+        }
+        if (country === 'IT' && !/^[A-Z]{2}$/i.test(province?.value || '')) {
+            province?.setCustomValidity(@json(__('messages.subscribe.invalid_province')));
+        }
+        if (customerType === 'individual' && !isValidItalianFiscalCode(fiscalCode?.value)) {
+            fiscalCode?.setCustomValidity(@json(__('messages.subscribe.invalid_fiscal_code')));
+        }
+        if (customerType === 'legal_entity' && country === 'IT' && !isValidItalianVat(vatNumber?.value)) {
+            vatNumber?.setCustomValidity(@json(__('messages.subscribe.invalid_vat_number')));
+        }
+
+        return paymentForm?.checkValidity() ?? false;
+    }
+
+    function showServerValidationErrors(data) {
+        const messages = Object.values(data.errors || {}).flat().filter(Boolean);
+        paymentError.textContent = messages.length ? messages.join('\n') : (data.message || data.error || @json(__('messages.subscribe.checkout_error')));
+        paymentError.classList.remove('hidden');
+
+        const firstFieldName = Object.keys(data.errors || {})[0];
+        const firstField = firstFieldName ? paymentForm?.elements.namedItem(firstFieldName) : null;
+        if (firstField instanceof HTMLElement) {
+            firstField.setAttribute('aria-invalid', 'true');
+            firstField.focus();
+        }
     }
 
     function closePaymentModal() {
@@ -332,25 +507,26 @@
     });
 
     document.getElementById('payment-details-close')?.addEventListener('click', closePaymentModal);
-    invoiceCheckbox?.addEventListener('change', function () {
-        fiscalCodeWrap?.classList.toggle('hidden', !invoiceCheckbox.checked);
-        if (fiscalCodeInput) {
-            fiscalCodeInput.required = invoiceCheckbox.checked;
-            if (!invoiceCheckbox.checked) {
-                fiscalCodeInput.value = '';
-            }
-        }
-    });
+    invoiceCheckbox?.addEventListener('change', updateInvoiceFields);
+    billingTypeInputs.forEach((input) => input.addEventListener('change', updateInvoiceFields));
     fiscalCodeInput?.addEventListener('input', function () {
         fiscalCodeInput.value = fiscalCodeInput.value.toUpperCase();
     });
+    invoiceDetails?.querySelectorAll('input[name="vat_number"], input[name="sdi_code"], input[name="billing_province"], input[name="billing_country"]').forEach((input) => {
+        input.addEventListener('input', () => input.value = input.value.toUpperCase());
+    });
+    updateInvoiceFields();
 
     paymentForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
-        button.disabled = true;
-        button.textContent = @json(__('messages.subscribe.loading'));
-        setPaymentLoading(true);
         paymentError?.classList.add('hidden');
+
+        if (!validatePaymentFields()) {
+            paymentForm.reportValidity();
+            paymentError.textContent = @json(__('messages.subscribe.checkout_validation_error'));
+            paymentError.classList.remove('hidden');
+            return;
+        }
 
         const selectedPlan = document.querySelector('input[name="plan"]:checked')?.value;
         if (!selectedPlan) {
@@ -360,6 +536,10 @@
             setPaymentLoading(false);
             return;
         }
+
+        button.disabled = true;
+        button.textContent = @json(__('messages.subscribe.loading'));
+        setPaymentLoading(true);
         const stripeKey = @json(config('services.stripe.key'));
         const formData = new FormData(paymentForm);
         const payload = {
@@ -372,7 +552,17 @@
             phone_number: formData.get('phone_number'),
             invoice_requested: invoiceCheckbox?.checked || false,
             purchase_terms_accepted: formData.get('purchase_terms_accepted') === 'true',
+            billing_customer_type: invoiceCheckbox?.checked ? formData.get('billing_customer_type') : null,
+            billing_address: invoiceCheckbox?.checked ? formData.get('billing_address') : null,
+            billing_postal_code: invoiceCheckbox?.checked ? formData.get('billing_postal_code') : null,
+            billing_city: invoiceCheckbox?.checked ? formData.get('billing_city') : null,
+            billing_province: invoiceCheckbox?.checked ? formData.get('billing_province')?.toString().toUpperCase() : null,
+            billing_country: invoiceCheckbox?.checked ? formData.get('billing_country')?.toString().toUpperCase() : null,
             fiscal_code: formData.get('fiscal_code')?.toString().toUpperCase() || null,
+            company_name: formData.get('company_name') || null,
+            vat_number: formData.get('vat_number')?.toString().toUpperCase() || null,
+            sdi_code: formData.get('sdi_code')?.toString().toUpperCase() || null,
+            pec: formData.get('pec')?.toString().toLowerCase() || null,
         };
 
         try {
@@ -389,8 +579,7 @@
             const data = await response.json();
 
             if (!response.ok || data.error) {
-                paymentError.textContent = data.message || data.error || @json(__('messages.subscribe.checkout_error'));
-                paymentError.classList.remove('hidden');
+                showServerValidationErrors(data);
                 button.disabled = false;
                 button.textContent = originalButtonText;
                 setPaymentLoading(false);

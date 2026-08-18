@@ -8,7 +8,7 @@ return [
     'documents' => [
         'privacy' => [
             'group' => 'policies',
-            'initial_version' => '1.2',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/privacy.blade.php',
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Privacy policy', 'en' => 'Privacy policy'],
@@ -19,7 +19,7 @@ return [
         ],
         'cookies' => [
             'group' => 'policies',
-            'initial_version' => '1.1',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/cookies.blade.php',
             'route' => 'legal.cookies',
             'titles' => ['it' => 'Cookie policy', 'en' => 'Cookie policy'],
@@ -30,7 +30,7 @@ return [
         ],
         'terms' => [
             'group' => 'policies',
-            'initial_version' => '2026-07-29',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/terms.blade.php',
             'route' => 'legal.terms',
             'titles' => ['it' => 'Termini sito e waitlist', 'en' => 'Website and waitlist terms'],
@@ -41,7 +41,7 @@ return [
         ],
         'passes' => [
             'group' => 'commerce',
-            'initial_version' => '2026-07-29.1',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/passes.blade.php',
             'route' => 'legal.passes',
             'titles' => ['it' => 'Come funzionano i Pass', 'en' => 'How Passes work'],
@@ -52,7 +52,7 @@ return [
         ],
         'sales' => [
             'group' => 'commerce',
-            'initial_version' => '2026-07-29.1',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/sales.blade.php',
             'route' => 'legal.sales',
             'titles' => ['it' => 'Termini di vendita', 'en' => 'Terms of sale'],
@@ -63,7 +63,7 @@ return [
         ],
         'presale' => [
             'group' => 'commerce',
-            'initial_version' => '2026-07-29.1',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/presale.blade.php',
             'route' => 'legal.presale',
             'titles' => ['it' => 'Condizioni di pre-sale', 'en' => 'Pre-sale terms'],
@@ -74,7 +74,7 @@ return [
         ],
         'refunds' => [
             'group' => 'commerce',
-            'initial_version' => '2026-07-29.2',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/refunds.blade.php',
             'route' => 'legal.refunds',
             'titles' => ['it' => 'Refund Policy', 'en' => 'Refund Policy'],
@@ -85,7 +85,7 @@ return [
         ],
         'withdrawal_info' => [
             'group' => 'commerce',
-            'initial_version' => '2026-07-29.2',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/withdrawal-info.blade.php',
             'route' => 'legal.refunds',
             'titles' => ['it' => 'Informativa sul diritto di recesso', 'en' => 'Withdrawal right information'],
@@ -96,7 +96,7 @@ return [
         ],
         'notice' => [
             'group' => 'policies',
-            'initial_version' => '2026-08-01.1',
+            'initial_version' => '2026-08-18',
             'view' => 'pages/legal/notice.blade.php',
             'route' => 'legal.notice',
             'titles' => ['it' => 'Note legali', 'en' => 'Legal notice'],
@@ -107,7 +107,7 @@ return [
         ],
         'marketing' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-07-14',
+            'initial_version' => '2026-08-18',
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Consenso marketing', 'en' => 'Marketing consent'],
             'descriptions' => [
@@ -121,7 +121,7 @@ return [
         ],
         'waitlist_acceptance' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-07-29',
+            'initial_version' => '2026-08-18',
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Informativa iscrizione waitlist', 'en' => 'Waitlist registration notice'],
             'descriptions' => [
@@ -135,7 +135,7 @@ return [
         ],
         'contact_acceptance' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-07-14',
+            'initial_version' => '2026-08-18',
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Dichiarazione form contatti', 'en' => 'Contact form acknowledgement'],
             'descriptions' => [
@@ -149,7 +149,7 @@ return [
         ],
         'purchase_acceptance' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-07-29.2',
+            'initial_version' => '2026-08-18',
             'route' => 'legal.sales',
             'titles' => ['it' => 'Dichiarazione acquisto', 'en' => 'Purchase acknowledgement'],
             'descriptions' => [

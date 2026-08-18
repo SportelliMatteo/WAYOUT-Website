@@ -74,7 +74,7 @@ MAIL_USERNAME=account-brevo@example.com
 MAIL_PASSWORD=chiave-smtp-brevo
 MAIL_FROM_ADDRESS=hello@dominio-verificato.example
 MAIL_FROM_NAME=WAYOUT
-MAIL_REPLY_TO_ADDRESS=hello@wayoutapp.it
+MAIL_REPLY_TO_ADDRESS=amministrazione@wayoutapp.it
 MAIL_REPLY_TO_NAME=WAYOUT
 CONTACT_EMAIL=hello@wayoutapp.it
 ```
@@ -98,6 +98,8 @@ L’editor accetta HTML essenziale e lo sanitizza prima del salvataggio. Script,
 La dashboard supporta fino a quattro account amministrativi separati e con gli stessi permessi (`ADMIN_MAX_USERS=4`). Non esistono ruoli Owner o gerarchie. Al primo accesso dopo la migrazione, le credenziali `ADMIN_EMAIL` e `ADMIN_PASSWORD` inizializzano il primo account; la password viene salvata nel database esclusivamente come hash. Dopo questa inizializzazione le credenziali in `.env` non vengono più usate e possono essere rimosse dalla configurazione di produzione. Qualunque amministratore autenticato può creare gli account mancanti fino al limite configurato.
 
 Ogni amministratore deve configurare un’app TOTP compatibile (Google Authenticator, 2FAS, Aegis o equivalente) scansionando il QR generato localmente dal server. Il segreto TOTP è cifrato tramite `APP_KEY`; i recovery code sono salvati solo come hash e quelli mostrati temporaneamente nella sessione sono cifrati. Un codice TOTP già utilizzato non può essere riutilizzato nello stesso intervallo temporale.
+
+Dalla schermata di login, un amministratore che ha dimenticato la password può reimpostarla inserendo email, nuova password e uno dei recovery code salvati. Il codice viene consumato, tutte le sessioni dell’account vengono invalidate e l’Authenticator configurato resta attivo. Nella schermata di verifica OTP, un recovery code può invece sostituire il codice Authenticator e obbliga a configurare nuovamente il TOTP.
 
 Ogni amministratore può modificare autonomamente soltanto la propria password dalla sezione **Configurazione → Cambia la mia password**, inserendo password attuale, nuova password e conferma. La modifica incrementa la versione di autenticazione e invalida tutte le altre sessioni dello stesso account, mantenendo attiva quella utilizzata per il cambio. Nell’audit viene registrata l’operazione, senza password o hash.
 

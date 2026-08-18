@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\PhoneVerificationService;
+use App\Support\FirebasePhoneVerificationService;
 use App\Support\FounderAvailability;
 use App\Support\LegalDocumentService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -9,9 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(PhoneVerificationService::class, FirebasePhoneVerificationService::class);
     }
 
     /**
@@ -28,6 +30,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            DB::connection()->getPdo()->sqliteCreateFunction(
+                'gen_random_uuid',
+                static fn (): string => (string) Str::uuid(),
+            );
+        }
+
         RateLimiter::for('waitlist', function (Request $request) {
             $email = Str::lower((string) $request->input('email'));
 

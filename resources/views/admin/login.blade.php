@@ -24,6 +24,12 @@
                 </div>
             @endif
 
+            @if (session('admin_recovery_success'))
+                <div class="mt-6 rounded-2xl border border-emerald-300/30 bg-emerald-500/15 px-4 py-3 text-sm font-bold text-emerald-100">
+                    {{ session('admin_recovery_success') }}
+                </div>
+            @endif
+
             <form action="{{ route('admin.authenticate') }}" method="POST" class="mt-7 space-y-4">
                 @csrf
                 <div>
@@ -40,6 +46,38 @@
                     {{ __('messages.admin.enter') }}
                 </button>
             </form>
+
+            <details class="mt-6 rounded-2xl border border-white/10 bg-white/[0.06] p-4" @if(old('recovery_mode')) open @endif>
+                <summary class="cursor-pointer text-center text-sm font-black text-violet-200">
+                    {{ __('messages.admin.use_recovery_code') }}
+                </summary>
+                <p class="mt-4 text-sm font-semibold leading-6 text-slate-300">
+                    {{ __('messages.admin.recovery_login_help') }}
+                </p>
+                <form action="{{ route('admin.recover') }}" method="POST" class="mt-5 space-y-4">
+                    @csrf
+                    <input type="hidden" name="recovery_mode" value="1">
+                    <div>
+                        <label for="recovery-email" class="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.admin.email') }}</label>
+                        <input id="recovery-email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required class="mt-2 w-full rounded-2xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/20">
+                    </div>
+                    <div>
+                        <label for="recovery-code" class="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.admin.recovery_code') }}</label>
+                        <input id="recovery-code" name="recovery_code" type="text" autocomplete="one-time-code" autocapitalize="characters" maxlength="32" required class="mt-2 w-full rounded-2xl border border-white/10 bg-white px-4 py-3 text-center font-mono text-lg font-black uppercase tracking-[0.16em] text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/20">
+                    </div>
+                    <div>
+                        <label for="recovery-password" class="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.admin.new_password') }}</label>
+                        <input id="recovery-password" name="password" type="password" autocomplete="new-password" required class="mt-2 w-full rounded-2xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/20">
+                    </div>
+                    <div>
+                        <label for="recovery-password-confirmation" class="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.admin.confirm_new_password') }}</label>
+                        <input id="recovery-password-confirmation" name="password_confirmation" type="password" autocomplete="new-password" required class="mt-2 w-full rounded-2xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/20">
+                    </div>
+                    <button type="submit" class="w-full rounded-full border border-violet-300/40 bg-violet-500/20 px-6 py-4 text-base font-black text-white transition hover:bg-violet-500/30">
+                        {{ __('messages.admin.reset_password') }}
+                    </button>
+                </form>
+            </details>
             <div class="mt-5 flex justify-center gap-2 text-xs font-black">
                 <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-3 py-2 {{ app()->getLocale() === 'it' ? 'bg-white text-slate-950' : 'bg-white/10 text-black' }}">IT</a>
                 <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full px-3 py-2 {{ app()->getLocale() === 'en' ? 'bg-white text-slate-950' : 'bg-white/10 text-black' }}">EN</a>

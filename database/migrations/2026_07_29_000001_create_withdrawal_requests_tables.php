@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -9,8 +10,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('withdrawal_requests', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('purchase_id')->nullable()->constrained('purchases')->nullOnDelete();
+            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->foreignUuid('purchase_id')->nullable()->constrained('purchases')->nullOnDelete();
             $table->string('receipt_number', 32)->unique();
             $table->char('public_token_hash', 64)->unique();
             $table->uuid('idempotency_key')->unique();
@@ -40,11 +41,11 @@ return new class extends Migration
         });
 
         Schema::create('withdrawal_request_events', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('withdrawal_request_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->foreignUuid('withdrawal_request_id')->constrained()->cascadeOnDelete();
             $table->string('event_type', 64);
             $table->string('actor_type', 32)->default('system');
-            $table->unsignedBigInteger('actor_id')->nullable();
+            $table->uuid('actor_id')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamp('occurred_at');
             $table->timestamp('created_at')->nullable();

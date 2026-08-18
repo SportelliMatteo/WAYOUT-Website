@@ -12,6 +12,8 @@ class WithdrawalTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const PURCHASE_ID = '018f4f7e-9dd8-7f20-a1f4-5f79f874c501';
+
     public function test_page_has_required_url_form_and_three_sections(): void
     {
         $this->get('/recedere-dal-contratto')
@@ -64,7 +66,7 @@ class WithdrawalTest extends TestCase
 
         $withdrawal = DB::table('withdrawal_requests')->first();
         $this->assertNotNull($withdrawal);
-        $this->assertSame(123, $withdrawal->purchase_id);
+        $this->assertSame(self::PURCHASE_ID, $withdrawal->purchase_id);
         $this->assertTrue((bool) $withdrawal->within_ordinary_period);
         $this->assertDatabaseHas('withdrawal_request_events', [
             'withdrawal_request_id' => $withdrawal->id,
@@ -133,7 +135,8 @@ class WithdrawalTest extends TestCase
     private function insertPurchase(): void
     {
         DB::table('purchases')->insert([
-            'id' => 123,
+            'id' => self::PURCHASE_ID,
+            'order_reference' => 'WO-2026-000123',
             'email' => 'ada@example.com',
             'plan' => 'join',
             'amount' => 2900,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AdminUser;
 use App\Support\AdminAuditService;
 use App\Support\LegalDocumentService;
+use App\Support\QontoInvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -68,6 +69,7 @@ class AdminController extends Controller
                 'waitlist_entries.birth_date',
                 'waitlist_entries.phone_prefix',
                 'waitlist_entries.phone_number',
+                'waitlist_entries.phone_verified_at',
                 'waitlist_entries.marketing_consent',
                 'waitlist_entries.offer_shown',
                 'waitlist_entries.created_at',
@@ -168,13 +170,13 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'locale' => ['required', 'in:it,en'],
-            'version' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'version' => ['required', 'date_format:Y-m-d'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:1000'],
             'content_html' => ['required', 'string', 'max:200000'],
         ]);
 
-        DB::transaction(function () use ($request, $document, $validated, $legalDocuments, $audit) {
+        $published = DB::transaction(function () use ($request, $document, $validated, $legalDocuments, $audit) {
             $previous = $legalDocuments->current($document, $validated['locale']);
             $published = $legalDocuments->publish(
                 $document,
@@ -202,6 +204,8 @@ class AdminController extends Controller
                     'content_hash' => $published->content_hash,
                 ],
             );
+
+            return $published;
         });
 
         return redirect()
@@ -212,7 +216,7 @@ class AdminController extends Controller
             ]).'#legal-documents')
             ->with('admin_success', __('messages.admin.legal_published', [
                 'document' => $validated['title'],
-                'version' => $validated['version'],
+                'version' => $published->version,
             ]));
     }
 
@@ -261,6 +265,76 @@ class AdminController extends Controller
         return back()->with('admin_success', __('messages.admin.admin_success'));
     }
 
+    public function retryInvoice(
+        Request $request,
+        string $purchase,
+        QontoInvoiceService $invoices,
+        AdminAuditService $audit,
+    ) {
+        $record = DB::table('purchases')->where('id', $purchase)->first();
+        abort_unless($record, 404);
+
+        if (! $record->invoice_requested || $record->status !== 'succeeded') {
+            return redirect()->route('admin.dashboard', ['tab' => 'orders'])
+                ->withErrors(['invoice' => __('messages.admin.invoice_not_retryable')]);
+        }
+
+        $previous = $this->invoiceAuditValues($record);
+        $successful = $invoices->sendForPurchase($purchase);
+        $updated = DB::table('purchases')->where('id', $purchase)->first();
+
+        $audit->record(
+            $request,
+            'qonto_invoice.retried',
+            'purchase',
+            $purchase,
+            $record->order_reference,
+            $previous,
+            $this->invoiceAuditValues($updated),
+        );
+
+        $response = redirect()->to(route('admin.dashboard', ['tab' => 'orders']).'#orders');
+
+        return $successful
+            ? $response->with('admin_success', __('messages.admin.invoice_retry_success'))
+            : $response->withErrors(['invoice' => $updated->qonto_invoice_error ?: __('messages.admin.invoice_retry_failed')]);
+    }
+
+    public function syncInvoice(
+        Request $request,
+        string $purchase,
+        QontoInvoiceService $invoices,
+        AdminAuditService $audit,
+    ) {
+        $record = DB::table('purchases')->where('id', $purchase)->first();
+        abort_unless($record, 404);
+
+        if (! $record->qonto_invoice_id) {
+            return redirect()->route('admin.dashboard', ['tab' => 'orders'])
+                ->withErrors(['invoice' => __('messages.admin.invoice_not_created')]);
+        }
+
+        $previous = $this->invoiceAuditValues($record);
+        $successful = $invoices->syncForPurchase($purchase);
+        $updated = DB::table('purchases')->where('id', $purchase)->first();
+
+        $audit->record(
+            $request,
+            'qonto_invoice.synchronized',
+            'purchase',
+            $purchase,
+            $record->order_reference,
+            $previous,
+            $this->invoiceAuditValues($updated),
+        );
+
+        $response = redirect()->to(route('admin.dashboard', ['tab' => 'orders']).'#orders');
+
+        return $successful
+            ? $response->with('admin_success', __('messages.admin.invoice_sync_success'))
+            : $response->withErrors(['invoice' => $updated->qonto_invoice_error ?: __('messages.admin.invoice_sync_failed')]);
+    }
+
     private function buyersForPlan(string $plan)
     {
         return DB::table('purchases')
@@ -278,6 +352,20 @@ class AdminController extends Controller
             ->orderByDesc('latest_purchase_at')
             ->limit(20)
             ->get();
+    }
+
+    /** @return array<string, mixed> */
+    private function invoiceAuditValues(object $purchase): array
+    {
+        return [
+            'electronic_invoice_status' => $purchase->electronic_invoice_status,
+            'qonto_invoice_id' => $purchase->qonto_invoice_id,
+            'qonto_invoice_number' => $purchase->qonto_invoice_number,
+            'qonto_invoice_status' => $purchase->qonto_invoice_status,
+            'qonto_einvoicing_status' => $purchase->qonto_einvoicing_status,
+            'qonto_invoice_error' => $purchase->qonto_invoice_error,
+            'qonto_invoice_synced_at' => $purchase->qonto_invoice_synced_at,
+        ];
     }
 
     private function isAuthenticated(Request $request): bool

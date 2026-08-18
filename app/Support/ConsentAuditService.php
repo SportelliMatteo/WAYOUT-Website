@@ -8,14 +8,12 @@ use InvalidArgumentException;
 
 class ConsentAuditService
 {
-    public function __construct(private readonly LegalDocumentService $legalDocuments)
-    {
-    }
+    public function __construct(private readonly LegalDocumentService $legalDocuments) {}
 
     /**
-     * @param array{waitlist_entry_id?: int|null, purchase_id?: int|null, contact_message_id?: int|null} $references
-     * @param array<string, mixed> $metadata
-     * @param list<string> $documents
+     * @param  array{waitlist_entry_id?: string|null, purchase_id?: string|null, contact_message_id?: string|null}  $references
+     * @param  array<string, mixed>  $metadata
+     * @param  list<string>  $documents
      */
     public function record(
         Request $request,
@@ -26,15 +24,15 @@ class ConsentAuditService
         array $documents,
         array $references = [],
         array $metadata = [],
-        ?int $revokesEventId = null,
-    ): int {
+        ?string $revokesEventId = null,
+    ): string {
         if (! in_array($action, ['granted', 'revoked'], true)) {
             throw new InvalidArgumentException('Unsupported consent action: '.$action);
         }
 
         $snapshot = $this->documentSnapshot($documents);
 
-        return DB::table('consent_events')->insertGetId([
+        return DatabaseUuid::insert('consent_events', [
             'waitlist_entry_id' => $references['waitlist_entry_id'] ?? null,
             'purchase_id' => $references['purchase_id'] ?? null,
             'contact_message_id' => $references['contact_message_id'] ?? null,
@@ -58,7 +56,7 @@ class ConsentAuditService
         ]);
     }
 
-    public function latestMarketingEvent(?int $waitlistEntryId): ?object
+    public function latestMarketingEvent(?string $waitlistEntryId): ?object
     {
         if (! $waitlistEntryId) {
             return null;
@@ -72,7 +70,7 @@ class ConsentAuditService
             ->first();
     }
 
-    public function hasWaitlistLegalAcceptance(?int $waitlistEntryId): bool
+    public function hasWaitlistLegalAcceptance(?string $waitlistEntryId): bool
     {
         return $waitlistEntryId
             && DB::table('consent_events')
