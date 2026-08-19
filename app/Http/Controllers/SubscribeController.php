@@ -8,6 +8,7 @@ use App\Support\ConsentAuditService;
 use App\Support\DatabaseUuid;
 use App\Support\FounderAvailability;
 use App\Support\ItalianFiscalData;
+use App\Support\PrivacySafeLogContext;
 use App\Support\PurchasePdfService;
 use App\Support\QontoInvoiceService;
 use App\Support\TransactionalEmailSender;
@@ -237,8 +238,8 @@ class SubscribeController extends Controller
             });
         } catch (QueryException $exception) {
             Log::error('Purchase confirmation lookup failed.', [
-                'email' => $email,
-                'exception' => $exception,
+                'email_hash' => PrivacySafeLogContext::fingerprint($email),
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             return $this->purchaseConfirmationResponse(
@@ -295,9 +296,9 @@ class SubscribeController extends Controller
                 ->update(['confirmation_email_sent_at' => $claim['previous_sent_at']]);
 
             Log::error('Purchase confirmation resend failed.', [
-                'email' => $email,
+                'email_hash' => PrivacySafeLogContext::fingerprint($email),
                 'purchase_id' => $purchase->id,
-                'exception' => $exception,
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             return $this->purchaseConfirmationResponse(
@@ -353,7 +354,20 @@ class SubscribeController extends Controller
             'last_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
-            'phone_number' => ['required', 'string', 'max:32', 'regex:/^[0-9\s().-]{5,32}$/'],
+            'phone_number' => [
+                'required',
+                'string',
+                'max:32',
+                'regex:/^[0-9\s().-]{5,32}$/',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    $internationalNumber = (string) $request->input('phone_prefix')
+                        .(preg_replace('/\D+/', '', (string) $value) ?? '');
+
+                    if (preg_match('/^\+[1-9]\d{6,14}$/', $internationalNumber) !== 1) {
+                        $fail(__('messages.subscribe.invalid_phone_number'));
+                    }
+                },
+            ],
             'invoice_requested' => ['sometimes', 'boolean'],
             'purchase_terms_accepted' => ['required', 'accepted'],
             'billing_customer_type' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', Rule::in(['individual', 'legal_entity'])],
@@ -515,7 +529,11 @@ class SubscribeController extends Controller
 
         $waitlistEntryId = DB::table('waitlist_entries')->where('email', $email)->value('id');
 
-        $directCheckout = $request->boolean('direct_checkout', false);
+        // This shortcut exists only to keep feature tests fast. Client input can
+        // never bypass Stripe in a web/production runtime.
+        $directCheckout = app()->runningUnitTests()
+            && config('services.stripe.direct_checkout_enabled_for_tests')
+            && $request->boolean('direct_checkout', false);
 
         $planConfig = match ($plan) {
             'creator' => [
@@ -584,7 +602,7 @@ class SubscribeController extends Controller
             } catch (QueryException $exception) {
                 Log::error('Direct checkout purchase insert failed.', [
                     'plan' => $plan,
-                    'exception' => $exception,
+                    ...PrivacySafeLogContext::exception($exception),
                 ]);
 
                 return response()->json([
@@ -699,7 +717,7 @@ class SubscribeController extends Controller
         } catch (QueryException $exception) {
             Log::error('Stripe checkout reservation failed.', [
                 'plan' => $plan,
-                'exception' => $exception,
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             return response()->json([
@@ -755,7 +773,7 @@ class SubscribeController extends Controller
 
             Log::error('Stripe checkout request failed.', [
                 'plan' => $plan,
-                'exception' => $exception,
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             return response()->json([
@@ -769,7 +787,6 @@ class SubscribeController extends Controller
             Log::warning('Stripe checkout returned an error.', [
                 'plan' => $plan,
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
 
             return response()->json([
@@ -783,7 +800,6 @@ class SubscribeController extends Controller
             Log::warning('Stripe checkout response did not include a session id.', [
                 'plan' => $plan,
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
 
             return response()->json([
@@ -804,19 +820,91 @@ class SubscribeController extends Controller
         ]);
     }
 
+    public function stripeWebhook(Request $request, ConsentAuditService $audit)
+    {
+        $payload = $request->getContent();
+        $signature = (string) $request->header('Stripe-Signature', '');
+        $secret = (string) config('services.stripe.webhook_secret', '');
+
+        if ($secret === '') {
+            Log::error('Stripe webhook is not configured.');
+
+            return response()->json(['received' => false], 503);
+        }
+
+        if (! $this->validStripeWebhookSignature($payload, $signature, $secret)) {
+            Log::warning('Stripe webhook signature verification failed.');
+
+            return response()->json(['received' => false], 400);
+        }
+
+        try {
+            $event = json_decode($payload, true, flags: JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return response()->json(['received' => false], 400);
+        }
+
+        $type = $event['type'] ?? null;
+
+        if (! in_array($type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)) {
+            return response()->json(['received' => true]);
+        }
+
+        $sessionId = $event['data']['object']['id'] ?? null;
+
+        if (! is_string($sessionId) || ! str_starts_with($sessionId, 'cs_')) {
+            return response()->json(['received' => false], 400);
+        }
+
+        if (! $this->registerSuccessfulStripeCheckout($sessionId, $request, $audit)) {
+            // A 5xx response asks Stripe to retry transient failures.
+            return response()->json(['received' => false], 500);
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    private function validStripeWebhookSignature(
+        string $payload,
+        string $signatureHeader,
+        string $secret,
+        int $toleranceSeconds = 300,
+    ): bool {
+        $parts = collect(explode(',', $signatureHeader))
+            ->mapWithKeys(function (string $part): array {
+                [$key, $value] = array_pad(explode('=', trim($part), 2), 2, null);
+
+                return is_string($key) && is_string($value) ? [$key => $value] : [];
+            });
+        $timestamp = $parts->get('t');
+        $signatures = collect(explode(',', $signatureHeader))
+            ->filter(fn (string $part): bool => str_starts_with(trim($part), 'v1='))
+            ->map(fn (string $part): string => substr(trim($part), 3));
+
+        if (! is_string($timestamp) || ! ctype_digit($timestamp)
+            || abs(time() - (int) $timestamp) > $toleranceSeconds
+            || $signatures->isEmpty()) {
+            return false;
+        }
+
+        $expected = hash_hmac('sha256', $timestamp.'.'.$payload, $secret);
+
+        return $signatures->contains(fn (string $provided): bool => hash_equals($expected, $provided));
+    }
+
     private function registerSuccessfulStripeCheckout(
         string $sessionId,
         Request $request,
         ConsentAuditService $audit,
-    ): void {
+    ): bool {
         $secret = config('services.stripe.secret');
 
         if (! $secret) {
             Log::warning('Stripe success callback skipped because STRIPE_SECRET is missing.', [
-                'stripe_session_id' => $sessionId,
+                'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
             ]);
 
-            return;
+            return false;
         }
 
         try {
@@ -826,30 +914,29 @@ class SubscribeController extends Controller
                 ->get('https://api.stripe.com/v1/checkout/sessions/'.$sessionId);
         } catch (Throwable $exception) {
             Log::error('Stripe checkout session lookup failed.', [
-                'stripe_session_id' => $sessionId,
-                'exception' => $exception,
+                'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
-            return;
+            return false;
         }
 
         if ($response->failed()) {
             Log::warning('Stripe checkout session lookup returned an error.', [
-                'stripe_session_id' => $sessionId,
+                'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
                 'status' => $response->status(),
-                'body' => $response->body(),
             ]);
 
-            return;
+            return false;
         }
 
         if ($response->json('payment_status') !== 'paid') {
             Log::info('Stripe checkout session was not paid yet.', [
-                'stripe_session_id' => $sessionId,
+                'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
                 'payment_status' => $response->json('payment_status'),
             ]);
 
-            return;
+            return true;
         }
 
         $metadata = $response->json('metadata') ?? [];
@@ -857,21 +944,20 @@ class SubscribeController extends Controller
 
         if (! in_array($plan, ['join', 'creator'], true)) {
             Log::warning('Stripe checkout session missing a valid plan.', [
-                'stripe_session_id' => $sessionId,
-                'metadata' => $metadata,
+                'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
             ]);
 
-            return;
+            return true;
         }
 
         $email = $metadata['email'] ?? $response->json('customer_details.email') ?? $response->json('customer_email');
 
         if (! $email) {
             Log::warning('Stripe checkout session missing customer email.', [
-                'stripe_session_id' => $sessionId,
+                'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
             ]);
 
-            return;
+            return true;
         }
 
         $purchaseData = [
@@ -992,7 +1078,7 @@ class SubscribeController extends Controller
 
             if (! $registered) {
                 Log::warning('Stripe checkout payment exceeded founder pass capacity.', [
-                    'stripe_session_id' => $sessionId,
+                    'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
                     'plan' => $plan,
                     'reservation_id' => $reservationId,
                 ]);
@@ -1012,14 +1098,16 @@ class SubscribeController extends Controller
             }
         } catch (QueryException $exception) {
             Log::error('Stripe checkout purchase registration failed.', [
-                'stripe_session_id' => $sessionId,
-                'exception' => $exception,
+                'stripe_session_hash' => PrivacySafeLogContext::fingerprint($sessionId),
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
-            return;
+            return false;
         }
 
         $request->session()->put('checkout_plan', $plan);
+
+        return true;
     }
 
     private function recordSuccessfulPurchaseConsent(
@@ -1075,8 +1163,8 @@ class SubscribeController extends Controller
         } catch (Throwable $exception) {
             Log::error('Automatic purchase confirmation email failed.', [
                 'purchase_id' => $purchaseId,
-                'email' => $purchase->email,
-                'exception' => $exception,
+                'email_hash' => PrivacySafeLogContext::fingerprint($purchase->email),
+                ...PrivacySafeLogContext::exception($exception),
             ]);
         }
     }
@@ -1105,8 +1193,8 @@ class SubscribeController extends Controller
             }
         } catch (Throwable $exception) {
             Log::error('Waitlist welcome email from offer access failed.', [
-                'email' => $email,
-                'exception' => $exception,
+                'email_hash' => PrivacySafeLogContext::fingerprint($email),
+                ...PrivacySafeLogContext::exception($exception),
             ]);
         }
     }

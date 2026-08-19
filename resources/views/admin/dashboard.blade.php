@@ -6,6 +6,12 @@
         : 'Mai';
     $birthDate = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d/m/Y') : '-';
     $phone = fn ($prefix, $number) => trim(($prefix ?? '').' '.($number ?? '')) ?: '-';
+    $genderLabel = fn (?string $gender) => match ($gender) {
+        'MALE' => __('messages.admin.gender_male'),
+        'FEMALE' => __('messages.admin.gender_female'),
+        'OTHER' => __('messages.admin.gender_other'),
+        default => '-',
+    };
     $planName = fn (?string $plan) => $plan ? ($planLabels[$plan] ?? ucfirst($plan)) : __('messages.admin.no_pass');
     $invoiceStatusLabel = fn (?string $status) => __('messages.admin.invoice_status_'.($status ?: 'not_requested'));
     $invoiceStatusClass = fn (?string $status) => match ($status) {
@@ -382,7 +388,7 @@
             <form method="GET" action="{{ route('admin.dashboard') }}" class="grid gap-3 lg:grid-cols-[1fr_180px_180px_auto] lg:items-end">
                 <input type="hidden" name="tab" value="users">
                 <div>
-                    <label for="q" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.search_email') }}</label>
+                    <label for="q" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.search_people') }}</label>
                     <input id="q" name="q" type="search" value="{{ $filters['q'] }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
                 </div>
                 <div>
@@ -419,8 +425,10 @@
                     <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
                         <tr>
                             <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.nickname') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.first_name') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.last_name') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.gender') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.birth_date') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.phone_number') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.phone_verification') }}</th>
@@ -440,8 +448,10 @@
                             @endphp
                             <tr class="hover:bg-violet-50/50">
                                 <td class="px-4 py-3 font-black">{{ $entry->email }}</td>
+                                <td class="px-4 py-3 font-bold text-violet-700">{{ $entry->nickname ?: '-' }}</td>
                                 <td class="px-4 py-3 font-bold text-slate-700">{{ $entry->first_name ?: '-' }}</td>
                                 <td class="px-4 py-3 font-bold text-slate-700">{{ $entry->last_name ?: '-' }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $genderLabel($entry->gender) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $birthDate($entry->birth_date) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-700">{{ $phone($entry->phone_prefix, $entry->phone_number) }}</td>
                                 <td class="whitespace-nowrap px-4 py-3">
@@ -474,7 +484,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
+                                <td colspan="15" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -2,10 +2,10 @@
 
 namespace App\Support;
 
-final readonly class VerifiedPhone
+final readonly class VerifiedFirebaseRegistration
 {
     public function __construct(
-        public string $uid,
+        public string $tempToken,
         public string $phoneNumber,
     ) {}
 }

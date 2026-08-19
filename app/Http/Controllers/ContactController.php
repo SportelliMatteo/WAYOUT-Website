@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\ContactMessageMail;
 use App\Support\ConsentAuditService;
 use App\Support\DatabaseUuid;
+use App\Support\PrivacySafeLogContext;
 use App\Support\TransactionalEmailSender;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -19,8 +20,8 @@ class ContactController extends Controller
     {
         if (filled($request->input('website'))) {
             Log::warning('Contact honeypot triggered.', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
+                'ip_hash' => PrivacySafeLogContext::fingerprint($request->ip()),
+                'user_agent_hash' => PrivacySafeLogContext::fingerprint($request->userAgent()),
             ]);
 
             return back()->withInput($request->except('website'))
@@ -63,8 +64,8 @@ class ContactController extends Controller
             });
         } catch (QueryException $exception) {
             Log::error('Contact message insert failed.', [
-                'email' => $validated['email'],
-                'exception' => $exception,
+                'email_hash' => PrivacySafeLogContext::fingerprint($validated['email']),
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             return back()->withInput($request->except('website'))
@@ -78,8 +79,8 @@ class ContactController extends Controller
                 $emailSender->send($recipient, new ContactMessageMail($validated));
             } catch (Throwable $exception) {
                 Log::error('Contact notification email failed.', [
-                    'contact_email' => $validated['email'],
-                    'exception' => $exception,
+                    'contact_email_hash' => PrivacySafeLogContext::fingerprint($validated['email']),
+                    ...PrivacySafeLogContext::exception($exception),
                 ]);
             }
         } else {

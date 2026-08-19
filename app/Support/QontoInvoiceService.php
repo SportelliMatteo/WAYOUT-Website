@@ -61,7 +61,7 @@ class QontoInvoiceService
             Log::warning('Qonto courtesy invoice PDF is not available yet.', [
                 'purchase_id' => $purchaseId,
                 'qonto_invoice_id' => $purchase->qonto_invoice_id,
-                'exception' => $exception,
+                ...PrivacySafeLogContext::exception($exception),
             ]);
         }
 
@@ -156,7 +156,7 @@ class QontoInvoiceService
 
             Log::error('Qonto electronic invoice creation failed.', [
                 'purchase_id' => $purchaseId,
-                'exception' => $exception,
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             return false;
@@ -271,7 +271,7 @@ class QontoInvoiceService
             Log::warning('Qonto invoice status synchronization failed.', [
                 'purchase_id' => $purchaseId,
                 'qonto_invoice_id' => $purchase->qonto_invoice_id,
-                'exception' => $exception,
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             return false;

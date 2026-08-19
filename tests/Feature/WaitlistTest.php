@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Mail\PurchaseConfirmationMail;
 use App\Mail\WaitlistWelcomeMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -41,22 +43,15 @@ class WaitlistTest extends TestCase
             ->assertSee('Attendi prima di riprovare.');
     }
 
-    public function test_new_email_is_added_to_the_waitlist_and_prompts_for_profile(): void
+    public function test_verified_phone_prompts_for_profile_without_creating_a_partial_entry(): void
     {
-        $response = $this->from(route('home'))
-            ->post(route('waitlist.store'), [
-                'email' => 'NewPerson@Example.com',
-            ]);
+        $response = $this->from(route('home'))->beginPhoneRegistration();
 
         $response->assertRedirect(route('home'))
             ->assertSessionHas('waitlist_profile_prompt', true)
-            ->assertSessionHas('waitlist_status', 'registered')
-            ->assertSessionHas('waitlist_email', 'newperson@example.com');
+            ->assertSessionHas('waitlist_status', 'registered');
 
-        $this->assertDatabaseHas('waitlist_entries', [
-            'email' => 'newperson@example.com',
-            'offer_shown' => true,
-        ]);
+        $this->assertDatabaseCount('waitlist_entries', 0);
 
         $this->get(route('home'))
             ->assertOk()
@@ -66,19 +61,18 @@ class WaitlistTest extends TestCase
             ->assertDontSee('Versioni documenti:');
     }
 
-    public function test_existing_incomplete_email_is_not_inserted_again_but_still_prompts_for_profile(): void
+    public function test_existing_incomplete_phone_is_not_inserted_again_but_still_prompts_for_profile(): void
     {
         DB::table('waitlist_entries')->insert([
             'email' => 'already@example.com',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
             'offer_shown' => true,
             'created_at' => now()->subDay(),
             'updated_at' => now()->subDay(),
         ]);
 
-        $response = $this->from(route('home'))
-            ->post(route('waitlist.store'), [
-                'email' => 'already@example.com',
-            ]);
+        $response = $this->from(route('home'))->beginPhoneRegistration();
 
         $response->assertRedirect(route('home'))
             ->assertSessionHas('waitlist_profile_prompt', true)
@@ -94,8 +88,9 @@ class WaitlistTest extends TestCase
     {
         Mail::fake();
         config()->set('services.firebase.phone_verification_enabled', true);
+        $this->fakeWayoutRegistrationApi();
 
-        $this->post(route('waitlist.store'), ['email' => 'ada@example.com']);
+        $this->beginPhoneRegistration();
 
         Mail::assertNothingSent();
 
@@ -104,9 +99,7 @@ class WaitlistTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'firebase_id_token' => 'valid-firebase-id-token',
+            'gender' => 'OTHER',
         ];
 
         $this->post(route('waitlist.profile'), $profile);
@@ -121,35 +114,104 @@ class WaitlistTest extends TestCase
             ->value('welcome_email_sent_at'));
         $this->assertDatabaseHas('waitlist_entries', [
             'email' => 'ada@example.com',
-            'firebase_uid' => 'firebase-test-user',
+            'firebase_uid' => null,
             'phone_number' => '3331234567',
+            'gender' => 'OTHER',
         ]);
         $this->assertNotNull(DB::table('waitlist_entries')
             ->where('email', 'ada@example.com')
             ->value('phone_verified_at'));
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => $request->url() === 'https://staging-app.wayoutapp.it/api/auth/verify-firebase-token'
+            && $request['firebase_token'] === $this->firebaseTokenForPhone('+393331234567'));
+        Http::assertSent(fn ($request) => $request->url() === 'https://staging-app.wayoutapp.it/api/auth/create-profile'
+            && $request->hasHeader('X-Temp-Token', 'temporary-profile-token')
+            && $request['mobile_number'] === '+393331234567'
+            && $request['email'] === 'ada@example.com'
+            && $request['gender'] === 'OTHER'
+            && $request['profile_image'] === ''
+            && is_string($request['nickname'])
+            && $request['nickname'] !== '');
     }
 
-    public function test_profile_cannot_be_completed_without_a_verified_phone_token(): void
+    public function test_remote_profile_failure_does_not_create_a_local_waitlist_entry(): void
+    {
+        Mail::fake();
+        config()->set('services.firebase.phone_verification_enabled', true);
+        Http::fake([
+            '*/api/auth/verify-firebase-token' => Http::response([
+                'data' => ['temp_token' => 'temporary-profile-token'],
+            ]),
+            '*/api/auth/create-profile' => Http::response([
+                'code' => 'PROFILE_CREATION_FAILED',
+                'message' => 'Remote failure.',
+            ], 500),
+        ]);
+
+        $this->beginPhoneRegistration();
+
+        $this->post(route('waitlist.profile'), [
+            'email' => 'ada@example.com',
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'birth_date' => '1990-01-01',
+            'gender' => 'FEMALE',
+        ])->assertSessionHas('waitlist_profile_prompt', true)
+            ->assertSessionHas('waitlist_error', 'Non siamo riusciti a creare il profilo WAYOUT. Riprova tra qualche minuto.');
+
+        $this->assertDatabaseCount('waitlist_entries', 0);
+        Mail::assertNothingSent();
+    }
+
+    public function test_verified_firebase_token_cannot_be_used_for_a_different_phone(): void
+    {
+        config()->set('services.firebase.phone_verification_enabled', true);
+        $this->fakeWayoutRegistrationApi();
+
+        $this->beginPhoneRegistration(
+            phoneNumber: '3339999999',
+            firebaseToken: $this->firebaseTokenForPhone('+393331234567'),
+        );
+
+        $this->post(route('waitlist.profile'), [
+            'email' => 'attacker@example.com',
+            'first_name' => 'Test',
+            'last_name' => 'Mismatch',
+            'birth_date' => '1990-01-01',
+            'gender' => 'MALE',
+        ])->assertSessionHas('waitlist_profile_prompt', true)
+            ->assertSessionHas('waitlist_error', 'Non siamo riusciti a creare il profilo WAYOUT. Riprova tra qualche minuto.');
+
+        Http::assertSentCount(1);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/api/auth/create-profile'));
+        $this->assertDatabaseCount('waitlist_entries', 0);
+    }
+
+    public function test_phone_step_cannot_be_completed_without_a_verified_phone_token(): void
     {
         Mail::fake();
         config()->set('services.firebase.phone_verification_enabled', true);
 
-        $this->post(route('waitlist.store'), ['email' => 'unverified@example.com']);
-
-        $this->post(route('waitlist.profile'), [
-            'email' => 'unverified@example.com',
-            'first_name' => 'Unverified',
-            'last_name' => 'Member',
-            'birth_date' => '1990-01-01',
+        $this->post(route('waitlist.store'), [
             'phone_prefix' => '+39',
             'phone_number' => '3331234567',
         ])->assertSessionHasErrors('firebase_id_token');
 
-        $this->assertDatabaseMissing('waitlist_entries', [
-            'email' => 'unverified@example.com',
-            'first_name' => 'Unverified',
-        ]);
+        $this->assertDatabaseCount('waitlist_entries', 0);
         Mail::assertNothingSent();
+    }
+
+    public function test_firebase_token_is_not_stored_with_the_cookie_session_driver(): void
+    {
+        config()->set('services.firebase.phone_verification_enabled', true);
+        config()->set('session.driver', 'cookie');
+
+        $this->beginPhoneRegistration()
+            ->assertSessionHas('waitlist_error', 'Non siamo riusciti a completare l’iscrizione. Riprova tra qualche minuto.');
+
+        $this->assertNull(session('waitlist_phone_registration'));
+        $this->assertDatabaseCount('waitlist_entries', 0);
     }
 
     public function test_phone_otp_is_skipped_when_firebase_verification_is_disabled(): void
@@ -157,15 +219,14 @@ class WaitlistTest extends TestCase
         Mail::fake();
         config()->set('services.firebase.phone_verification_enabled', false);
 
-        $this->post(route('waitlist.store'), ['email' => 'local-test@example.com']);
+        $this->beginPhoneRegistration();
 
         $this->post(route('waitlist.profile'), [
             'email' => 'local-test@example.com',
             'first_name' => 'Local',
             'last_name' => 'Test',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
+            'gender' => 'MALE',
         ])->assertSessionHas('waitlist_offer', true)
             ->assertSessionDoesntHaveErrors();
 
@@ -183,15 +244,13 @@ class WaitlistTest extends TestCase
         Mail::fake();
         config()->set('email.enabled', false);
 
-        $this->post(route('waitlist.store'), ['email' => 'ada@example.com']);
+        $this->beginPhoneRegistration();
         $this->post(route('waitlist.profile'), [
             'email' => 'ada@example.com',
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'firebase_id_token' => 'valid-firebase-id-token',
+            'gender' => 'FEMALE',
         ]);
 
         Mail::assertNothingSent();
@@ -208,7 +267,9 @@ class WaitlistTest extends TestCase
             'email' => 'ada@example.com',
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
+            'nickname' => 'ada_lovelace',
             'birth_date' => '1990-01-01',
+            'gender' => 'FEMALE',
             'phone_prefix' => '+39',
             'phone_number' => '3331234567',
             'offer_shown' => true,
@@ -217,7 +278,7 @@ class WaitlistTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->post(route('waitlist.store'), ['email' => 'ada@example.com'])
+        $this->beginPhoneRegistration()
             ->assertSessionHas('waitlist_profile_prompt', true);
 
         Mail::assertNothingSent();
@@ -227,9 +288,7 @@ class WaitlistTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'firebase_id_token' => 'valid-firebase-id-token',
+            'gender' => 'FEMALE',
         ]);
 
         Mail::assertSent(WaitlistWelcomeMail::class, 1);
@@ -237,7 +296,7 @@ class WaitlistTest extends TestCase
             ->where('email', 'ada@example.com')
             ->value('welcome_email_sent_at'));
 
-        $this->post(route('waitlist.store'), ['email' => 'ada@example.com']);
+        $this->beginPhoneRegistration();
         Mail::assertSent(WaitlistWelcomeMail::class, 1);
     }
 
@@ -267,6 +326,13 @@ class WaitlistTest extends TestCase
 
         DB::table('waitlist_entries')->insert([
             'email' => 'buyer@example.com',
+            'nickname' => 'buyer_user',
+            'gender' => 'MALE',
+            'first_name' => 'Buyer',
+            'last_name' => 'User',
+            'birth_date' => '1990-01-01',
+            'phone_prefix' => '+39',
+            'phone_number' => '3331234567',
             'offer_shown' => true,
             'created_at' => now()->subDay(),
             'updated_at' => now()->subDay(),
@@ -283,10 +349,7 @@ class WaitlistTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $response = $this->from(route('home'))
-            ->post(route('waitlist.store'), [
-                'email' => 'buyer@example.com',
-            ]);
+        $response = $this->from(route('home'))->beginPhoneRegistration();
 
         $response->assertRedirect(route('home'))
             ->assertSessionHas('waitlist_status', 'already_registered')
@@ -300,7 +363,7 @@ class WaitlistTest extends TestCase
             ->assertOk()
             ->assertJsonPath('ok', true);
 
-        Mail::assertSent(\App\Mail\PurchaseConfirmationMail::class, 1);
+        Mail::assertSent(PurchaseConfirmationMail::class, 1);
     }
 
     public function test_purchased_plan_message_is_rendered_without_purchase_cta(): void
@@ -329,10 +392,7 @@ class WaitlistTest extends TestCase
     {
         Schema::dropIfExists('waitlist_entries');
 
-        $response = $this->from(route('home'))
-            ->post(route('waitlist.store'), [
-                'email' => 'person@example.com',
-            ]);
+        $response = $this->from(route('home'))->beginPhoneRegistration();
 
         $response->assertRedirect(route('home'))
             ->assertSessionHas('waitlist_error', 'Non siamo riusciti a completare l’iscrizione. Riprova tra qualche minuto.');
@@ -342,7 +402,8 @@ class WaitlistTest extends TestCase
     {
         $response = $this->from(route('home'))
             ->post(route('waitlist.store'), [
-                'email' => 'person@example.com',
+                'phone_prefix' => '+39',
+                'phone_number' => '3331234567',
                 'website' => 'https://spam.example',
             ]);
 

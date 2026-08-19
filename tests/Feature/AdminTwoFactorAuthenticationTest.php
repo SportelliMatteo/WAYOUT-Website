@@ -42,6 +42,24 @@ class AdminTwoFactorAuthenticationTest extends TestCase
         $this->get(route('admin.dashboard'))->assertOk();
     }
 
+    public function test_admin_login_allows_ten_post_attempts_without_counting_page_loads(): void
+    {
+        $admin = $this->admin();
+
+        foreach (range(1, 10) as $attempt) {
+            $this->get(route('admin.login'))->assertOk();
+            $this->post(route('admin.authenticate'), [
+                'email' => $admin->email,
+                'password' => 'wrong-password-'.$attempt,
+            ])->assertSessionHasErrors('email');
+        }
+
+        $this->post(route('admin.authenticate'), [
+            'email' => $admin->email,
+            'password' => 'still-wrong',
+        ])->assertTooManyRequests();
+    }
+
     public function test_first_totp_setup_encrypts_secret_and_shows_recovery_codes_once(): void
     {
         $admin = $this->admin(['totp_secret' => null, 'totp_confirmed_at' => null]);

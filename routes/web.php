@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminUserController;
-use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ConsentController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\SubscribeController;
 use App\Http\Controllers\WaitlistController;
@@ -32,6 +32,7 @@ Route::redirect('/recesso-e-rimborso', '/recedere-dal-contratto', 301);
 Route::get('/note-legali', [LegalDocumentController::class, 'show'])->defaults('document', 'notice')->name('legal.notice');
 Route::get('/subscribe', [SubscribeController::class, 'show'])->name('subscribe');
 Route::get('/checkout/success', [SubscribeController::class, 'success'])->name('checkout.success');
+Route::post('/stripe/webhook', [SubscribeController::class, 'stripeWebhook'])->name('stripe.webhook');
 Route::post('/subscribe/access', [SubscribeController::class, 'access'])->middleware('throttle:waitlist')->name('subscribe.access');
 Route::post('/subscribe/checkout', [SubscribeController::class, 'checkout'])->middleware('throttle:checkout')->name('subscribe.checkout');
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware('throttle:purchase-confirmation')->name('purchase.confirmation.resend');

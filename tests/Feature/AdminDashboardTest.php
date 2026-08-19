@@ -219,6 +219,35 @@ class AdminDashboardTest extends TestCase
             ->assertDontSee('lead@example.com');
     }
 
+    public function test_admin_dashboard_displays_new_profile_fields_and_searches_people(): void
+    {
+        $this->seedDashboardData();
+        $session = $this->adminSession();
+
+        $this->withSession($session)
+            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'nightowl']))
+            ->assertOk()
+            ->assertSee('buyer@example.com')
+            ->assertSee('nightowl')
+            ->assertSee('Altro')
+            ->assertSee('1 risultati');
+
+        $this->withSession($session)
+            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => '+393331234567']))
+            ->assertOk()
+            ->assertSee('buyer@example.com')
+            ->assertSee('nightowl')
+            ->assertSee('1 risultati');
+
+        $this->withSession($session)
+            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'Giulia']))
+            ->assertOk()
+            ->assertSee('lead@example.com')
+            ->assertSee('citylights')
+            ->assertSee('Femmina')
+            ->assertSee('1 risultati');
+    }
+
     public function test_admin_dashboard_displays_utc_consent_timestamps_in_rome_timezone(): void
     {
         DB::table('consent_events')->insert([
@@ -271,6 +300,12 @@ class AdminDashboardTest extends TestCase
         DB::table('waitlist_entries')->insert([
             [
                 'email' => 'buyer@example.com',
+                'first_name' => 'Mario',
+                'last_name' => 'Rossi',
+                'nickname' => 'nightowl',
+                'gender' => 'OTHER',
+                'phone_prefix' => '+39',
+                'phone_number' => '3331234567',
                 'phone_verified_at' => now()->subDay(),
                 'marketing_consent' => true,
                 'offer_shown' => true,
@@ -279,6 +314,12 @@ class AdminDashboardTest extends TestCase
             ],
             [
                 'email' => 'lead@example.com',
+                'first_name' => 'Giulia',
+                'last_name' => 'Bianchi',
+                'nickname' => 'citylights',
+                'gender' => 'FEMALE',
+                'phone_prefix' => '+39',
+                'phone_number' => '3337654321',
                 'phone_verified_at' => null,
                 'marketing_consent' => false,
                 'offer_shown' => true,

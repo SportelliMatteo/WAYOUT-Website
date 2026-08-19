@@ -409,6 +409,35 @@ class SubscribeCheckoutTest extends TestCase
         $this->assertArrayHasKey('purchase_acceptance', json_decode($purchaseConsent->document_versions, true));
     }
 
+    public function test_client_cannot_enable_direct_checkout_when_test_shortcut_is_disabled(): void
+    {
+        config()->set('services.stripe.direct_checkout_enabled_for_tests', false);
+        config()->set('services.stripe.secret', 'sk_test_123');
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_secure_checkout'], 200),
+        ]);
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'secure@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'plan' => 'join',
+            'direct_checkout' => true,
+        ]);
+
+        $response->assertOk()->assertJson(['sessionId' => 'cs_secure_checkout']);
+        $this->assertDatabaseHas('purchases', [
+            'email' => 'secure@example.com',
+            'status' => 'pending',
+            'stripe_session_id' => 'cs_secure_checkout',
+        ]);
+        $this->assertDatabaseMissing('purchases', [
+            'email' => 'secure@example.com',
+            'status' => 'succeeded',
+        ]);
+    }
+
     public function test_legal_entity_invoice_details_are_validated_and_saved(): void
     {
         Mail::fake();
@@ -485,6 +514,27 @@ class SubscribeCheckoutTest extends TestCase
         Http::assertNothingSent();
         Mail::assertNothingSent();
         $this->assertDatabaseMissing('purchases', ['email' => 'invalid-company@example.com']);
+    }
+
+    public function test_invalid_international_phone_stops_before_stripe_and_database_writes(): void
+    {
+        Http::fake();
+        config()->set('services.stripe.secret', 'sk_test_must_not_be_used');
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'invalid-phone@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'phone_prefix' => '+0',
+            'phone_number' => '12345',
+            'plan' => 'join',
+            'direct_checkout' => false,
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('phone_number');
+        Http::assertNothingSent();
+        $this->assertDatabaseMissing('purchases', ['email' => 'invalid-phone@example.com']);
     }
 
     public function test_checkout_rejects_a_phone_different_from_the_verified_waitlist_number(): void
@@ -669,6 +719,106 @@ class SubscribeCheckoutTest extends TestCase
             ->where('purchase_id', $purchaseId)
             ->where('consent_type', 'purchase_legal')
             ->count());
+    }
+
+    public function test_signed_stripe_webhook_confirms_payment_without_browser_redirect(): void
+    {
+        Mail::fake();
+        config()->set('services.stripe.secret', 'sk_test_123');
+        config()->set('services.stripe.webhook_secret', 'whsec_test_123');
+        config()->set('services.qonto.invoicing_enabled', false);
+
+        $purchaseId = DatabaseUuid::insert('purchases', [
+            'email' => 'webhook@example.com',
+            'plan' => 'join',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'stripe_session_id' => 'cs_webhook_paid',
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions/cs_webhook_paid' => Http::response(
+                $this->paidStripeSession($purchaseId, 'webhook@example.com'),
+                200,
+            ),
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_checkout_completed',
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => ['id' => 'cs_webhook_paid']],
+        ], JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test_123');
+
+        $this->call(
+            'POST',
+            route('stripe.webhook'),
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_STRIPE_SIGNATURE' => 't='.$timestamp.',v1='.$signature,
+            ],
+            content: $payload,
+        )->assertOk()->assertJson(['received' => true]);
+
+        $this->assertDatabaseHas('purchases', [
+            'id' => $purchaseId,
+            'status' => 'succeeded',
+        ]);
+        Mail::assertSent(PurchaseConfirmationMail::class, 1);
+    }
+
+    public function test_stripe_webhook_rejects_an_invalid_signature_before_external_calls(): void
+    {
+        config()->set('services.stripe.webhook_secret', 'whsec_test_123');
+        Http::fake();
+
+        $payload = json_encode([
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => ['id' => 'cs_forged']],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->call(
+            'POST',
+            route('stripe.webhook'),
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_STRIPE_SIGNATURE' => 't='.time().',v1=invalid',
+            ],
+            content: $payload,
+        )->assertBadRequest();
+
+        Http::assertNothingSent();
+    }
+
+    public function test_stripe_webhook_requests_a_retry_when_stripe_lookup_temporarily_fails(): void
+    {
+        config()->set('services.stripe.secret', 'sk_test_123');
+        config()->set('services.stripe.webhook_secret', 'whsec_test_123');
+        Http::fake([
+            'https://api.stripe.com/v1/checkout/sessions/cs_retry' => Http::response([], 503),
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_retry',
+            'type' => 'checkout.session.completed',
+            'data' => ['object' => ['id' => 'cs_retry']],
+        ], JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test_123');
+
+        $this->call(
+            'POST',
+            route('stripe.webhook'),
+            server: [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_STRIPE_SIGNATURE' => 't='.$timestamp.',v1='.$signature,
+            ],
+            content: $payload,
+        )->assertServerError()->assertJson(['received' => false]);
     }
 
     public function test_successful_stripe_callback_does_not_overbook_when_capacity_is_gone(): void

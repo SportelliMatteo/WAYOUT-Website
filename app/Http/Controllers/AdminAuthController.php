@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminUser;
 use App\Support\AdminAuditService;
+use App\Support\PrivacySafeLogContext;
 use App\Support\TotpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -44,8 +45,8 @@ class AdminAuthController extends Controller
 
         if (! $admin || ! $admin->is_active || ! Hash::check($validated['password'], $admin->password)) {
             Log::warning('Admin password authentication failed.', [
-                'email' => $email,
-                'ip_address' => $request->ip(),
+                'email_hash' => PrivacySafeLogContext::fingerprint($email),
+                'ip_address_hash' => PrivacySafeLogContext::fingerprint($request->ip()),
             ]);
 
             throw ValidationException::withMessages([
@@ -78,8 +79,8 @@ class AdminAuthController extends Controller
 
         if (! $admin || ! $admin->is_active) {
             Log::warning('Admin password recovery failed.', [
-                'email' => $email,
-                'ip_address' => $request->ip(),
+                'email_hash' => PrivacySafeLogContext::fingerprint($email),
+                'ip_address_hash' => PrivacySafeLogContext::fingerprint($request->ip()),
             ]);
 
             throw ValidationException::withMessages([
@@ -121,7 +122,7 @@ class AdminAuthController extends Controller
         if (! $recoveredAdmin) {
             Log::warning('Invalid admin recovery code.', [
                 'admin_user_id' => $admin->id,
-                'ip_address' => $request->ip(),
+                'ip_address_hash' => PrivacySafeLogContext::fingerprint($request->ip()),
             ]);
 
             throw ValidationException::withMessages([
@@ -190,7 +191,7 @@ class AdminAuthController extends Controller
             Crypt::encryptString(json_encode($recovery['plain'], JSON_THROW_ON_ERROR)),
         );
 
-        Log::info('Admin TOTP activated.', ['admin_user_id' => $admin->id, 'email' => $admin->email]);
+        Log::info('Admin TOTP activated.', ['admin_user_id' => $admin->id]);
 
         return redirect()->route('admin.recovery-codes');
     }
@@ -250,7 +251,7 @@ class AdminAuthController extends Controller
 
         Log::warning('Admin OTP authentication failed.', [
             'admin_user_id' => $admin->id,
-            'ip_address' => $request->ip(),
+            'ip_address_hash' => PrivacySafeLogContext::fingerprint($request->ip()),
         ]);
 
         throw ValidationException::withMessages(['code' => __('messages.admin.otp_invalid')]);

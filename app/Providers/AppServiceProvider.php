@@ -2,8 +2,6 @@
 
 namespace App\Providers;
 
-use App\Contracts\PhoneVerificationService;
-use App\Support\FirebasePhoneVerificationService;
 use App\Support\FounderAvailability;
 use App\Support\LegalDocumentService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -22,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(PhoneVerificationService::class, FirebasePhoneVerificationService::class);
+        //
     }
 
     /**
@@ -38,12 +36,16 @@ class AppServiceProvider extends ServiceProvider
         }
 
         RateLimiter::for('waitlist', function (Request $request) {
-            $email = Str::lower((string) $request->input('email'));
+            $phonePrefix = (string) $request->input('phone_prefix');
+            $phoneNumber = preg_replace('/\D+/', '', (string) $request->input('phone_number')) ?? '';
 
             if ($request->routeIs('waitlist.store')
-                && filter_var($email, FILTER_VALIDATE_EMAIL)
+                && preg_match('/^\+[1-9]\d{6,14}$/', $phonePrefix.$phoneNumber)
                 && Schema::hasTable('waitlist_entries')
-                && DB::table('waitlist_entries')->where('email', $email)->exists()) {
+                && DB::table('waitlist_entries')
+                    ->where('phone_prefix', $phonePrefix)
+                    ->where('phone_number', $phoneNumber)
+                    ->exists()) {
                 return Limit::none();
             }
 
@@ -71,7 +73,20 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('admin', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            if ($request->isMethod('GET')) {
+                return Limit::none();
+            }
+
+            $route = $request->route()?->getName() ?: 'admin';
+            $identity = Str::lower((string) ($request->input('email')
+                ?: $request->session()->get('admin_pending_id')
+                ?: $request->session()->get('admin_user_id')
+                ?: $request->session()->getId()));
+
+            return [
+                Limit::perMinute(10)->by($route.'|'.$request->ip().'|'.$identity),
+                Limit::perHour(60)->by($route.'|'.$request->ip()),
+            ];
         });
 
         View::composer(['pages.home', 'pages.subscribe'], function ($view) {

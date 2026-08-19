@@ -18,14 +18,14 @@ class TransactionalEmailSender
     {
         $logger = Log::channel(config('email.log_channel', 'email'));
         $context = [
-            'recipient' => $recipient,
+            'recipient_hash' => PrivacySafeLogContext::fingerprint($recipient),
             'mailable' => $mailable::class,
             'mailer' => config('mail.default'),
             'smtp_host' => config('mail.mailers.smtp.host'),
             'smtp_port' => config('mail.mailers.smtp.port'),
             'username_configured' => filled(config('mail.mailers.smtp.username')),
             'password_configured' => filled(config('mail.mailers.smtp.password')),
-            'from' => config('mail.from.address'),
+            'from_configured' => filled(config('mail.from.address')),
         ];
 
         if (! $this->enabled()) {
@@ -44,9 +44,7 @@ class TransactionalEmailSender
         } catch (Throwable $exception) {
             $logger->error('email.failed', [
                 ...$context,
-                'exception' => $exception::class,
-                'error_code' => $exception->getCode(),
-                'error' => $exception->getMessage(),
+                ...PrivacySafeLogContext::exception($exception),
             ]);
 
             throw $exception;

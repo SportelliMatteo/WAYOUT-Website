@@ -9,6 +9,7 @@ use App\Support\QontoInvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -66,7 +67,9 @@ class AdminController extends Controller
                 'waitlist_entries.email',
                 'waitlist_entries.first_name',
                 'waitlist_entries.last_name',
+                'waitlist_entries.nickname',
                 'waitlist_entries.birth_date',
+                'waitlist_entries.gender',
                 'waitlist_entries.phone_prefix',
                 'waitlist_entries.phone_number',
                 'waitlist_entries.phone_verified_at',
@@ -83,7 +86,20 @@ class AdminController extends Controller
             ->orderByDesc('waitlist_entries.created_at');
 
         if ($filters['q'] !== '') {
-            $waitlistQuery->where('waitlist_entries.email', 'like', '%'.$filters['q'].'%');
+            $search = '%'.Str::lower($filters['q']).'%';
+            $phoneSearch = preg_replace('/\D+/', '', $filters['q']) ?? '';
+
+            $waitlistQuery->where(function ($query) use ($search, $phoneSearch) {
+                $query->whereRaw('LOWER(waitlist_entries.email) LIKE ?', [$search])
+                    ->orWhereRaw('LOWER(waitlist_entries.first_name) LIKE ?', [$search])
+                    ->orWhereRaw('LOWER(waitlist_entries.last_name) LIKE ?', [$search])
+                    ->orWhereRaw('LOWER(waitlist_entries.nickname) LIKE ?', [$search]);
+
+                if ($phoneSearch !== '') {
+                    $query->orWhereRaw("(REPLACE(waitlist_entries.phone_prefix, '+', '') || waitlist_entries.phone_number) LIKE ?", ['%'.$phoneSearch.'%'])
+                        ->orWhere('waitlist_entries.phone_number', 'like', '%'.$phoneSearch.'%');
+                }
+            });
         }
 
         if ($filters['status'] === 'buyers') {

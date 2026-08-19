@@ -17,8 +17,7 @@ class ConsentAuditTest extends TestCase
     {
         Mail::fake();
 
-        $this->post(route('waitlist.store'), ['email' => 'ada@example.com']);
-        $entryId = DB::table('waitlist_entries')->where('email', 'ada@example.com')->value('id');
+        $this->beginPhoneRegistration();
 
         $this->withServerVariables([
             'REMOTE_ADDR' => '203.0.113.10',
@@ -28,11 +27,11 @@ class ConsentAuditTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'firebase_id_token' => 'valid-firebase-id-token',
+            'gender' => 'FEMALE',
             'marketing_consent' => '1',
         ])->assertSessionHas('waitlist_offer', true);
+
+        $entryId = DB::table('waitlist_entries')->where('email', 'ada@example.com')->value('id');
 
         $legal = DB::table('consent_events')
             ->where('waitlist_entry_id', $entryId)
@@ -133,15 +132,13 @@ class ConsentAuditTest extends TestCase
             '<div><h2>Privacy aggiornata</h2><p>Testo corrente dal database.</p></div>',
         );
 
-        $this->post(route('waitlist.store'), ['email' => 'versioned@example.com']);
+        $this->beginPhoneRegistration();
         $this->post(route('waitlist.profile'), [
             'email' => 'versioned@example.com',
             'first_name' => 'Versioned',
             'last_name' => 'Member',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'firebase_id_token' => 'valid-firebase-id-token',
+            'gender' => 'MALE',
         ]);
 
         $event = DB::table('consent_events')

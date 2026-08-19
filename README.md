@@ -85,6 +85,12 @@ I tentativi di invio sono registrati separatamente in `storage/logs/email-YYYY-M
 
 Il database conserva i timestamp in UTC. Dashboard e nuovi log li presentano in `Europe/Rome`, configurabile con `APP_DISPLAY_TIMEZONE` e `LOG_TIMEZONE`; `APP_TIMEZONE` deve restare `UTC` per evitare timestamp incoerenti e gestire correttamente l’ora legale.
 
+## Conferma pagamenti Stripe tramite webhook
+
+La conferma definitiva del pagamento non dipende dal ritorno del browser. In Stripe creare un endpoint webhook HTTPS verso `https://DOMINIO/stripe/webhook`, selezionando gli eventi `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Copiare il signing secret `whsec_...` in `STRIPE_WEBHOOK_SECRET` tramite Google Cloud Secret Manager. Il server verifica firma e timestamp del messaggio, recupera poi la Checkout Session direttamente dalle API Stripe e registra l'ordine soltanto se Stripe la dichiara pagata. La pagina di successo rimane un fallback idempotente.
+
+Per una prova locale è possibile usare Stripe CLI, inoltrare gli eventi a `/stripe/webhook` e usare come `STRIPE_WEBHOOK_SECRET` il signing secret temporaneo mostrato dal comando `stripe listen`.
+
 ## Audit dei consensi
 
 I consensi sono salvati come eventi append-only in `consent_events`, con data e ora, fonte, azione (`granted`/`revoked`), email del soggetto, IP, user agent, hash della sessione e riferimenti a waitlist, ordine o messaggio di contatto. Le versioni accettate, gli hash SHA-256 e gli URL dei documenti vengono registrati nello stesso evento.

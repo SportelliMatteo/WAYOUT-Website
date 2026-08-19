@@ -9,6 +9,14 @@
     $waitlistFull = $founderAvailability['waitlist']['is_full'] ?? false;
     $joinFull = $founderAvailability['join']['is_full'] ?? false;
     $creatorFull = $founderAvailability['creator']['is_full'] ?? false;
+    $phonePrefixes = [
+        '+39' => 'IT +39',
+        '+33' => 'FR +33',
+        '+34' => 'ES +34',
+        '+49' => 'DE +49',
+        '+44' => 'UK +44',
+        '+1' => 'US +1',
+    ];
 @endphp
 <section class="relative overflow-x-clip">
     <div class="wayout-shell grid items-center gap-8 py-8 sm:py-10 lg:min-h-[calc(100vh-6rem)] lg:grid-cols-[1.02fr_0.98fr] lg:gap-12 lg:py-16">
@@ -40,19 +48,28 @@
                         </p>
                     </div>
 
-                    <form id="waitlist-join-form" method="POST" action="{{ route('waitlist.store') }}" class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <form id="waitlist-join-form" method="POST" action="{{ route('waitlist.store') }}" class="mt-5 space-y-3">
                         @csrf
                         <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
-                        <input
-                            type="email"
-                            name="email"
-                            value="{{ old('email') }}"
-                            placeholder="{{ __('messages.home.email_placeholder') }}"
-                            required
-                            class="min-h-14 w-full rounded-full border border-white/10 bg-white px-5 text-base font-bold text-slate-950 placeholder-slate-400 outline-none transition focus:ring-4 focus:ring-violet-300/40"
-                        />
-                        <button id="waitlist-join-submit" type="submit" class="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-80 sm:w-auto">
-                            <span class="waitlist-submit-text">{{ $waitlistFull ? __('messages.home.verify_email') : __('messages.home.join_button') }}</span>
+                        <input id="waitlist-firebase-id-token" type="hidden" name="firebase_id_token" value="" />
+                        <div class="grid gap-3 sm:grid-cols-[7rem_1fr_auto]">
+                            <select id="waitlist-phone-prefix" name="phone_prefix" required autocomplete="tel-country-code" class="min-h-14 w-full rounded-full border border-white/10 bg-white px-4 text-sm font-black text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/40">
+                                @foreach($phonePrefixes as $prefix => $label)
+                                    <option value="{{ $prefix }}" @selected(old('phone_prefix', '+39') === $prefix)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <input id="waitlist-phone-number" type="tel" name="phone_number" value="{{ old('phone_number') }}" placeholder="{{ __('messages.home.phone_placeholder') }}" required autocomplete="tel-national" inputmode="tel" class="min-h-14 w-full rounded-full border border-white/10 bg-white px-5 text-base font-bold text-slate-950 placeholder-slate-400 outline-none transition focus:ring-4 focus:ring-violet-300/40" />
+                            @if(config('services.firebase.phone_verification_enabled'))
+                                <button id="waitlist-phone-send" type="button" class="inline-flex min-h-14 w-full items-center justify-center rounded-full wayout-purple px-7 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-60 sm:w-auto">{{ __('messages.home.phone_send_code') }}</button>
+                            @endif
+                        </div>
+                        @if(config('services.firebase.phone_verification_enabled'))
+                            <div id="waitlist-phone-recaptcha"></div>
+                            <p id="waitlist-phone-status" class="hidden rounded-2xl px-4 py-3 text-left text-sm font-bold" role="status" aria-live="polite"></p>
+                            <p class="px-2 text-xs font-medium text-slate-400">{{ __('messages.home.phone_sms_notice') }}</p>
+                        @endif
+                        <button id="waitlist-join-submit" type="submit" @disabled(config('services.firebase.phone_verification_enabled')) class="{{ config('services.firebase.phone_verification_enabled') ? 'hidden' : 'inline-flex' }} min-h-14 w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-80">
+                            <span class="waitlist-submit-text">{{ __('messages.home.join_button') }}</span>
                             <span class="waitlist-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true"></span>
                         </button>
                     </form>
@@ -63,7 +80,13 @@
                         </p>
                     @endif
 
-                    @error('email')
+                    @error('phone_prefix')
+                        <p class="mt-3 px-2 text-sm font-semibold text-rose-200">{{ $message }}</p>
+                    @enderror
+                    @error('phone_number')
+                        <p class="mt-3 px-2 text-sm font-semibold text-rose-200">{{ $message }}</p>
+                    @enderror
+                    @error('firebase_id_token')
                         <p class="mt-3 px-2 text-sm font-semibold text-rose-200">{{ $message }}</p>
                     @enderror
 
@@ -136,6 +159,30 @@
     </div>
 </section>
 
+@if(config('services.firebase.phone_verification_enabled'))
+    <div id="waitlist-phone-code-panel" class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-8 flex" role="dialog" aria-modal="true" aria-labelledby="waitlist-phone-code-title">
+        <button id="waitlist-phone-code-backdrop" type="button" class="absolute inset-0 bg-slate-950/75 backdrop-blur-md" aria-label="{{ __('messages.nav.close_menu') }}"></button>
+        <div class="relative z-10 w-full max-w-md rounded-[2rem] border border-white/15 bg-slate-950 p-6 text-white shadow-2xl sm:p-8">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <span class="inline-flex rounded-full bg-violet-500/20 px-3 py-2 text-xs font-black uppercase tracking-[0.22em] text-violet-100">OTP</span>
+                    <h2 id="waitlist-phone-code-title" class="mt-4 text-2xl font-black sm:text-3xl">{{ __('messages.home.phone_code_title') }}</h2>
+                    <p class="mt-2 text-sm font-medium leading-6 text-slate-300">{{ __('messages.home.phone_code_help') }}</p>
+                </div>
+                <button id="waitlist-phone-code-close" type="button" class="shrink-0 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/15 hover:text-white" aria-label="{{ __('messages.nav.close_menu') }}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="mt-6 space-y-3">
+                <input id="waitlist-phone-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="{{ __('messages.home.phone_code') }}" class="min-h-14 w-full rounded-2xl border border-white/10 bg-white px-4 text-center text-xl font-black tracking-[0.32em] text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                <button id="waitlist-phone-verify" type="button" class="w-full rounded-full bg-white px-6 py-4 text-base font-black text-slate-950 disabled:cursor-wait disabled:opacity-60">{{ __('messages.home.phone_verify_code') }}</button>
+                <button id="waitlist-phone-resend" type="button" disabled class="w-full rounded-full border border-white/15 px-6 py-3 text-sm font-black text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50">{{ __('messages.home.phone_resend_code') }}</button>
+                <p id="waitlist-phone-code-status" class="hidden rounded-2xl px-4 py-3 text-left text-sm font-bold" role="status" aria-live="polite"></p>
+            </div>
+        </div>
+    </div>
+@endif
+
 <section class="overflow-hidden py-10 lg:py-20">
     <div class="wayout-shell">
         <div class="relative overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem] sm:p-10 lg:p-14">
@@ -160,14 +207,6 @@
     @php
         $waitlistProfile = session('waitlist_profile', []);
         $adultMaxDate = now()->subYears(18)->toDateString();
-        $phonePrefixes = [
-            '+39' => 'IT +39',
-            '+33' => 'FR +33',
-            '+34' => 'ES +34',
-            '+49' => 'DE +49',
-            '+44' => 'UK +44',
-            '+1' => 'US +1',
-        ];
     @endphp
     <div id="waitlist-profile" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-3 py-4 sm:px-4 sm:py-8">
         <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
@@ -184,9 +223,7 @@
             @endif
             <form id="waitlist-profile-form" method="POST" action="{{ route('waitlist.profile') }}" class="mt-6 space-y-4">
                 @csrf
-                <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
                 <input type="hidden" name="waitlist_status" value="{{ session('waitlist_status') }}" />
-                <input id="firebase-id-token" type="hidden" name="firebase_id_token" value="" />
                 <div class="grid gap-3 text-left sm:grid-cols-2">
                     <label class="block">
                         <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.first_name') }}</span>
@@ -203,36 +240,24 @@
                         <input type="date" name="birth_date" value="{{ old('birth_date', $waitlistProfile['birth_date'] ?? '') }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
                         @error('birth_date')<span class="mt-1 block text-xs font-bold text-rose-200">{{ __('messages.home.birth_date_error') }}</span>@enderror
                     </label>
-                    <div class="block">
-                        <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.phone_number') }}</span>
-                        <div class="flex gap-2">
-                            <select id="waitlist-phone-prefix" name="phone_prefix" required autocomplete="tel-country-code" class="min-h-12 w-28 rounded-2xl border border-white/10 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30">
-                                @foreach($phonePrefixes as $prefix => $label)
-                                    <option value="{{ $prefix }}" @selected(old('phone_prefix', $waitlistProfile['phone_prefix'] ?? '+39') === $prefix)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <input id="waitlist-phone-number" type="tel" name="phone_number" value="{{ old('phone_number', $waitlistProfile['phone_number'] ?? '') }}" required autocomplete="tel-national" inputmode="tel" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                    <label class="block">
+                        <span class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.email') }}</span>
+                        <input type="email" name="email" value="{{ old('email', session('waitlist_email')) }}" required autocomplete="email" class="min-h-12 w-full rounded-2xl border border-white/10 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
+                        @error('email')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
+                    </label>
+                    <fieldset class="block sm:col-span-2">
+                        <legend class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.home.gender') }}</legend>
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            @foreach(['MALE' => __('messages.home.gender_male'), 'FEMALE' => __('messages.home.gender_female'), 'OTHER' => __('messages.home.gender_other')] as $value => $label)
+                                <label class="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm font-bold">
+                                    <input type="radio" name="gender" value="{{ $value }}" required @checked(old('gender', $waitlistProfile['gender'] ?? '') === $value) class="h-5 w-5 border-white/20 text-violet-600 focus:ring-violet-300" />
+                                    {{ $label }}
+                                </label>
+                            @endforeach
                         </div>
-                        @if(config('services.firebase.phone_verification_enabled'))
-                            <button id="waitlist-phone-send" type="button" class="mt-2 w-full rounded-2xl border border-violet-300/30 bg-violet-500/20 px-4 py-3 text-sm font-black text-violet-100 transition hover:bg-violet-500/30 disabled:cursor-not-allowed disabled:opacity-50">{{ __('messages.home.phone_send_code') }}</button>
-                            <div id="waitlist-phone-recaptcha"></div>
-                            <p class="mt-2 text-xs font-medium leading-5 text-slate-400">{{ __('messages.home.phone_sms_notice') }}</p>
-                        @endif
-                        @error('phone_prefix')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
-                        @error('phone_number')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
-                    </div>
+                        @error('gender')<span class="mt-1 block text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
+                    </fieldset>
                 </div>
-                @if(config('services.firebase.phone_verification_enabled'))
-                <div id="waitlist-phone-code-panel" class="hidden rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 text-left">
-                    <label for="waitlist-phone-code" class="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-violet-100">{{ __('messages.home.phone_code') }}</label>
-                    <div class="flex flex-col gap-2 sm:flex-row">
-                        <input id="waitlist-phone-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-center text-lg font-black tracking-[0.3em] text-slate-950 outline-none transition focus:ring-4 focus:ring-violet-300/30" />
-                        <button id="waitlist-phone-verify" type="button" class="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 disabled:cursor-wait disabled:opacity-60">{{ __('messages.home.phone_verify_code') }}</button>
-                    </div>
-                </div>
-                <p id="waitlist-phone-status" class="hidden rounded-2xl px-4 py-3 text-left text-sm font-bold" role="status" aria-live="polite"></p>
-                @error('firebase_id_token')<span class="block text-left text-xs font-bold text-rose-200">{{ $message }}</span>@enderror
-                @endif
                 <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-left text-sm font-medium leading-6 text-slate-200 [&_a]:font-black [&_a]:text-violet-200 [&_a]:underline [&_a]:underline-offset-4">
                     {!! $legalDocumentsHtml['waitlist_acceptance'] !!}
                 </div>
@@ -242,7 +267,7 @@
                         {!! $legalDocumentsHtml['marketing'] !!}
                     </span>
                 </label>
-                <button id="waitlist-profile-submit" type="submit" @disabled(config('services.firebase.phone_verification_enabled')) data-loading-text="{{ __('messages.home.profile_submitting') }}" class="inline-flex w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 transition disabled:cursor-wait disabled:opacity-60 sm:text-lg">
+                <button id="waitlist-profile-submit" type="submit" data-loading-text="{{ __('messages.home.profile_submitting') }}" class="inline-flex w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 transition disabled:cursor-wait disabled:opacity-60 sm:text-lg">
                     <span class="waitlist-profile-submit-text">{{ __('messages.home.profile_submit') }}</span>
                     <span class="waitlist-profile-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950" aria-hidden="true"></span>
                 </button>
