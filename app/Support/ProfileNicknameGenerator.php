@@ -18,6 +18,6 @@ class ProfileNicknameGenerator
             ->limit(22, '')
             ->toString();
 
-        return ($normalized !== '' ? $normalized : 'wayout').'_'.Str::lower(Str::random(6));
+        return '@'.($normalized !== '' ? $normalized : 'wayout').'_'.Str::lower(Str::random(6));
     }
 }

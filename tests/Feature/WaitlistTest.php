@@ -114,7 +114,6 @@ class WaitlistTest extends TestCase
             ->value('welcome_email_sent_at'));
         $this->assertDatabaseHas('waitlist_entries', [
             'email' => 'ada@example.com',
-            'firebase_uid' => null,
             'phone_number' => '3331234567',
             'gender' => 'OTHER',
         ]);
@@ -132,7 +131,7 @@ class WaitlistTest extends TestCase
             && $request['gender'] === 'OTHER'
             && $request['profile_image'] === ''
             && is_string($request['nickname'])
-            && $request['nickname'] !== '');
+            && str_starts_with($request['nickname'], '@'));
     }
 
     public function test_remote_profile_failure_does_not_create_a_local_waitlist_entry(): void
@@ -234,7 +233,6 @@ class WaitlistTest extends TestCase
             'email' => 'local-test@example.com',
             'first_name' => 'Local',
             'phone_number' => '3331234567',
-            'firebase_uid' => null,
             'phone_verified_at' => null,
         ]);
     }
