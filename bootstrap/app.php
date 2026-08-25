@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\RequireAdminAuthentication;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\VerifyBenefitApiSignature;
 use Illuminate\Console\Scheduling\Schedule;
@@ -17,10 +18,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('qonto:sync-invoices')
-            ->everyFiveMinutes()
+            ->everyTenMinutes()
             ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustHosts(
+            at: fn (): array => config('security.trusted_hosts', []),
+            subdomains: false,
+        );
+
         $middleware->validateCsrfTokens(except: [
             'stripe/webhook',
         ]);
@@ -32,6 +38,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             SetLocale::class,
+            SecurityHeaders::class,
+        ]);
+
+        $middleware->api(append: [
+            SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

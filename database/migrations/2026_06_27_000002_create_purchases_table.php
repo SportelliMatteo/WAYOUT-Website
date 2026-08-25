@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -14,7 +13,7 @@ return new class extends Migration
     {
         if (! Schema::hasTable('purchases')) {
             Schema::create('purchases', function (Blueprint $table) {
-                $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+                $table->uuid('id')->primary();
                 $table->string('email');
                 $table->string('plan');
                 $table->integer('amount');

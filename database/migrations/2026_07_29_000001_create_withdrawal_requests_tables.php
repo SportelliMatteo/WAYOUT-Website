@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -10,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('withdrawal_requests', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('purchase_id')->nullable()->constrained('purchases')->nullOnDelete();
             $table->string('receipt_number', 32)->unique();
             $table->char('public_token_hash', 64)->unique();
@@ -41,7 +40,7 @@ return new class extends Migration
         });
 
         Schema::create('withdrawal_request_events', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('withdrawal_request_id')->constrained()->cascadeOnDelete();
             $table->string('event_type', 64);
             $table->string('actor_type', 32)->default('system');
@@ -50,7 +49,7 @@ return new class extends Migration
             $table->timestamp('occurred_at');
             $table->timestamp('created_at')->nullable();
 
-            $table->index(['withdrawal_request_id', 'occurred_at']);
+            $table->index(['withdrawal_request_id', 'occurred_at'], 'withdrawal_events_request_occurred_index');
         });
     }
 

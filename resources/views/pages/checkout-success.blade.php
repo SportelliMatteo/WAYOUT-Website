@@ -6,18 +6,30 @@
 @section('content')
 @php
     $checkoutPlan = session('checkout_plan') ?? request('plan');
+    $isConfirmed = ($checkoutState ?? 'pending') === 'confirmed';
+    $isReview = ($checkoutState ?? 'pending') === 'review';
 @endphp
+@if($isConfirmed && $purchaseAnalytics)
+    <span
+        class="hidden"
+        data-analytics-page-event="purchase"
+        data-analytics-params='@json($purchaseAnalytics)'
+        data-analytics-dedupe="purchase_{{ $purchaseAnalytics['transaction_id'] }}"
+        data-analytics-dedupe-scope="local"
+    ></span>
+@endif
 <section class="py-14 lg:py-24">
     <div class="mx-auto max-w-4xl px-5">
         <div class="relative mt-2 mb-20 overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.22)] sm:rounded-[2.5rem] sm:p-10">
             <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(124,35,245,0.55),transparent_26rem),radial-gradient(circle_at_90%_10%,rgba(185,255,74,0.24),transparent_18rem)]"></div>
             <div class="relative">
-                <div class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl font-black text-violet-700">✓</div>
-                <p class="mt-6 text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.checkout_success.eyebrow') }}</p>
-                <h1 class="mt-3 text-3xl font-black leading-tight sm:text-5xl">{{ __('messages.checkout_success.headline') }}</h1>
+                <div class="flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl font-black text-violet-700">{{ $isConfirmed ? '✓' : ($isReview ? '!' : '…') }}</div>
+                <p class="mt-6 text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.checkout_success.'.($isConfirmed ? 'eyebrow' : ($isReview ? 'review_eyebrow' : 'pending_eyebrow'))) }}</p>
+                <h1 class="mt-3 text-3xl font-black leading-tight sm:text-5xl">{{ __('messages.checkout_success.'.($isConfirmed ? 'headline' : ($isReview ? 'review_headline' : 'pending_headline'))) }}</h1>
                 <p class="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
-                    {{ __('messages.checkout_success.text') }}
+                    {{ __('messages.checkout_success.'.($isConfirmed ? 'text' : ($isReview ? 'review_text' : 'pending_text'))) }}
                 </p>
+                @if($isConfirmed)
                 <div class="mt-6 max-w-2xl rounded-3xl bg-white/[0.08] p-5">
                     <p class="text-base font-bold leading-7 text-slate-100">
                         {{ __('messages.checkout_success.pass_summary') }}
@@ -47,6 +59,7 @@
                         </a>
                     </div>
                 </div>
+                @endif
                 <div class="mt-8">
                     <a href="{{ route('home') }}" class="inline-flex w-full items-center justify-center rounded-full bg-white px-7 py-4 text-base font-black text-slate-950 shadow-xl transition hover:scale-[1.02] sm:w-auto sm:text-lg">
                         {{ __('messages.checkout_success.back_home') }}

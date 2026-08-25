@@ -37,8 +37,19 @@ class QontoInvoiceService
                             ? $attachmentResponse->json('attachment.url')
                             : null;
 
-                        if (is_string($url) && str_starts_with($url, 'https://')) {
-                            $download = Http::timeout(20)->get($url);
+                        if (is_string($url) && $this->isAllowedAttachmentUrl($url)) {
+                            $download = Http::timeout(20)
+                                ->withOptions([
+                                    'allow_redirects' => false,
+                                    'on_headers' => static function ($response): void {
+                                        $contentLength = (int) $response->getHeaderLine('Content-Length');
+
+                                        if ($contentLength > 15 * 1024 * 1024) {
+                                            throw new RuntimeException('Il PDF Qonto supera la dimensione massima consentita.');
+                                        }
+                                    },
+                                ])
+                                ->get($url);
                             $data = $download->successful() ? $download->body() : '';
 
                             if (str_starts_with($data, '%PDF-') && strlen($data) <= 15 * 1024 * 1024) {
@@ -66,6 +77,30 @@ class QontoInvoiceService
         }
 
         return null;
+    }
+
+    private function isAllowedAttachmentUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts)) {
+            return false;
+        }
+
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        if (($parts['scheme'] ?? null) !== 'https' || $host === '' || isset($parts['user']) || isset($parts['pass'])) {
+            return false;
+        }
+
+        $allowedHosts = array_values(array_filter(array_map(
+            static fn (string $value): string => strtolower(trim($value)),
+            explode(',', (string) config('services.qonto.attachment_hosts', '')),
+        )));
+
+        return collect($allowedHosts)->contains(
+            static fn (string $allowed): bool => $host === $allowed || str_ends_with($host, '.'.$allowed),
+        );
     }
 
     public function sendForPurchase(string $purchaseId): bool

@@ -1,0 +1,40 @@
+DirectoryIndex index.php
+Options -Indexes -MultiViews
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # L'applicazione, le credenziali e i log non devono essere raggiungibili dal web.
+    RewriteRule ^_wayout(?:/|$) - [F,L,NC]
+
+    # Durante gli aggiornamenti basta creare il file vuoto .maintenance nella root.
+    # La risposta resta 503, quindi Stripe e gli altri client ritenteranno la richiesta.
+    RewriteCond %{DOCUMENT_ROOT}/.maintenance -f
+    RewriteCond %{REQUEST_URI} !^/maintenance\.php$
+    RewriteRule ^ maintenance.php [L]
+
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+<FilesMatch "(^\.|\.(env|ini|log|sql|sqlite|bak|backup|dist|lock|phar)$)">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), browsing-topics=()"
+</IfModule>

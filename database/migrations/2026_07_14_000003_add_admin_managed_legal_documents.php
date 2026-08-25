@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -15,7 +14,7 @@ return new class extends Migration
         });
 
         Schema::create('legal_documents', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->uuid('id')->primary();
             $table->string('document_key', 64);
             $table->string('locale', 10);
             $table->foreignUuid('current_version_id')->nullable()->constrained('legal_document_versions')->nullOnDelete();

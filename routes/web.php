@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ConsentController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\SubscribeController;
 use App\Http\Controllers\WaitlistController;
@@ -27,8 +28,8 @@ Route::get('/documenti/modulo-tipo-recesso', [WithdrawalController::class, 'down
 Route::post('/recedere-dal-contratto/verifica', [WithdrawalController::class, 'storeReview'])->middleware('throttle:withdrawal')->name('withdrawal.review.store');
 Route::get('/recedere-dal-contratto/conferma', [WithdrawalController::class, 'review'])->name('withdrawal.review');
 Route::post('/recedere-dal-contratto/conferma', [WithdrawalController::class, 'confirm'])->middleware('throttle:withdrawal-confirm')->name('withdrawal.confirm');
-Route::get('/recedere-dal-contratto/ricevuta/{token}', [WithdrawalController::class, 'receipt'])->name('withdrawal.receipt');
-Route::get('/recedere-dal-contratto/ricevuta/{token}/download', [WithdrawalController::class, 'download'])->name('withdrawal.receipt.download');
+Route::get('/recedere-dal-contratto/ricevuta/{token}', [WithdrawalController::class, 'receipt'])->where('token', '[A-Za-z0-9]{64}')->name('withdrawal.receipt');
+Route::get('/recedere-dal-contratto/ricevuta/{token}/download', [WithdrawalController::class, 'download'])->where('token', '[A-Za-z0-9]{64}')->name('withdrawal.receipt.download');
 Route::redirect('/recesso-e-rimborso', '/recedere-dal-contratto', 301);
 Route::get('/note-legali', [LegalDocumentController::class, 'show'])->defaults('document', 'notice')->name('legal.notice');
 Route::get('/subscribe', [SubscribeController::class, 'show'])->name('subscribe');
@@ -38,9 +39,10 @@ Route::post('/subscribe/access', [SubscribeController::class, 'access'])->middle
 Route::post('/subscribe/checkout', [SubscribeController::class, 'checkout'])->middleware('throttle:checkout')->name('subscribe.checkout');
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware('throttle:purchase-confirmation')->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware('throttle:contact')->name('contact.store');
+Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->middleware('throttle:120,1')->name('cookie-consent.store');
 Route::post('/waitlist', [WaitlistController::class, 'store'])->middleware('throttle:waitlist')->name('waitlist.store');
-Route::get('/waitlist/verifica/{token}', [WaitlistController::class, 'showVerification'])->name('waitlist.verify.show');
-Route::post('/waitlist/verifica/{token}', [WaitlistController::class, 'verify'])->middleware('throttle:waitlist')->name('waitlist.verify');
+Route::get('/waitlist/verifica/{token}', [WaitlistController::class, 'showVerification'])->where('token', '[A-Za-z0-9]{64}')->name('waitlist.verify.show');
+Route::post('/waitlist/verifica/{token}', [WaitlistController::class, 'verify'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:waitlist')->name('waitlist.verify');
 Route::get('/preferenze/marketing/{waitlist}', [ConsentController::class, 'showMarketingRevocation'])
     ->middleware('signed')
     ->name('consent.marketing.revoke.show');

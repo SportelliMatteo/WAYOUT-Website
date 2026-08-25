@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\WithdrawalReceiptMail;
 use App\Models\WithdrawalRequest;
+use App\Support\DatabaseUuid;
 use App\Support\LegalDocumentService;
 use App\Support\TransactionalEmailSender;
 use Illuminate\Http\Request;
@@ -142,6 +143,7 @@ class WithdrawalController extends Controller
             ]);
 
             DB::table('withdrawal_request_events')->insert([
+                'id' => DatabaseUuid::new(),
                 'withdrawal_request_id' => $withdrawal->id,
                 'event_type' => 'request.received',
                 'actor_type' => 'consumer',
@@ -260,6 +262,7 @@ class WithdrawalController extends Controller
     private function recordEmailEvent(WithdrawalRequest $withdrawal, string $type): void
     {
         DB::table('withdrawal_request_events')->insert([
+            'id' => DatabaseUuid::new(),
             'withdrawal_request_id' => $withdrawal->id,
             'event_type' => $type,
             'actor_type' => 'system',

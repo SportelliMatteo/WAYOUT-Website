@@ -11,17 +11,19 @@ return new class extends Migration
             ->whereNotNull('nickname')
             ->where('nickname', '<>', '')
             ->where('nickname', 'not like', '@%')
-            ->update([
-                'nickname' => DB::raw("'@' || nickname"),
-            ]);
+            ->orderBy('id')
+            ->each(fn (object $entry) => DB::table('waitlist_entries')->where('id', $entry->id)->update([
+                'nickname' => '@'.$entry->nickname,
+            ]));
     }
 
     public function down(): void
     {
         DB::table('waitlist_entries')
             ->where('nickname', 'like', '@%')
-            ->update([
-                'nickname' => DB::raw('substring(nickname from 2)'),
-            ]);
+            ->orderBy('id')
+            ->each(fn (object $entry) => DB::table('waitlist_entries')->where('id', $entry->id)->update([
+                'nickname' => mb_substr($entry->nickname, 1),
+            ]));
     }
 };

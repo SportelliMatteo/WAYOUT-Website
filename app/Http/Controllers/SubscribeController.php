@@ -55,12 +55,30 @@ class SubscribeController extends Controller
     public function success(Request $request, ConsentAuditService $audit)
     {
         $sessionId = $request->query('session_id');
+        $checkoutState = 'pending';
+        $purchaseAnalytics = null;
 
         if (is_string($sessionId) && str_starts_with($sessionId, 'cs_')) {
             $this->registerSuccessfulStripeCheckout($sessionId, $request, $audit);
+
+            $purchase = DB::table('purchases')
+                ->where('stripe_session_id', $sessionId)
+                ->first();
+
+            if ($purchase?->status === 'succeeded') {
+                $checkoutState = 'confirmed';
+                $purchaseAnalytics = [
+                    'transaction_id' => $purchase->order_reference ?: (string) $purchase->id,
+                    'plan' => $purchase->plan,
+                    'value' => ((int) $purchase->amount) / 100,
+                    'currency' => strtoupper($purchase->currency ?: 'eur'),
+                ];
+            } elseif ($purchase?->status === 'overbooked') {
+                $checkoutState = 'review';
+            }
         }
 
-        return view('pages.checkout-success');
+        return view('pages.checkout-success', compact('checkoutState', 'purchaseAnalytics'));
     }
 
     public function resendPurchaseConfirmation(Request $request, TransactionalEmailSender $emailSender)

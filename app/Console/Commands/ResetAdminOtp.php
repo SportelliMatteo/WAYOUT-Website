@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\AdminUser;
+use App\Support\DatabaseUuid;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -60,6 +61,7 @@ class ResetAdminOtp extends Command
                 ])->save();
 
                 DB::table('admin_audit_events')->insert([
+                    'id' => DatabaseUuid::new(),
                     'admin_user_id' => $admin->id,
                     'actor_name' => 'Server console',
                     'actor_email' => 'console@localhost',

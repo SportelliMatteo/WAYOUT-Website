@@ -257,6 +257,7 @@ class AdminDashboardTest extends TestCase
     public function test_admin_dashboard_displays_utc_consent_timestamps_in_rome_timezone(): void
     {
         DB::table('consent_events')->insert([
+            'id' => DatabaseUuid::new(),
             'subject_email' => 'timezone@example.com',
             'consent_type' => 'marketing',
             'action' => 'granted',
@@ -329,6 +330,7 @@ class AdminDashboardTest extends TestCase
 
         DB::table('purchases')->insert([
             [
+                'id' => DatabaseUuid::new(),
                 'waitlist_entry_id' => $buyerId,
                 'email' => 'buyer@example.com',
                 'plan' => 'join',
@@ -340,6 +342,7 @@ class AdminDashboardTest extends TestCase
                 'updated_at' => now()->subHours(3),
             ],
             [
+                'id' => DatabaseUuid::new(),
                 'waitlist_entry_id' => $buyerId,
                 'email' => 'buyer@example.com',
                 'plan' => 'creator',

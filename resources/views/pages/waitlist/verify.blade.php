@@ -14,7 +14,7 @@
                 @csrf
                 <button type="submit" class="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-white px-7 font-black text-slate-950">{{ __('messages.waitlist_verify.confirm_button') }}</button>
             </form>
-            <script>document.getElementById('waitlist-verification-form')?.requestSubmit();</script>
+            <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">document.getElementById('waitlist-verification-form')?.requestSubmit();</script>
         @else
             <h1 class="text-3xl font-black">{{ __('messages.waitlist_verify.invalid_title') }}</h1>
             <p class="mt-4 font-medium leading-7 text-slate-300">{{ __('messages.waitlist_verify.invalid_text') }}</p>

@@ -20,12 +20,15 @@
                 @endforeach
             </div>
 
-            <button type="button" onclick="window.print()" class="mt-4 w-full rounded-full border border-white/20 px-6 py-3 font-black hover:bg-white/10">{{ __('messages.admin.print_codes') }}</button>
+            <button id="print-recovery-codes" type="button" class="mt-4 w-full rounded-full border border-white/20 px-6 py-3 font-black hover:bg-white/10">{{ __('messages.admin.print_codes') }}</button>
             <form action="{{ route('admin.recovery-codes.acknowledge') }}" method="POST" class="mt-3">
                 @csrf
                 <button class="w-full rounded-full bg-violet-600 px-6 py-4 font-black text-white hover:bg-violet-500">{{ __('messages.admin.saved_codes_continue') }}</button>
             </form>
         </section>
     </main>
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+        document.getElementById('print-recovery-codes')?.addEventListener('click', () => window.print());
+    </script>
 </body>
 </html>

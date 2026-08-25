@@ -379,7 +379,15 @@ class AdminAuthController extends Controller
     {
         $configuredEmail = Str::lower((string) config('admin.email'));
         $configuredPassword = (string) config('admin.password');
-        $passwordMatches = Str::startsWith($configuredPassword, ['$2y$', '$argon2id$', '$argon2i$'])
+        $passwordIsHashed = Str::startsWith($configuredPassword, ['$2y$', '$argon2id$', '$argon2i$']);
+
+        if (app()->environment('production') && ! $passwordIsHashed) {
+            Log::critical('Admin bootstrap refused: ADMIN_PASSWORD must be a password hash in production.');
+
+            return null;
+        }
+
+        $passwordMatches = $passwordIsHashed
             ? Hash::check($password, $configuredPassword)
             : ($configuredPassword !== '' && hash_equals($configuredPassword, $password));
 

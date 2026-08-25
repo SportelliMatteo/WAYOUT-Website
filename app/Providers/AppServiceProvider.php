@@ -6,7 +6,6 @@ use App\Support\FounderAvailability;
 use App\Support\LegalDocumentService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -28,13 +27,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (DB::getDriverName() === 'sqlite') {
-            DB::connection()->getPdo()->sqliteCreateFunction(
-                'gen_random_uuid',
-                static fn (): string => (string) Str::uuid(),
-            );
-        }
-
         RateLimiter::for('waitlist', function (Request $request) {
             $email = Str::lower((string) $request->input('email'));
 

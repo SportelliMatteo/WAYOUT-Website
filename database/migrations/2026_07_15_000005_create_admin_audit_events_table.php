@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -10,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('admin_audit_events', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('admin_user_id')->nullable()->constrained('admin_users')->nullOnDelete();
             $table->string('actor_name', 120);
             $table->string('actor_email');

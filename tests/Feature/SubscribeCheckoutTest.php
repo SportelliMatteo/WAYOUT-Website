@@ -202,6 +202,7 @@ class SubscribeCheckoutTest extends TestCase
         );
 
         DB::table('purchases')->insert([
+            'id' => DatabaseUuid::new(),
             'email' => 'reserved@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -243,6 +244,7 @@ class SubscribeCheckoutTest extends TestCase
         );
 
         DB::table('purchases')->insert([
+            'id' => DatabaseUuid::new(),
             'email' => 'expired@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -527,7 +529,11 @@ class SubscribeCheckoutTest extends TestCase
 
     public function test_direct_checkout_database_failure_returns_a_user_friendly_error(): void
     {
-        Schema::dropIfExists('purchases');
+        if (DB::getDriverName() === 'mysql') {
+            $this->markTestSkipped('La simulazione elimina una tabella e MySQL esegue un commit DDL implicito; il caso è coperto dalla suite SQLite.');
+        }
+
+        Schema::withoutForeignKeyConstraints(fn () => Schema::dropIfExists('purchases'));
 
         $response = $this->withSession([
             'waitlist_offer_access' => true,
@@ -618,6 +624,9 @@ class SubscribeCheckoutTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Documenti relativi all’acquisto')
+            ->assertSee('data-analytics-page-event="purchase"', false)
+            ->assertSee('"value":29', false)
+            ->assertSee('"currency":"EUR"', false)
             ->assertSee('href="'.route('legal.passes').'" target="_blank"', false)
             ->assertSee('href="'.route('legal.sales').'" target="_blank"', false)
             ->assertSee('href="'.route('legal.presale').'" target="_blank"', false)
@@ -759,6 +768,7 @@ class SubscribeCheckoutTest extends TestCase
         );
 
         DB::table('purchases')->insert([
+            'id' => DatabaseUuid::new(),
             'email' => 'winner@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -786,7 +796,10 @@ class SubscribeCheckoutTest extends TestCase
 
         $response = $this->get(route('checkout.success', ['session_id' => 'cs_late']));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertSee('Il pagamento richiede assistenza.')
+            ->assertDontSee('data-analytics-page-event="purchase"', false)
+            ->assertDontSee('Documenti relativi all’acquisto');
 
         $this->assertDatabaseHas('purchases', [
             'id' => $purchaseId,
@@ -810,6 +823,7 @@ class SubscribeCheckoutTest extends TestCase
         Mail::fake();
 
         DB::table('purchases')->insert([
+            'id' => DatabaseUuid::new(),
             'email' => 'buyer@example.com',
             'plan' => 'creator',
             'amount' => 5900,
@@ -843,6 +857,7 @@ class SubscribeCheckoutTest extends TestCase
         Mail::fake();
 
         DB::table('purchases')->insert([
+            'id' => DatabaseUuid::new(),
             'email' => 'ajax-buyer@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -871,6 +886,7 @@ class SubscribeCheckoutTest extends TestCase
         $this->travelTo(now()->startOfSecond());
 
         DB::table('purchases')->insert([
+            'id' => DatabaseUuid::new(),
             'email' => 'buyer@example.com',
             'plan' => 'join',
             'amount' => 2900,
@@ -926,7 +942,12 @@ class SubscribeCheckoutTest extends TestCase
     public function test_purchase_confirmation_resend_database_failure_returns_a_user_friendly_error(): void
     {
         Mail::fake();
-        Schema::dropIfExists('purchases');
+
+        if (DB::getDriverName() === 'mysql') {
+            $this->markTestSkipped('La simulazione elimina una tabella e MySQL esegue un commit DDL implicito; il caso è coperto dalla suite SQLite.');
+        }
+
+        Schema::withoutForeignKeyConstraints(fn () => Schema::dropIfExists('purchases'));
 
         $response = $this->from(route('home'))
             ->withSession(['waitlist_email' => 'buyer@example.com'])

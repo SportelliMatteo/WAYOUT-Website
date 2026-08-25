@@ -56,6 +56,7 @@ return [
         'secret_key' => env('QONTO_SECRET_KEY'),
         'access_token' => env('QONTO_ACCESS_TOKEN'),
         'staging_token' => env('QONTO_STAGING_TOKEN'),
+        'attachment_hosts' => env('QONTO_ATTACHMENT_HOSTS', 'qonto.com,amazonaws.com'),
         'iban' => env('QONTO_INVOICE_IBAN'),
         'vat_rate' => env('QONTO_INVOICE_VAT_RATE', 0.22),
     ],

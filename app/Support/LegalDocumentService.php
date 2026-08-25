@@ -157,12 +157,17 @@ class LegalDocumentService
                 'created_at' => now(),
             ]);
 
+            $existingDocument = DB::table('legal_documents')
+                ->where('document_key', $document)
+                ->where('locale', $locale)
+                ->exists();
+
             DB::table('legal_documents')->updateOrInsert(
                 ['document_key' => $document, 'locale' => $locale],
                 [
                     'current_version_id' => $versionId,
-                    'created_at' => now(),
                     'updated_at' => now(),
+                    ...($existingDocument ? [] : ['id' => DatabaseUuid::new(), 'created_at' => now()]),
                 ],
             );
         });

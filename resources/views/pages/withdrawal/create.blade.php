@@ -80,7 +80,7 @@
                     </form>
                 </div>
             </dialog>
-            <script>
+            <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
                 document.getElementById('order-not-found-modal')?.showModal();
             </script>
         @endif

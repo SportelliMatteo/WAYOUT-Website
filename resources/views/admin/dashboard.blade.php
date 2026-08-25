@@ -101,7 +101,7 @@
         </nav>
 
         <div id="admin-panel-overview" role="tabpanel" aria-labelledby="admin-tab-overview" data-admin-panel="overview" class="{{ $activeAdminTab === 'overview' ? '' : 'hidden' }}">
-        <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Waitlist</p>
                 <p class="mt-3 text-3xl font-black">{{ $number($stats['waitlist_total']) }}</p>
@@ -127,6 +127,11 @@
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Creator Pass</p>
                 <p class="mt-3 text-3xl font-black">{{ $money($stats['creator_revenue']) }}</p>
                 <p class="mt-1 text-sm font-bold text-slate-500">{{ $number($stats['creator_orders']) }} / {{ $number($capacities['creator_capacity']) }} pass</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{{ __('messages.admin.cookie_consents') }}</p>
+                <p class="mt-3 text-3xl font-black">{{ $number($stats['cookie_consent_updates']) }}</p>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.cookie_all_granted', ['count' => $number($stats['cookie_consent_all'])]) }}</p>
             </div>
         </section>
 
@@ -722,7 +727,7 @@
         </section>
     </main>
 
-    <script>
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
         document.addEventListener('DOMContentLoaded', () => {
             const adminTabs = [...document.querySelectorAll('[data-admin-tab]')];
             const adminPanels = [...document.querySelectorAll('[data-admin-panel]')];

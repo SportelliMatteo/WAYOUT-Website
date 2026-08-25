@@ -160,6 +160,7 @@
 </section>
 
 @if(session('waitlist_verification_sent'))
+    <span class="hidden" data-analytics-page-event="waitlist_signup_requested" data-analytics-dedupe="waitlist_signup_requested"></span>
     <div id="waitlist-verification-sent" class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8">
         <button id="waitlist-verification-sent-backdrop" type="button" class="fixed inset-0 cursor-default bg-slate-950/75 backdrop-blur-md" aria-label="{{ __('messages.nav.close_menu') }}"></button>
         <div
@@ -192,6 +193,13 @@
         $alreadyRegistered = session('waitlist_status') === 'already_registered';
         $purchasedPlan = session('purchased_plan');
     @endphp
+    <span
+        class="hidden"
+        data-analytics-page-event="{{ $alreadyRegistered ? 'waitlist_returning_member' : 'waitlist_email_verified' }}"
+        data-analytics-params='@json(['has_founder_pass' => (bool) $purchasedPlan, 'plan' => $purchasedPlan['code'] ?? ''])'
+        data-analytics-dedupe="{{ $alreadyRegistered ? 'waitlist_returning_member' : 'waitlist_email_verified' }}"
+    ></span>
+    <span class="hidden" data-analytics-page-event="founder_offer_view" data-analytics-params='@json(['returning' => $alreadyRegistered])'></span>
     <div id="waitlist-offer" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-3 py-4 sm:px-4 sm:py-8">
         <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>
         <div class="relative z-10 flex w-full justify-center">
@@ -214,7 +222,7 @@
                     </h3>
                     <p class="mt-4 break-words text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
                         @if($purchasedPlan)
-                            {!! __('messages.home.already_purchased_text', ['email' => session('waitlist_email'), 'plan' => '<strong>'.$purchasedPlan['name'].'</strong>', 'amount' => number_format($purchasedPlan['amount'] / 100, 2, ',', '.').'€']) !!}
+                            {!! __('messages.home.already_purchased_text', ['email' => e(session('waitlist_email')), 'plan' => '<strong>'.e($purchasedPlan['name']).'</strong>', 'amount' => e(number_format($purchasedPlan['amount'] / 100, 2, ',', '.').'€')]) !!}
                         @elseif($alreadyRegistered)
                             {{ __('messages.home.already_registered_text', ['email' => session('waitlist_email')]) }}
                         @else
@@ -349,7 +357,7 @@
     </div>
 @endif
 
-<script>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     (function(){
         const waitlistForm = document.getElementById('waitlist-join-form');
         const waitlistSubmit = document.getElementById('waitlist-join-submit');

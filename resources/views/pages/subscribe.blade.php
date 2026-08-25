@@ -13,6 +13,7 @@
     $waitlistProfile = session('waitlist_profile', []);
     $adultMaxDate = now()->subYears(18)->toDateString();
 @endphp
+<span class="hidden" data-analytics-page-event="view_founder_passes" data-analytics-dedupe="view_founder_passes"></span>
 <section class="relative overflow-hidden py-10 lg:py-20">
     <div class="mb-20 wayout-shell grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
         <div>
@@ -47,7 +48,7 @@
                 @endif
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     <label class="{{ $joinFull ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:border-violet-300 has-[:checked]:border-violet-600 has-[:checked]:shadow-[0_18px_45px_rgba(124,35,245,0.15)]' }} rounded-[2rem] border border-slate-200 bg-white p-5 transition">
-                        <input type="radio" name="plan" value="join" @checked($defaultPlan === 'join' && ! $joinFull) @disabled($joinFull) class="sr-only" />
+                        <input type="radio" name="plan" value="join" data-analytics-event="select_founder_plan" data-analytics-plan="join" data-analytics-trigger="change" @checked($defaultPlan === 'join' && ! $joinFull) @disabled($joinFull) class="sr-only" />
                         <div class="flex h-full flex-col">
                             <div class="flex items-start justify-between gap-4">
                                 <div>
@@ -86,7 +87,7 @@
                         </div>
                     </label>
                     <label class="{{ $creatorFull ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:border-violet-300 has-[:checked]:border-violet-600 has-[:checked]:shadow-[0_18px_45px_rgba(124,35,245,0.15)]' }} rounded-[2rem] border border-slate-200 bg-white p-5 transition">
-                        <input type="radio" name="plan" value="creator" @checked($defaultPlan === 'creator' && ! $creatorFull) @disabled($creatorFull) class="sr-only" />
+                        <input type="radio" name="plan" value="creator" data-analytics-event="select_founder_plan" data-analytics-plan="creator" data-analytics-trigger="change" @checked($defaultPlan === 'creator' && ! $creatorFull) @disabled($creatorFull) class="sr-only" />
                         <div class="flex h-full flex-col">
                             <div class="flex items-start justify-between gap-4">
                                 <div>
@@ -331,8 +332,8 @@
     </div>
 </div>
 
-<script src="https://js.stripe.com/v3/"></script>
-<script>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}" src="https://js.stripe.com/v3/"></script>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     const button = document.getElementById('stripe-checkout-button');
     const paymentModal = document.getElementById('payment-details-modal');
     const paymentForm = document.getElementById('payment-details-form');
@@ -517,6 +518,13 @@
             setPaymentLoading(false);
             return;
         }
+
+        window.wayoutTrack?.('begin_checkout', {
+            plan: selectedPlan,
+            value: selectedPlan === 'creator' ? 59 : 29,
+            currency: 'EUR',
+            invoice_requested: invoiceCheckbox?.checked || false,
+        });
 
         button.disabled = true;
         button.textContent = @json(__('messages.subscribe.loading'));

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Wayout' }}</title>
     <meta name="description" content="{{ $description ?? __('messages.home.description') }}">
     @if (! empty($robots))
@@ -76,7 +77,7 @@
         </div>
     </div>
 
-    <script>
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
         document.addEventListener('DOMContentLoaded', function () {
             const toggle = document.getElementById('nav-toggle');
             const close = document.getElementById('nav-close');
@@ -196,9 +197,11 @@
 
                 <div class="mt-8 flex flex-col gap-4 border-t border-white/10 pt-5 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                     <p>© {{ date('Y') }} WAYOUT. {{ __('messages.footer.rights') }}</p>
+                    <button id="cookie-preferences-open" type="button" class="text-left font-black text-slate-300 underline underline-offset-4 transition hover:text-white">{{ __('messages.cookie_consent.manage') }}</button>
                 </div>
             </div>
         </div>
     </footer>
+    @include('partials.analytics-consent')
 </body>
 </html>

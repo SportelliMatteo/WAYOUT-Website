@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminUser;
 use App\Support\AdminAuditService;
+use App\Support\DatabaseUuid;
 use App\Support\LegalDocumentService;
 use App\Support\QontoInvoiceService;
 use Illuminate\Http\Request;
@@ -47,6 +48,8 @@ class AdminController extends Controller
             'join_revenue' => (int) ($purchaseSummary->join_revenue ?? 0),
             'creator_orders' => (int) ($purchaseSummary->creator_orders ?? 0),
             'creator_revenue' => (int) ($purchaseSummary->creator_revenue ?? 0),
+            'cookie_consent_updates' => Schema::hasTable('cookie_consent_events') ? DB::table('cookie_consent_events')->count() : 0,
+            'cookie_consent_all' => Schema::hasTable('cookie_consent_events') ? DB::table('cookie_consent_events')->where('analytics', true)->where('marketing', true)->count() : 0,
         ];
 
         $capacities = $this->founderCapacities();
@@ -88,10 +91,11 @@ class AdminController extends Controller
 
         if ($filters['q'] !== '') {
             $search = '%'.Str::lower($filters['q']).'%';
-            $waitlistQuery->where(function ($query) use ($search) {
+            $uuidCast = DB::connection()->getDriverName() === 'mysql' ? 'CHAR' : 'TEXT';
+            $waitlistQuery->where(function ($query) use ($search, $uuidCast) {
                 $query->whereRaw('LOWER(waitlist_entries.email) LIKE ?', [$search])
-                    ->orWhereRaw('LOWER(CAST(waitlist_entries.id AS TEXT)) LIKE ?', [$search])
-                    ->orWhereRaw('LOWER(CAST(waitlist_entries.benefit_id AS TEXT)) LIKE ?', [$search]);
+                    ->orWhereRaw("LOWER(CAST(waitlist_entries.id AS {$uuidCast})) LIKE ?", [$search])
+                    ->orWhereRaw("LOWER(CAST(waitlist_entries.benefit_id AS {$uuidCast})) LIKE ?", [$search]);
             });
         }
 
@@ -261,7 +265,7 @@ class AdminController extends Controller
                     [
                         'value' => $value,
                         'updated_at' => now(),
-                        ...($existing ? [] : ['created_at' => now()]),
+                        ...($existing ? [] : ['id' => DatabaseUuid::new(), 'created_at' => now()]),
                     ]
                 );
             }
@@ -395,7 +399,7 @@ class AdminController extends Controller
 
     private function successfulPlansExpression(): string
     {
-        if (DB::connection()->getDriverName() === 'sqlite') {
+        if (in_array(DB::connection()->getDriverName(), ['sqlite', 'mysql'], true)) {
             return "GROUP_CONCAT(DISTINCT CASE WHEN status = 'succeeded' THEN plan END) as plans";
         }
 

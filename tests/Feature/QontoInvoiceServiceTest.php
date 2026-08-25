@@ -185,6 +185,7 @@ class QontoInvoiceServiceTest extends TestCase
             'secret_key' => 'sandbox-secret',
             'access_token' => null,
             'staging_token' => $environment === 'sandbox' ? 'staging-token' : null,
+            'attachment_hosts' => 'qonto.com,amazonaws.com,files.example.test',
             'iban' => 'IT60X0542811101000000123456',
             'vat_rate' => 0.22,
         ]);

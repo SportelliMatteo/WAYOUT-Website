@@ -25,7 +25,7 @@ La dashboard amministrativa mostra, per ogni ordine con fattura, lo stato intern
 2. Accedi al [Qonto Developer Portal](https://developers.qonto.com/) e prepara l’ambiente Sandbox.
 3. Nell’app Qonto Sandbox apri **Integrations and Partnerships > API key** e recupera login e secret key.
 4. Dal Developer Portal recupera anche lo staging token.
-5. Inserisci le variabili riportate sotto. Su Google Cloud Run conserva `QONTO_SECRET_KEY`, `QONTO_ACCESS_TOKEN` e `QONTO_STAGING_TOKEN` in Secret Manager.
+5. Inserisci le variabili riportate sotto esclusivamente nel file privato `_wayout/.env` dell'hosting Aruba.
 
 ## Modalità test (Sandbox)
 
@@ -64,7 +64,7 @@ QONTO_INVOICE_IBAN=...
 QONTO_INVOICE_VAT_RATE=0.22
 ```
 
-5. Dopo ogni modifica alle variabili su Cloud Run, pubblica una nuova revisione. Se l’app usa la cache di Laravel, esegui `php artisan config:cache` durante il deploy.
+5. Dopo ogni modifica alle variabili, esegui una volta il Cron PHP `_wayout/run-deploy.php`, che rigenera in sicurezza la cache Laravel.
 
 In produzione la creazione usa `report_einvoicing=true`: per un’organizzazione italiana abilitata Qonto inoltra automaticamente l’XML allo SdI. La consegna è asincrona; lo stato `sent` nel database indica che Qonto ha accettato la creazione, non l’esito finale dello SdI.
 
@@ -94,7 +94,7 @@ Per un solo acquisto:
 php artisan qonto:sync-invoices UUID_ACQUISTO
 ```
 
-Laravel pianifica automaticamente il comando ogni cinque minuti. Su Google Cloud Run il processo web non esegue da solo lo scheduler: configura Cloud Scheduler affinché avvii, ogni cinque minuti, un Cloud Run Job che esegue `php artisan schedule:run`. Le credenziali Qonto devono essere lette dal medesimo Secret Manager usato dal servizio web.
+Laravel pianifica automaticamente il comando ogni dieci minuti. Nel pannello Aruba configura un processo Cron di tipo PHP, ogni dieci minuti, verso il percorso assoluto `/web/htdocs/www.wayoutapp.it/home/_wayout/run-schedule.php`. Gli orari del pannello Cron sono UTC.
 
 In Sandbox lo stato serve a verificare il flusso applicativo, ma non rappresenta una consegna reale allo SdI. In produzione la dashboard espone gli stati restituiti da Qonto e gli eventi del ciclo di vita disponibili dall’API.
 

@@ -54,7 +54,7 @@ return new class extends Migration
             });
 
         Schema::create('waitlist_email_verifications', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('waitlist_entry_id')->constrained('waitlist_entries')->cascadeOnDelete();
             $table->string('token_hash', 64)->unique();
             $table->timestamp('expires_at')->index();
@@ -64,7 +64,7 @@ return new class extends Migration
         });
 
         Schema::create('benefit_email_challenges', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('waitlist_entry_id')->nullable()->constrained('waitlist_entries')->cascadeOnDelete();
             $table->string('email_hash', 64)->index();
             $table->string('code_hash', 64);
@@ -75,7 +75,7 @@ return new class extends Migration
         });
 
         Schema::create('benefit_claims', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('(gen_random_uuid())'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('waitlist_entry_id')->unique()->constrained('waitlist_entries')->cascadeOnDelete();
             $table->string('account_reference', 255);
             $table->string('idempotency_key', 255)->unique();

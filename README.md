@@ -93,7 +93,7 @@ Il database conserva i timestamp in UTC. Dashboard e nuovi log li presentano in 
 
 ## Conferma pagamenti Stripe tramite webhook
 
-La conferma definitiva del pagamento non dipende dal ritorno del browser. In Stripe creare un endpoint webhook HTTPS verso `https://DOMINIO/stripe/webhook`, selezionando gli eventi `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Copiare il signing secret `whsec_...` in `STRIPE_WEBHOOK_SECRET` tramite Google Cloud Secret Manager. Il server verifica firma e timestamp del messaggio, recupera poi la Checkout Session direttamente dalle API Stripe e registra l'ordine soltanto se Stripe la dichiara pagata. La pagina di successo rimane un fallback idempotente.
+La conferma definitiva del pagamento non dipende dal ritorno del browser. In Stripe creare un endpoint webhook HTTPS verso `https://DOMINIO/stripe/webhook`, selezionando gli eventi `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Copiare il signing secret `whsec_...` in `STRIPE_WEBHOOK_SECRET` nel file privato `_wayout/.env` dell'hosting. Il server verifica firma e timestamp del messaggio, recupera poi la Checkout Session direttamente dalle API Stripe e registra l'ordine soltanto se Stripe la dichiara pagata. La pagina di successo rimane un fallback idempotente.
 
 Per una prova locale è possibile usare Stripe CLI, inoltrare gli eventi a `/stripe/webhook` e usare come `STRIPE_WEBHOOK_SECRET` il signing secret temporaneo mostrato dal comando `stripe listen`.
 

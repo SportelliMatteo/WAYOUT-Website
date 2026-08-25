@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\ContactMessageMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -62,7 +63,11 @@ class ContactTest extends TestCase
 
     public function test_contact_database_failure_returns_a_user_friendly_error(): void
     {
-        Schema::dropIfExists('contact_messages');
+        if (DB::getDriverName() === 'mysql') {
+            $this->markTestSkipped('La simulazione elimina una tabella e MySQL esegue un commit DDL implicito; il caso è coperto dalla suite SQLite.');
+        }
+
+        Schema::withoutForeignKeyConstraints(fn () => Schema::dropIfExists('contact_messages'));
 
         $response = $this->from(route('contact'))
             ->post(route('contact.store'), [

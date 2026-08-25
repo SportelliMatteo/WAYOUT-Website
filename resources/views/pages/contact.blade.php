@@ -41,6 +41,7 @@
 
         <div class="wayout-panel rounded-[2rem] p-5 sm:rounded-[2.5rem] sm:p-8">
             @if(session('contact_success'))
+                <span class="hidden" data-analytics-page-event="contact_submitted" data-analytics-dedupe="contact_submitted"></span>
                 <div class="mb-6 rounded-3xl border border-emerald-300 bg-emerald-50 p-5 font-semibold text-emerald-900">
                     {{ __('messages.contact.success') }}
                 </div>
