@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'pages.home')->name('home');
 Route::view('/chi-siamo', 'pages.about')->name('about');
 Route::view('/contatti', 'pages.contact')->name('contact');
+Route::view('/api/docs', 'api-docs')->name('api.docs');
 Route::get('/privacy-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'privacy')->name('legal.privacy');
 Route::get('/cookie-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'cookies')->name('legal.cookies');
 Route::get('/termini-e-condizioni', [LegalDocumentController::class, 'show'])->defaults('document', 'terms')->name('legal.terms');
@@ -38,7 +39,8 @@ Route::post('/subscribe/checkout', [SubscribeController::class, 'checkout'])->mi
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware('throttle:purchase-confirmation')->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware('throttle:contact')->name('contact.store');
 Route::post('/waitlist', [WaitlistController::class, 'store'])->middleware('throttle:waitlist')->name('waitlist.store');
-Route::post('/waitlist/profile', [WaitlistController::class, 'completeProfile'])->middleware('throttle:waitlist')->name('waitlist.profile');
+Route::get('/waitlist/verifica/{token}', [WaitlistController::class, 'showVerification'])->name('waitlist.verify.show');
+Route::post('/waitlist/verifica/{token}', [WaitlistController::class, 'verify'])->middleware('throttle:waitlist')->name('waitlist.verify');
 Route::get('/preferenze/marketing/{waitlist}', [ConsentController::class, 'showMarketingRevocation'])
     ->middleware('signed')
     ->name('consent.marketing.revoke.show');

@@ -8,7 +8,7 @@
         <h1 style="margin:0;font-size:28px">{{ __('messages.email.waitlist_heading') }}</h1>
     </div>
     <div style="background:#fff;border-radius:20px;padding:28px;margin-top:16px">
-        <p>{{ __('messages.email.greeting_name', ['name' => $member['first_name']]) }}</p>
+        <p>{{ __('messages.email.greeting') }}</p>
         <p>{{ __('messages.email.waitlist_confirmed') }}</p>
         <p>{{ __('messages.email.waitlist_next') }}</p>
         <p><a href="{{ route('home') }}" style="display:inline-block;background:#6d28d9;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:999px">{{ __('messages.email.visit_wayout') }}</a></p>

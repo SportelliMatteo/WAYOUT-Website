@@ -13,7 +13,7 @@ class EmailTemplateTest extends TestCase
     {
         $waitlist = (new WaitlistWelcomeMail([
             'email' => 'ada@example.com',
-            'first_name' => 'Ada',
+            'waitlist_position' => 42,
         ]))->render();
 
         $purchase = (new PurchaseConfirmationMail([
@@ -35,6 +35,8 @@ class EmailTemplateTest extends TestCase
             $this->assertStringContainsString(route('legal.privacy'), $html);
         }
 
+        $this->assertStringNotContainsString('posizione nella waitlist', $waitlist);
+        $this->assertStringNotContainsString('#42', $waitlist);
         $this->assertStringContainsString('29,00 EUR', $purchase);
         $this->assertStringContainsString(route('legal.presale'), $purchase);
         $this->assertStringContainsString('ada@example.com', $contact);

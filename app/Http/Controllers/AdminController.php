@@ -36,8 +36,9 @@ class AdminController extends Controller
             ->first();
 
         $stats = [
-            'waitlist_total' => DB::table('waitlist_entries')->count(),
-            'waitlist_offer_shown' => DB::table('waitlist_entries')->where('offer_shown', true)->count(),
+            'waitlist_total' => DB::table('waitlist_entries')->whereNotNull('email_verified_at')->count(),
+            'waitlist_pending' => DB::table('waitlist_entries')->whereNull('email_verified_at')->count(),
+            'benefits_claimed' => DB::table('benefit_claims')->count(),
             'buyers_total' => DB::table('purchases')->where('status', 'succeeded')->distinct('email')->count('email'),
             'orders_total' => (int) ($purchaseSummary->total_orders ?? 0),
             'orders_succeeded' => (int) ($purchaseSummary->succeeded_orders ?? 0),
@@ -51,32 +52,32 @@ class AdminController extends Controller
         $capacities = $this->founderCapacities();
 
         $purchaseAggregate = DB::table('purchases')
-            ->select('email')
+            ->select('waitlist_entry_id')
             ->selectRaw('COUNT(*) as orders_total')
             ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) as orders_succeeded")
             ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN amount ELSE 0 END) as revenue_total")
             ->selectRaw('MAX(created_at) as latest_purchase_at')
             ->selectRaw($this->successfulPlansExpression())
-            ->groupBy('email');
+            ->whereNotNull('waitlist_entry_id')
+            ->groupBy('waitlist_entry_id');
 
         $waitlistQuery = DB::table('waitlist_entries')
             ->leftJoinSub($purchaseAggregate, 'purchase_totals', function ($join) {
-                $join->on('waitlist_entries.email', '=', 'purchase_totals.email');
+                $join->on('waitlist_entries.id', '=', 'purchase_totals.waitlist_entry_id');
             })
+            ->leftJoin('benefit_claims', 'waitlist_entries.id', '=', 'benefit_claims.waitlist_entry_id')
             ->select([
+                'waitlist_entries.id',
+                'waitlist_entries.benefit_id',
                 'waitlist_entries.email',
-                'waitlist_entries.first_name',
-                'waitlist_entries.last_name',
-                'waitlist_entries.nickname',
-                'waitlist_entries.birth_date',
-                'waitlist_entries.gender',
-                'waitlist_entries.phone_prefix',
-                'waitlist_entries.phone_number',
-                'waitlist_entries.phone_verified_at',
+                'waitlist_entries.waitlist_position',
+                'waitlist_entries.email_verified_at',
                 'waitlist_entries.marketing_consent',
-                'waitlist_entries.offer_shown',
                 'waitlist_entries.created_at',
                 'waitlist_entries.updated_at',
+                'benefit_claims.account_reference',
+                'benefit_claims.benefit_type as claimed_benefit_type',
+                'benefit_claims.claimed_at',
                 DB::raw('COALESCE(purchase_totals.orders_total, 0) as orders_total'),
                 DB::raw('COALESCE(purchase_totals.orders_succeeded, 0) as orders_succeeded'),
                 DB::raw('COALESCE(purchase_totals.revenue_total, 0) as revenue_total'),
@@ -87,32 +88,29 @@ class AdminController extends Controller
 
         if ($filters['q'] !== '') {
             $search = '%'.Str::lower($filters['q']).'%';
-            $phoneSearch = preg_replace('/\D+/', '', $filters['q']) ?? '';
-
-            $waitlistQuery->where(function ($query) use ($search, $phoneSearch) {
+            $waitlistQuery->where(function ($query) use ($search) {
                 $query->whereRaw('LOWER(waitlist_entries.email) LIKE ?', [$search])
-                    ->orWhereRaw('LOWER(waitlist_entries.first_name) LIKE ?', [$search])
-                    ->orWhereRaw('LOWER(waitlist_entries.last_name) LIKE ?', [$search])
-                    ->orWhereRaw('LOWER(waitlist_entries.nickname) LIKE ?', [$search]);
-
-                if ($phoneSearch !== '') {
-                    $query->orWhereRaw("(REPLACE(waitlist_entries.phone_prefix, '+', '') || waitlist_entries.phone_number) LIKE ?", ['%'.$phoneSearch.'%'])
-                        ->orWhere('waitlist_entries.phone_number', 'like', '%'.$phoneSearch.'%');
-                }
+                    ->orWhereRaw('LOWER(CAST(waitlist_entries.id AS TEXT)) LIKE ?', [$search])
+                    ->orWhereRaw('LOWER(CAST(waitlist_entries.benefit_id AS TEXT)) LIKE ?', [$search]);
             });
         }
 
         if ($filters['status'] === 'buyers') {
             $waitlistQuery->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) > 0');
         } elseif ($filters['status'] === 'no_purchase') {
-            $waitlistQuery->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) = 0');
+            $waitlistQuery->whereNotNull('waitlist_entries.email_verified_at')
+                ->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) = 0');
+        } elseif ($filters['status'] === 'pending') {
+            $waitlistQuery->whereNull('waitlist_entries.email_verified_at');
+        } elseif ($filters['status'] === 'claimed') {
+            $waitlistQuery->whereNotNull('benefit_claims.claimed_at');
         }
 
         if (in_array($filters['plan'], ['join', 'creator'], true)) {
             $waitlistQuery->whereExists(function ($query) use ($filters) {
                 $query->selectRaw('1')
                     ->from('purchases')
-                    ->whereColumn('purchases.email', 'waitlist_entries.email')
+                    ->whereColumn('purchases.waitlist_entry_id', 'waitlist_entries.id')
                     ->where('purchases.status', 'succeeded')
                     ->where('purchases.plan', $filters['plan']);
             });
@@ -357,8 +355,6 @@ class AdminController extends Controller
             ->select('email')
             ->selectRaw('MAX(first_name) as first_name')
             ->selectRaw('MAX(last_name) as last_name')
-            ->selectRaw('MAX(phone_prefix) as phone_prefix')
-            ->selectRaw('MAX(phone_number) as phone_number')
             ->selectRaw('COUNT(*) as orders_total')
             ->selectRaw('SUM(amount) as revenue_total')
             ->selectRaw('MAX(created_at) as latest_purchase_at')

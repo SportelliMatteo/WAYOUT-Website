@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PurchaseConfirmationMail;
-use App\Mail\WaitlistWelcomeMail;
 use App\Support\ConsentAuditService;
 use App\Support\DatabaseUuid;
 use App\Support\FounderAvailability;
@@ -35,136 +34,22 @@ class SubscribeController extends Controller
         return view('pages.subscribe');
     }
 
-    public function access(
-        Request $request,
-        TransactionalEmailSender $emailSender,
-        ConsentAuditService $audit,
-    ) {
-        $emailValidator = Validator::make($request->all(), [
-            'email' => ['required', 'email:rfc', 'max:255'],
-        ]);
-
-        if ($emailValidator->fails()) {
-            return back()
-                ->withErrors($emailValidator)
-                ->withInput()
-                ->with('waitlist_profile_prompt', true)
-                ->with('waitlist_status', $request->input('waitlist_status', 'registered'))
-                ->with('waitlist_email', strtolower((string) $request->input('email')))
-                ->with('waitlist_profile_required', true)
-                ->with('waitlist_profile', [
-                    'first_name' => $request->input('first_name', ''),
-                    'last_name' => $request->input('last_name', ''),
-                    'birth_date' => $request->input('birth_date', ''),
-                    'phone_prefix' => $request->input('phone_prefix', '+39'),
-                    'phone_number' => $request->input('phone_number', ''),
-                ]);
-        }
-
-        $email = strtolower($emailValidator->validated()['email']);
-        $waitlistEntry = DB::table('waitlist_entries')
-            ->where('email', $email)
-            ->first();
+    public function access(Request $request)
+    {
+        $entryId = $request->session()->get('waitlist_verified_entry_id');
+        $waitlistEntry = $entryId
+            ? DB::table('waitlist_entries')->where('id', $entryId)->whereNotNull('email_verified_at')->first()
+            : null;
 
         if (! $waitlistEntry) {
-            return back()
-                ->withErrors(['email' => __('messages.messages.waitlist_entry_missing')])
-                ->withInput();
+            return redirect()->route('home')->with('waitlist_error', __('messages.messages.checkout_unauthorized'));
         }
-
-        $storedProfile = $this->profileData($waitlistEntry);
-        $profileSubmitted = $request->hasAny(['first_name', 'last_name', 'birth_date', 'phone_prefix', 'phone_number']);
-        $hasLegalAcceptance = $audit->hasWaitlistLegalAcceptance($waitlistEntry->id);
-
-        if ($this->profileComplete($waitlistEntry) && ! $profileSubmitted) {
-            $profile = $storedProfile;
-        } else {
-            $profile = $this->validateSubmittedProfile($request, $email);
-
-            if (! is_array($profile)) {
-                return $profile;
-            }
-        }
-
-        DB::transaction(function () use ($request, $email, $profile, $waitlistEntry, $hasLegalAcceptance, $audit) {
-            DB::table('waitlist_entries')
-                ->where('id', $waitlistEntry->id)
-                ->update([
-                    ...$profile,
-                    'updated_at' => now(),
-                ]);
-
-            if (! $hasLegalAcceptance) {
-                $audit->record(
-                    $request,
-                    $email,
-                    'waitlist_legal',
-                    'granted',
-                    'offer_access',
-                    ['privacy', 'terms', 'waitlist_acceptance'],
-                    ['waitlist_entry_id' => $waitlistEntry->id],
-                );
-            }
-        });
-
-        $this->sendWaitlistWelcomeIfNeeded($email, $profile, $emailSender);
 
         $request->session()->put('waitlist_offer_access', true);
-        $request->session()->put('waitlist_email', $email);
-        $request->session()->put('waitlist_profile', $profile);
+        $request->session()->put('waitlist_email', $waitlistEntry->email);
         $request->session()->flash('subscribe_entry_allowed', true);
 
         return redirect()->route('subscribe');
-    }
-
-    private function validateSubmittedProfile(Request $request, string $email)
-    {
-        $validator = Validator::make($request->all(), [
-            'first_name' => ['required', 'string', 'max:120'],
-            'last_name' => ['required', 'string', 'max:120'],
-            'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
-            'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
-            'phone_number' => [
-                'required',
-                'string',
-                'max:32',
-                'regex:/^[0-9\s().-]{5,32}$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
-                    $internationalNumber = (string) $request->input('phone_prefix').(preg_replace('/\D+/', '', (string) $value) ?? '');
-
-                    if (preg_match('/^\+[1-9]\d{6,14}$/', $internationalNumber) !== 1) {
-                        $fail(__('messages.subscribe.invalid_phone_number'));
-                    }
-                },
-            ],
-        ]);
-
-        if ($validator->fails()) {
-            return back()
-                ->withErrors($validator)
-                ->withInput()
-                ->with('waitlist_profile_prompt', true)
-                ->with('waitlist_status', $request->input('waitlist_status', 'registered'))
-                ->with('waitlist_email', $email)
-                ->with('waitlist_profile_required', true)
-                ->with('waitlist_profile', [
-                    'first_name' => $request->input('first_name', ''),
-                    'last_name' => $request->input('last_name', ''),
-                    'birth_date' => $request->input('birth_date', ''),
-                    'phone_prefix' => $request->input('phone_prefix', '+39'),
-                    'phone_number' => $request->input('phone_number', ''),
-                ]);
-        }
-
-        $validated = $validator->validated();
-
-        return [
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'birth_date' => $validated['birth_date'],
-            'phone_prefix' => $validated['phone_prefix'],
-            'phone_number' => $validated['phone_number'],
-        ];
     }
 
     public function success(Request $request, ConsentAuditService $audit)
@@ -353,21 +238,6 @@ class SubscribeController extends Controller
             'first_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'last_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
-            'phone_prefix' => ['required', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
-            'phone_number' => [
-                'required',
-                'string',
-                'max:32',
-                'regex:/^[0-9\s().-]{5,32}$/',
-                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
-                    $internationalNumber = (string) $request->input('phone_prefix')
-                        .(preg_replace('/\D+/', '', (string) $value) ?? '');
-
-                    if (preg_match('/^\+[1-9]\d{6,14}$/', $internationalNumber) !== 1) {
-                        $fail(__('messages.subscribe.invalid_phone_number'));
-                    }
-                },
-            ],
             'invoice_requested' => ['sometimes', 'boolean'],
             'purchase_terms_accepted' => ['required', 'accepted'],
             'billing_customer_type' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', Rule::in(['individual', 'legal_entity'])],
@@ -438,8 +308,6 @@ class SubscribeController extends Controller
             'first_name' => __('messages.subscribe.first_name'),
             'last_name' => __('messages.subscribe.last_name'),
             'birth_date' => __('messages.subscribe.birth_date'),
-            'phone_prefix' => __('messages.subscribe.phone_number'),
-            'phone_number' => __('messages.subscribe.phone_number'),
             'purchase_terms_accepted' => __('messages.subscribe.purchase_terms'),
             'billing_customer_type' => __('messages.subscribe.invoice_holder_type'),
             'billing_address' => __('messages.subscribe.billing_address'),
@@ -469,8 +337,6 @@ class SubscribeController extends Controller
             'first_name' => $validatedCustomer['first_name'],
             'last_name' => $validatedCustomer['last_name'],
             'birth_date' => $validatedCustomer['birth_date'],
-            'phone_prefix' => $validatedCustomer['phone_prefix'],
-            'phone_number' => preg_replace('/\D+/', '', $validatedCustomer['phone_number']),
             'invoice_requested' => $invoiceRequested,
             'billing_customer_type' => $billingCustomerType,
             'billing_address' => $invoiceRequested ? trim($validatedCustomer['billing_address']) : null,
@@ -488,46 +354,21 @@ class SubscribeController extends Controller
             'electronic_invoice_status' => $invoiceRequested ? 'pending' : 'not_requested',
         ];
 
-        $waitlistEntry = DB::table('waitlist_entries')->where('email', $email)->first();
-        $submittedPhone = $customer['phone_prefix'].$customer['phone_number'];
-        $storedPhone = $waitlistEntry
-            ? $waitlistEntry->phone_prefix.(preg_replace('/\D+/', '', (string) $waitlistEntry->phone_number) ?? '')
-            : null;
-
-        if ($waitlistEntry?->phone_verified_at && ! hash_equals((string) $storedPhone, $submittedPhone)) {
-            return response()->json([
-                'message' => __('messages.subscribe.verified_phone_mismatch'),
-                'errors' => ['phone_number' => [__('messages.subscribe.verified_phone_mismatch')]],
-            ], 422);
-        }
-
-        if (config('services.firebase.phone_verification_enabled') && ! $waitlistEntry?->phone_verified_at) {
-            return response()->json([
-                'message' => __('messages.subscribe.verified_phone_required'),
-                'errors' => ['phone_number' => [__('messages.subscribe.verified_phone_required')]],
-            ], 422);
-        }
-
         $request->session()->put('waitlist_profile', [
             'first_name' => $customer['first_name'],
             'last_name' => $customer['last_name'],
             'birth_date' => $customer['birth_date'],
-            'phone_prefix' => $customer['phone_prefix'],
-            'phone_number' => $customer['phone_number'],
         ]);
+        $waitlistEntryId = $request->session()->get('waitlist_verified_entry_id');
+        $waitlistEntry = $waitlistEntryId
+            ? DB::table('waitlist_entries')->where('id', $waitlistEntryId)->whereNotNull('email_verified_at')->first()
+            : DB::table('waitlist_entries')->whereRaw('LOWER(email) = ?', [$email])->whereNotNull('email_verified_at')->first();
 
-        DB::table('waitlist_entries')
-            ->where('email', $email)
-            ->update([
-                'first_name' => $customer['first_name'],
-                'last_name' => $customer['last_name'],
-                'birth_date' => $customer['birth_date'],
-                'phone_prefix' => $customer['phone_prefix'],
-                'phone_number' => $customer['phone_number'],
-                'updated_at' => now(),
-            ]);
+        if (! $waitlistEntry || ! hash_equals($waitlistEntry->email, $email)) {
+            return response()->json(['error' => __('messages.messages.checkout_unauthorized')], 403);
+        }
 
-        $waitlistEntryId = DB::table('waitlist_entries')->where('email', $email)->value('id');
+        $waitlistEntryId = $waitlistEntry->id;
 
         // This shortcut exists only to keep feature tests fast. Client input can
         // never bypass Stripe in a web/production runtime.
@@ -570,13 +411,12 @@ class SubscribeController extends Controller
                     $purchase = DatabaseUuid::new();
                     DB::table('purchases')->insert([
                         'id' => $purchase,
+                        'waitlist_entry_id' => $waitlistEntryId,
                         'order_reference' => $this->orderReference($purchase),
                         'email' => $email,
                         'first_name' => $customer['first_name'],
                         'last_name' => $customer['last_name'],
                         'birth_date' => $customer['birth_date'],
-                        'phone_prefix' => $customer['phone_prefix'],
-                        'phone_number' => $customer['phone_number'],
                         'plan' => $plan,
                         'amount' => (int) $planConfig['unit_amount'],
                         'currency' => 'eur',
@@ -640,7 +480,7 @@ class SubscribeController extends Controller
             $soldOut = false;
             $reservationId = null;
 
-            DB::transaction(function () use ($email, $plan, $planConfig, $availability, $customer, &$reservationId, &$soldOut) {
+            DB::transaction(function () use ($email, $plan, $planConfig, $availability, $customer, $waitlistEntryId, &$reservationId, &$soldOut) {
                 $capacity = (int) (DB::table('founder_settings')
                     ->where('key', $availability->capacityKeyForPlan($plan))
                     ->lockForUpdate()
@@ -681,12 +521,11 @@ class SubscribeController extends Controller
                 }
 
                 $reservationData = [
+                    'waitlist_entry_id' => $waitlistEntryId,
                     'email' => $email,
                     'first_name' => $customer['first_name'],
                     'last_name' => $customer['last_name'],
                     'birth_date' => $customer['birth_date'],
-                    'phone_prefix' => $customer['phone_prefix'],
-                    'phone_number' => $customer['phone_number'],
                     'plan' => $plan,
                     'amount' => (int) $planConfig['unit_amount'],
                     'currency' => 'eur',
@@ -751,8 +590,7 @@ class SubscribeController extends Controller
                     'metadata[first_name]' => $customer['first_name'],
                     'metadata[last_name]' => $customer['last_name'],
                     'metadata[birth_date]' => $customer['birth_date'],
-                    'metadata[phone_prefix]' => $customer['phone_prefix'],
-                    'metadata[phone_number]' => $customer['phone_number'],
+                    'metadata[waitlist_entry_id]' => $waitlistEntryId,
                     'metadata[plan]' => $plan,
                     'metadata[purchase_id]' => (string) $reservationId,
                     'metadata[invoice_requested]' => $customer['invoice_requested'] ? 'true' : 'false',
@@ -961,12 +799,13 @@ class SubscribeController extends Controller
         }
 
         $purchaseData = [
+            'waitlist_entry_id' => ($metadata['waitlist_entry_id'] ?? '') ?: DB::table('waitlist_entries')
+                ->whereRaw('LOWER(email) = ?', [strtolower($email)])
+                ->value('id'),
             'email' => strtolower($email),
             'first_name' => $metadata['first_name'] ?? null,
             'last_name' => $metadata['last_name'] ?? null,
             'birth_date' => $metadata['birth_date'] ?? null,
-            'phone_prefix' => $metadata['phone_prefix'] ?? null,
-            'phone_number' => $metadata['phone_number'] ?? null,
             'plan' => $plan,
             'amount' => (int) ($response->json('amount_total') ?? ($plan === 'creator' ? 5900 : 2900)),
             'currency' => strtolower($response->json('currency') ?? 'eur'),
@@ -1169,36 +1008,6 @@ class SubscribeController extends Controller
         }
     }
 
-    /** @param array{first_name: string} $profile */
-    private function sendWaitlistWelcomeIfNeeded(
-        string $email,
-        array $profile,
-        TransactionalEmailSender $emailSender,
-    ): void {
-        $entry = DB::table('waitlist_entries')->where('email', $email)->first();
-
-        if (! $entry || $entry->welcome_email_sent_at) {
-            return;
-        }
-
-        try {
-            if ($emailSender->send($email, new WaitlistWelcomeMail([
-                'email' => $email,
-                'first_name' => $profile['first_name'],
-            ]))) {
-                DB::table('waitlist_entries')
-                    ->where('id', $entry->id)
-                    ->whereNull('welcome_email_sent_at')
-                    ->update(['welcome_email_sent_at' => now()]);
-            }
-        } catch (Throwable $exception) {
-            Log::error('Waitlist welcome email from offer access failed.', [
-                'email_hash' => PrivacySafeLogContext::fingerprint($email),
-                ...PrivacySafeLogContext::exception($exception),
-            ]);
-        }
-    }
-
     private function reservedPassCount(string $plan, ?string $exceptPurchaseId = null): int
     {
         return DB::table('purchases')
@@ -1292,26 +1101,6 @@ class SubscribeController extends Controller
             $successful ? 'purchase_confirmation_success' : 'purchase_confirmation_error',
             $message,
         );
-    }
-
-    private function profileData(?object $entry): array
-    {
-        return [
-            'first_name' => $entry->first_name ?? '',
-            'last_name' => $entry->last_name ?? '',
-            'birth_date' => $entry->birth_date ?? '',
-            'phone_prefix' => $entry->phone_prefix ?? '+39',
-            'phone_number' => $entry->phone_number ?? '',
-        ];
-    }
-
-    private function profileComplete(?object $entry): bool
-    {
-        return filled($entry?->first_name)
-            && filled($entry?->last_name)
-            && filled($entry?->birth_date)
-            && filled($entry?->phone_prefix)
-            && filled($entry?->phone_number);
     }
 
     private function normalizeFiscalCode(?string $fiscalCode): ?string

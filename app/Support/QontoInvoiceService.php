@@ -190,10 +190,6 @@ class QontoInvoiceService
         $payload = [
             'kind' => $isCompany ? 'company' : 'individual',
             'email' => $purchase->email,
-            'phone' => [
-                'country_code' => $purchase->phone_prefix,
-                'number' => preg_replace('/\D+/', '', (string) $purchase->phone_number),
-            ],
             'billing_address' => [
                 'street_address' => $purchase->billing_address,
                 'city' => $purchase->billing_city,

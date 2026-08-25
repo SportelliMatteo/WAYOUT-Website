@@ -66,6 +66,10 @@ EMAIL_SENDING_ENABLED=false
 EMAIL_RESEND_COOLDOWN_SECONDS=300
 EMAIL_LOG_CHANNEL=email
 EMAIL_LOG_LEVEL=info
+EMAIL_LOG_DAYS=30
+LOG_CHANNEL=application
+LOG_LEVEL=info
+LOG_DAILY_DAYS=30
 MAIL_MAILER=smtp
 MAIL_SCHEME=null
 MAIL_HOST=smtp-relay.brevo.com
@@ -81,7 +85,9 @@ CONTACT_EMAIL=hello@wayoutapp.it
 
 Usare una chiave SMTP Brevo, non una API key. Il mittente deve essere verificato in Brevo. Con `EMAIL_SENDING_ENABLED=false` nessuna email viene consegnata al mailer. `EMAIL_RESEND_COOLDOWN_SECONDS` stabilisce il tempo minimo tra due richieste manuali per lo stesso acquisto. Dopo modifiche alla configurazione in produzione eseguire `php artisan config:clear` (oppure rigenerare la config cache).
 
-I tentativi di invio sono registrati separatamente in `storage/logs/email-YYYY-MM-DD.log`, senza password o chiavi SMTP. Il log distingue gli eventi `email.skipped`, `email.attempt`, `email.sent` ed `email.failed`.
+I log applicativi ruotano ogni giorno in `storage/logs/application/application-YYYY-MM-DD.log` e sono conservati per 30 giorni. I test scrivono esclusivamente in `storage/logs/testing/testing-YYYY-MM-DD.log` e conservano 7 giorni; non contaminano quindi i log degli eventi reali. I tentativi di invio sono registrati separatamente in `storage/logs/email/email-YYYY-MM-DD.log`, conservati per 30 giorni, senza password o chiavi SMTP. Il log distingue gli eventi `email.skipped`, `email.attempt`, `email.sent` ed `email.failed`. Se il sistema di logging non può essere inizializzato, Laravel utilizza `storage/logs/emergency/emergency.log` come destinazione di emergenza.
+
+La retention dei log applicativi deve essere proporzionata e documentata in base alle finalità, nel rispetto del principio di limitazione della conservazione dell'[articolo 5 GDPR](https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX%3A02016R0679-20160504). I log degli accessi logici degli amministratori di sistema sono una categoria distinta: quando soggetti al [provvedimento del Garante del 27 novembre 2008](https://www.garanteprivacy.it/home/docweb/-/docweb-display/docweb/1577499), richiedono almeno sei mesi di conservazione e garanzie di completezza, integrità e inalterabilità; la semplice rotazione dei log Laravel non sostituisce tale sistema di audit.
 
 Il database conserva i timestamp in UTC. Dashboard e nuovi log li presentano in `Europe/Rome`, configurabile con `APP_DISPLAY_TIMEZONE` e `LOG_TIMEZONE`; `APP_TIMEZONE` deve restare `UTC` per evitare timestamp incoerenti e gestire correttamente l’ora legale.
 

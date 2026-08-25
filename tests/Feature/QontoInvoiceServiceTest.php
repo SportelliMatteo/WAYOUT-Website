@@ -235,8 +235,6 @@ class QontoInvoiceServiceTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
             'plan' => 'join',
             'amount' => 2900,
             'currency' => 'eur',

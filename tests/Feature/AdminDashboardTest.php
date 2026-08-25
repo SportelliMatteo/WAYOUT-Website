@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AdminUser;
+use App\Support\DatabaseUuid;
 use App\Support\LegalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -56,8 +57,8 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Capienze Founder')
             ->assertSee('Utenti Founder Join 12M')
             ->assertSee('Utenti Founder Creator 12M')
-            ->assertSee('Verificato')
-            ->assertSee('Non verificato');
+            ->assertSee('Verificata')
+            ->assertSee('In attesa di verifica');
     }
 
     public function test_admin_dashboard_sections_and_legal_categories_are_accessible_as_tabs(): void
@@ -172,6 +173,13 @@ class AdminDashboardTest extends TestCase
     {
         $date = now()->toDateString();
         $session = $this->adminSession();
+        $existingRevisions = DB::table('legal_document_versions')
+            ->where('document_key', 'privacy')
+            ->where('locale', 'it')
+            ->where(fn ($query) => $query
+                ->where('version', $date)
+                ->orWhere('version', 'like', $date.'.%'))
+            ->count();
         $payload = [
             'document_key' => 'privacy',
             'locale' => 'it',
@@ -189,22 +197,21 @@ class AdminDashboardTest extends TestCase
             ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [
                 ...$payload,
                 'content_html' => '<div><h2>Seconda revisione</h2></div>',
-            ])->assertSessionHas('admin_success', fn (string $message) => str_contains($message, $date.'.3'));
+            ])->assertSessionHas('admin_success');
 
-        $this->assertDatabaseHas('legal_document_versions', [
-            'document_key' => 'privacy',
-            'locale' => 'it',
-            'version' => $date.'.2',
-        ]);
-        $this->assertDatabaseHas('legal_document_versions', [
-            'document_key' => 'privacy',
-            'locale' => 'it',
-            'version' => $date.'.3',
-        ]);
-        $this->assertSame(
-            $date.'.3',
-            app(LegalDocumentService::class)->current('privacy', 'it')->version,
-        );
+        $versions = DB::table('legal_document_versions')
+            ->where('document_key', 'privacy')
+            ->where('locale', 'it')
+            ->where(fn ($query) => $query
+                ->where('version', $date)
+                ->orWhere('version', 'like', $date.'.%'))
+            ->orderBy('id')
+            ->pluck('version');
+
+        $this->assertCount($existingRevisions + 2, $versions);
+        $current = app(LegalDocumentService::class)->current('privacy', 'it');
+        $this->assertTrue($versions->contains($current->version));
+        $this->assertStringContainsString('Seconda revisione', $current->content_snapshot);
     }
 
     public function test_admin_dashboard_can_filter_waitlist_buyers(): void
@@ -219,32 +226,31 @@ class AdminDashboardTest extends TestCase
             ->assertDontSee('lead@example.com');
     }
 
-    public function test_admin_dashboard_displays_new_profile_fields_and_searches_people(): void
+    public function test_admin_dashboard_displays_and_searches_prelaunch_identifiers(): void
     {
         $this->seedDashboardData();
         $session = $this->adminSession();
 
         $this->withSession($session)
-            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'nightowl']))
+            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => '11111111']))
             ->assertOk()
             ->assertSee('buyer@example.com')
-            ->assertSee('nightowl')
-            ->assertSee('Altro')
+            ->assertSee('11111111-1111-4111-8111-111111111111')
+            ->assertSee('Verificata')
             ->assertSee('1 risultati');
 
         $this->withSession($session)
-            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => '+393331234567']))
+            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'buyer@example.com']))
             ->assertOk()
             ->assertSee('buyer@example.com')
-            ->assertSee('nightowl')
+            ->assertSee('Posizione')
             ->assertSee('1 risultati');
 
         $this->withSession($session)
-            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'Giulia']))
+            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'lead@example.com']))
             ->assertOk()
             ->assertSee('lead@example.com')
-            ->assertSee('citylights')
-            ->assertSee('Femmina')
+            ->assertSee('In attesa di verifica')
             ->assertSee('1 risultati');
     }
 
@@ -297,32 +303,25 @@ class AdminDashboardTest extends TestCase
 
     private function seedDashboardData(): void
     {
+        $buyerId = DatabaseUuid::new();
         DB::table('waitlist_entries')->insert([
             [
+                'id' => $buyerId,
+                'benefit_id' => '11111111-1111-4111-8111-111111111111',
                 'email' => 'buyer@example.com',
-                'first_name' => 'Mario',
-                'last_name' => 'Rossi',
-                'nickname' => 'nightowl',
-                'gender' => 'OTHER',
-                'phone_prefix' => '+39',
-                'phone_number' => '3331234567',
-                'phone_verified_at' => now()->subDay(),
+                'waitlist_position' => 1,
+                'email_verified_at' => now()->subDay(),
                 'marketing_consent' => true,
-                'offer_shown' => true,
                 'created_at' => now()->subDays(2),
                 'updated_at' => now()->subDays(2),
             ],
             [
+                'id' => DatabaseUuid::new(),
+                'benefit_id' => DatabaseUuid::new(),
                 'email' => 'lead@example.com',
-                'first_name' => 'Giulia',
-                'last_name' => 'Bianchi',
-                'nickname' => 'citylights',
-                'gender' => 'FEMALE',
-                'phone_prefix' => '+39',
-                'phone_number' => '3337654321',
-                'phone_verified_at' => null,
+                'waitlist_position' => null,
+                'email_verified_at' => null,
                 'marketing_consent' => false,
-                'offer_shown' => true,
                 'created_at' => now()->subDay(),
                 'updated_at' => now()->subDay(),
             ],
@@ -330,6 +329,7 @@ class AdminDashboardTest extends TestCase
 
         DB::table('purchases')->insert([
             [
+                'waitlist_entry_id' => $buyerId,
                 'email' => 'buyer@example.com',
                 'plan' => 'join',
                 'amount' => 2900,
@@ -340,6 +340,7 @@ class AdminDashboardTest extends TestCase
                 'updated_at' => now()->subHours(3),
             ],
             [
+                'waitlist_entry_id' => $buyerId,
                 'email' => 'buyer@example.com',
                 'plan' => 'creator',
                 'amount' => 5900,

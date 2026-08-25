@@ -11,7 +11,7 @@ class WaitlistWelcomeMail extends Mailable
     use Queueable;
     use SerializesModels;
 
-    /** @param array{email: string, first_name: string, marketing_revocation_url?: string|null} $member */
+    /** @param array{email: string, waitlist_position: int, marketing_revocation_url?: string|null} $member */
     public function __construct(public array $member) {}
 
     public function build(): static

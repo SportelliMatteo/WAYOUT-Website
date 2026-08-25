@@ -60,20 +60,4 @@ return [
         'vat_rate' => env('QONTO_INVOICE_VAT_RATE', 0.22),
     ],
 
-    'firebase' => [
-        'phone_verification_enabled' => env('FIREBASE_PHONE_VERIFICATION_ENABLED', false),
-        'project_id' => env('FIREBASE_PROJECT_ID'),
-        'client' => [
-            'api_key' => env('FIREBASE_API_KEY'),
-            'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),
-            'app_id' => env('FIREBASE_APP_ID'),
-        ],
-    ],
-
-    'wayout_app' => [
-        'base_url' => env('WAYOUT_APP_API_URL', 'https://staging-app.wayoutapp.it'),
-        'connect_timeout' => env('WAYOUT_APP_API_CONNECT_TIMEOUT', 5),
-        'timeout' => env('WAYOUT_APP_API_TIMEOUT', 15),
-    ],
-
 ];

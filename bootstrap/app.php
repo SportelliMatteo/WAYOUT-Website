@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\RequireAdminAuthentication;
 use App\Http\Middleware\SetLocale;
+use App\Http\Middleware\VerifyBenefitApiSignature;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
@@ -25,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin.auth' => RequireAdminAuthentication::class,
+            'benefit.api' => VerifyBenefitApiSignature::class,
         ]);
 
         $middleware->web(append: [

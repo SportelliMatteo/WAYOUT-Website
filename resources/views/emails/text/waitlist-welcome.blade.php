@@ -1,4 +1,4 @@
-{{ __('messages.email.greeting_name', ['name' => $member['first_name']]) }}
+{{ __('messages.email.greeting') }}
 
 {{ __('messages.email.waitlist_confirmed') }}
 {{ __('messages.email.waitlist_next') }}

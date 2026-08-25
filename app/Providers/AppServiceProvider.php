@@ -36,21 +36,18 @@ class AppServiceProvider extends ServiceProvider
         }
 
         RateLimiter::for('waitlist', function (Request $request) {
-            $phonePrefix = (string) $request->input('phone_prefix');
-            $phoneNumber = preg_replace('/\D+/', '', (string) $request->input('phone_number')) ?? '';
+            $email = Str::lower((string) $request->input('email'));
 
-            if ($request->routeIs('waitlist.store')
-                && preg_match('/^\+[1-9]\d{6,14}$/', $phonePrefix.$phoneNumber)
-                && Schema::hasTable('waitlist_entries')
-                && DB::table('waitlist_entries')
-                    ->where('phone_prefix', $phonePrefix)
-                    ->where('phone_number', $phoneNumber)
-                    ->exists()) {
-                return Limit::none();
-            }
-
-            return Limit::perMinute(5)->by($request->ip());
+            return [
+                Limit::perMinute(5)->by($request->ip()),
+                Limit::perHour(8)->by($request->ip().'|'.$email),
+            ];
         });
+
+        RateLimiter::for('benefit-api', fn (Request $request) => [
+            Limit::perMinute(120)->by((string) $request->header('X-Wayout-Key', $request->ip())),
+            Limit::perMinute(12)->by('benefit-email|'.Str::lower((string) $request->input('email', ''))),
+        ]);
 
         RateLimiter::for('contact', function (Request $request) {
             return Limit::perMinute(3)->by($request->ip());

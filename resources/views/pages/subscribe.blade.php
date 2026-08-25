@@ -12,14 +12,6 @@
     $defaultPlan = $joinFull && ! $creatorFull ? 'creator' : 'join';
     $waitlistProfile = session('waitlist_profile', []);
     $adultMaxDate = now()->subYears(18)->toDateString();
-    $phonePrefixes = [
-        '+39' => 'IT +39',
-        '+33' => 'FR +33',
-        '+34' => 'ES +34',
-        '+49' => 'DE +49',
-        '+44' => 'UK +44',
-        '+1' => 'US +1',
-    ];
 @endphp
 <section class="relative overflow-hidden py-10 lg:py-20">
     <div class="mb-20 wayout-shell grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
@@ -248,20 +240,9 @@
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.last_name') }}</span>
                     <input type="text" name="last_name" value="{{ $waitlistProfile['last_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
-                <label class="block">
+                <label class="block sm:col-span-2">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.birth_date') }}</span>
                     <input type="date" name="birth_date" value="{{ $waitlistProfile['birth_date'] ?? '' }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-                </label>
-                <label class="block">
-                    <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.phone_number') }}</span>
-                    <div class="flex gap-2">
-                        <select name="phone_prefix" required autocomplete="tel-country-code" class="min-h-12 w-28 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100">
-                            @foreach($phonePrefixes as $prefix => $label)
-                                <option value="{{ $prefix }}" @selected(($waitlistProfile['phone_prefix'] ?? '+39') === $prefix)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        <input type="tel" name="phone_number" value="{{ $waitlistProfile['phone_number'] ?? '' }}" required minlength="5" maxlength="32" pattern="[0-9 .()\-]{5,32}" autocomplete="tel-national" inputmode="tel" class="min-h-12 min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-                    </div>
                 </label>
             </div>
             <label class="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
@@ -548,8 +529,6 @@
             first_name: formData.get('first_name'),
             last_name: formData.get('last_name'),
             birth_date: formData.get('birth_date'),
-            phone_prefix: formData.get('phone_prefix'),
-            phone_number: formData.get('phone_number'),
             invoice_requested: invoiceCheckbox?.checked || false,
             purchase_terms_accepted: formData.get('purchase_terms_accepted') === 'true',
             billing_customer_type: invoiceCheckbox?.checked ? formData.get('billing_customer_type') : null,

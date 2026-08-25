@@ -1,0 +1,173 @@
+openapi: 3.0.3
+info:
+  title: WAYOUT Pre-launch Benefits API
+  version: 1.0.0
+  description: |
+    API server-to-server esposta dal sito Laravel per riscattare Waitlist e Founder Pass.
+    Non deve essere chiamata direttamente dall'app mobile. Tutte le richieste sono firmate HMAC.
+
+    Stringa canonica, separata da newline:
+    `timestamp`, `nonce`, `METHOD`, `/api/path`, `sha256(raw_body)`.
+    La firma è `hex(hmac_sha256(canonical_string, secret))`.
+servers:
+  - url: /api/v1/prelaunch
+security:
+  - WayoutKey: []
+    WayoutTimestamp: []
+    WayoutNonce: []
+    WayoutSignature: []
+paths:
+  /benefits/claim:
+    post:
+      summary: Riscatta un vantaggio tramite benefit_id
+      description: Percorso A, dopo la verifica telefonica effettuata dall'app.
+      operationId: claimBenefit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+      responses:
+        '200':
+          description: Vantaggio assegnato o richiesta idempotente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenefitResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: benefit_id inesistente o email pre-lancio non verificata.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Vantaggio già collegato a un altro account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /benefits/email-challenges:
+    post:
+      summary: Invia un OTP all'email pre-lancio
+      description: |
+        Primo passaggio del Percorso B. La risposta è neutra anche quando l'indirizzo non esiste,
+        per impedire l'enumerazione degli iscritti.
+      operationId: createBenefitEmailChallenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, example: mario@example.com }
+      responses:
+        '202':
+          description: Richiesta accettata.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      challenge_id: { type: string, format: uuid }
+                      expires_in_seconds: { type: integer, example: 600 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /benefits/email-challenges/verify:
+    post:
+      summary: Verifica l'OTP email e riscatta il vantaggio
+      description: Secondo passaggio del Percorso B.
+      operationId: verifyBenefitEmailChallenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, code, account_reference, idempotency_key]
+              properties:
+                challenge_id: { type: string, format: uuid }
+                code: { type: string, pattern: '^[0-9]{6}$', example: '123456' }
+                account_reference: { type: string, maxLength: 255, example: user_01HXYZ }
+                idempotency_key: { type: string, minLength: 8, maxLength: 255, example: recovery-user_01HXYZ-1 }
+      responses:
+        '200':
+          description: Email verificata e vantaggio assegnato.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BenefitResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Vantaggio già collegato a un altro account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Payload non valido oppure codice errato, scaduto o bloccato.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+components:
+  securitySchemes:
+    WayoutKey:
+      type: apiKey
+      in: header
+      name: X-Wayout-Key
+    WayoutTimestamp:
+      type: apiKey
+      in: header
+      name: X-Wayout-Timestamp
+    WayoutNonce:
+      type: apiKey
+      in: header
+      name: X-Wayout-Nonce
+    WayoutSignature:
+      type: apiKey
+      in: header
+      name: X-Wayout-Signature
+  schemas:
+    ClaimRequest:
+      type: object
+      required: [benefit_id, account_reference, idempotency_key]
+      properties:
+        benefit_id: { type: string, format: uuid }
+        account_reference: { type: string, maxLength: 255, example: user_01HXYZ }
+        idempotency_key: { type: string, minLength: 8, maxLength: 255, example: claim-user_01HXYZ-1 }
+    Benefit:
+      type: object
+      required: [benefit_id, waitlist_position, benefit_type, claimed_at]
+      properties:
+        benefit_id: { type: string, format: uuid }
+        waitlist_position: { type: integer, minimum: 1, example: 184 }
+        benefit_type:
+          type: string
+          enum: [waitlist, founder_join, founder_creator]
+        claimed_at: { type: string, format: date-time }
+    BenefitResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data: { $ref: '#/components/schemas/Benefit' }
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        code: { type: string, example: BENEFIT_NOT_FOUND }
+        message: { type: string }
+  responses:
+    Unauthorized:
+      description: Firma server mancante, scaduta o non valida.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Payload non valido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

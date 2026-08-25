@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Mail\PurchaseConfirmationMail;
-use App\Mail\WaitlistWelcomeMail;
 use App\Support\DatabaseUuid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +14,19 @@ use Tests\TestCase;
 class SubscribeCheckoutTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function withSession(array $data)
+    {
+        if (($data['waitlist_offer_access'] ?? false) && isset($data['waitlist_email'])) {
+            $email = strtolower((string) $data['waitlist_email']);
+            if (! DB::table('waitlist_entries')->where('email', $email)->exists()) {
+                $entry = $this->createVerifiedWaitlistEntry($email, DB::table('waitlist_entries')->count() + 1);
+                $data['waitlist_verified_entry_id'] = $entry->id;
+            }
+        }
+
+        return parent::withSession($data);
+    }
 
     public function test_sales_terms_use_the_canonical_url(): void
     {
@@ -98,66 +110,37 @@ class SubscribeCheckoutTest extends TestCase
     public function test_subscribe_access_stores_the_waitlist_email_in_session(): void
     {
         Mail::fake();
-
-        DB::table('waitlist_entries')->insert([
-            'email' => 'founder@example.com',
-            'first_name' => 'Ada',
-            'last_name' => 'Lovelace',
-            'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'offer_shown' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
 
         $response = $this->from(route('home'))
-            ->post(route('subscribe.access'), [
-                'email' => 'Founder@Example.com',
-            ]);
+            ->withSession(['waitlist_verified_entry_id' => $entry->id])
+            ->post(route('subscribe.access'));
 
         $response->assertRedirect(route('subscribe'))
             ->assertSessionHas('waitlist_offer_access', true)
             ->assertSessionHas('waitlist_email', 'founder@example.com')
             ->assertSessionHas('subscribe_entry_allowed', true);
 
-        Mail::assertSent(WaitlistWelcomeMail::class, 1);
-
-        $this->assertDatabaseHas('consent_events', [
-            'subject_email' => 'founder@example.com',
-            'consent_type' => 'waitlist_legal',
-            'action' => 'granted',
-            'source' => 'offer_access',
-        ]);
+        Mail::assertNothingSent();
     }
 
-    public function test_legacy_waitlist_entry_records_current_legal_versions_on_offer_access_without_checkbox(): void
+    public function test_unverified_waitlist_entry_cannot_open_the_founder_offer(): void
     {
-        Mail::fake();
-
         DB::table('waitlist_entries')->insert([
+            'id' => DatabaseUuid::new(),
+            'benefit_id' => DatabaseUuid::new(),
             'email' => 'legacy@example.com',
-            'first_name' => 'Legacy',
-            'last_name' => 'Member',
-            'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'offer_shown' => true,
+            'email_verified_at' => null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $entryId = DB::table('waitlist_entries')->where('email', 'legacy@example.com')->value('id');
 
         $this->from(route('home'))
-            ->post(route('subscribe.access'), ['email' => 'legacy@example.com'])
-            ->assertRedirect(route('subscribe'))
-            ->assertSessionHas('waitlist_offer_access', true);
-
-        $this->assertDatabaseHas('consent_events', [
-            'subject_email' => 'legacy@example.com',
-            'consent_type' => 'waitlist_legal',
-            'action' => 'granted',
-            'source' => 'offer_access',
-        ]);
+            ->withSession(['waitlist_verified_entry_id' => $entryId])
+            ->post(route('subscribe.access'))
+            ->assertRedirect(route('home'))
+            ->assertSessionHas('waitlist_error');
     }
 
     public function test_checkout_uses_the_selected_founder_plan(): void
@@ -191,8 +174,7 @@ class SubscribeCheckoutTest extends TestCase
                 && $body['line_items[0][price_data][product_data][name]'] === 'Founder 12M Creator Pass'
                 && $body['customer_email'] === 'founder@example.com'
                 && $body['metadata[email]'] === 'founder@example.com'
-                && $body['metadata[phone_prefix]'] === '+39'
-                && $body['metadata[phone_number]'] === '3331234567'
+                && filled($body['metadata[waitlist_entry_id]'] ?? null)
                 && filled($body['metadata[purchase_id]'] ?? null)
                 && $body['metadata[fiscal_code]'] === 'RSSMRA85T10A562S';
         });
@@ -377,8 +359,6 @@ class SubscribeCheckoutTest extends TestCase
             'plan' => 'join',
             'amount' => 2900,
             'status' => 'succeeded',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
             'invoice_requested' => true,
             'fiscal_code' => 'RSSMRA85T10A562S',
             'billing_customer_type' => 'individual',
@@ -514,58 +494,6 @@ class SubscribeCheckoutTest extends TestCase
         Http::assertNothingSent();
         Mail::assertNothingSent();
         $this->assertDatabaseMissing('purchases', ['email' => 'invalid-company@example.com']);
-    }
-
-    public function test_invalid_international_phone_stops_before_stripe_and_database_writes(): void
-    {
-        Http::fake();
-        config()->set('services.stripe.secret', 'sk_test_must_not_be_used');
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'invalid-phone@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'phone_prefix' => '+0',
-            'phone_number' => '12345',
-            'plan' => 'join',
-            'direct_checkout' => false,
-        ]);
-
-        $response->assertUnprocessable()->assertJsonValidationErrors('phone_number');
-        Http::assertNothingSent();
-        $this->assertDatabaseMissing('purchases', ['email' => 'invalid-phone@example.com']);
-    }
-
-    public function test_checkout_rejects_a_phone_different_from_the_verified_waitlist_number(): void
-    {
-        Mail::fake();
-        Http::fake();
-        config()->set('services.firebase.phone_verification_enabled', true);
-
-        DB::table('waitlist_entries')->insert([
-            'email' => 'verified@example.com',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
-            'phone_verified_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'verified@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'phone_number' => '3337654321',
-            'plan' => 'join',
-            'direct_checkout' => false,
-        ]);
-
-        $response->assertUnprocessable()->assertJsonValidationErrors('phone_number');
-        Http::assertNothingSent();
-        Mail::assertNothingSent();
-        $this->assertDatabaseMissing('purchases', ['email' => 'verified@example.com']);
     }
 
     public function test_checkout_requires_waitlist_email_in_session(): void
@@ -1016,8 +944,6 @@ class SubscribeCheckoutTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'birth_date' => '1990-01-01',
-            'phone_prefix' => '+39',
-            'phone_number' => '3331234567',
             'purchase_terms_accepted' => true,
         ];
     }
@@ -1035,8 +961,6 @@ class SubscribeCheckoutTest extends TestCase
                 'first_name' => 'Ada',
                 'last_name' => 'Lovelace',
                 'birth_date' => '1990-01-01',
-                'phone_prefix' => '+39',
-                'phone_number' => '3331234567',
                 'plan' => 'join',
                 'invoice_requested' => 'true',
                 'fiscal_code' => 'rssmra85t10a562s',

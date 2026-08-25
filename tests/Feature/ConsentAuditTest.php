@@ -17,19 +17,14 @@ class ConsentAuditTest extends TestCase
     {
         Mail::fake();
 
-        $this->beginPhoneRegistration();
-
         $this->withServerVariables([
             'REMOTE_ADDR' => '203.0.113.10',
             'HTTP_USER_AGENT' => 'Consent test browser',
-        ])->post(route('waitlist.profile'), [
+        ])->post(route('waitlist.store'), [
             'email' => 'ada@example.com',
-            'first_name' => 'Ada',
-            'last_name' => 'Lovelace',
-            'birth_date' => '1990-01-01',
-            'gender' => 'FEMALE',
+            'waitlist_terms_accepted' => '1',
             'marketing_consent' => '1',
-        ])->assertSessionHas('waitlist_offer', true);
+        ])->assertSessionHas('waitlist_verification_sent', true);
 
         $entryId = DB::table('waitlist_entries')->where('email', 'ada@example.com')->value('id');
 
@@ -45,7 +40,7 @@ class ConsentAuditTest extends TestCase
 
         $this->assertNotNull($legal);
         $this->assertSame('granted', $legal->action);
-        $this->assertSame('waitlist_profile', $legal->source);
+        $this->assertSame('waitlist_email_form', $legal->source);
         $this->assertSame('203.0.113.10', $legal->ip_address);
         $this->assertSame('Consent test browser', $legal->user_agent);
         $this->assertSame(config('legal.documents.privacy.initial_version'), json_decode($legal->document_versions, true)['privacy']);
@@ -132,13 +127,9 @@ class ConsentAuditTest extends TestCase
             '<div><h2>Privacy aggiornata</h2><p>Testo corrente dal database.</p></div>',
         );
 
-        $this->beginPhoneRegistration();
-        $this->post(route('waitlist.profile'), [
+        $this->post(route('waitlist.store'), [
             'email' => 'versioned@example.com',
-            'first_name' => 'Versioned',
-            'last_name' => 'Member',
-            'birth_date' => '1990-01-01',
-            'gender' => 'MALE',
+            'waitlist_terms_accepted' => '1',
         ]);
 
         $event = DB::table('consent_events')

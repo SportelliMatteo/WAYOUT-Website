@@ -1,6 +1,7 @@
 <?php
 
 use App\Logging\SetLogTimezone;
+use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -21,7 +22,7 @@ return [
     |
     */
 
-    'default' => env('LOG_CHANNEL', 'stack'),
+    'default' => env('LOG_CHANNEL', 'application'),
 
     /*
     |--------------------------------------------------------------------------
@@ -57,33 +58,93 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'application')),
             'ignore_exceptions' => false,
         ],
 
-        'single' => [
-            'driver' => 'single',
-            'path' => storage_path('logs/laravel.log'),
+        'application' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/application/application.log'),
             'level' => env('LOG_LEVEL', 'debug'),
+            'days' => (int) env('LOG_DAILY_DAYS', 30),
             'tap' => [SetLogTimezone::class],
+            'formatter' => LineFormatter::class,
+            'formatter_with' => [
+                'format' => "[%datetime%] %level_name% | %message% %context%\n",
+                'dateFormat' => 'Y-m-d H:i:s',
+                'allowInlineLineBreaks' => true,
+                'ignoreEmptyContextAndExtra' => true,
+                'includeStacktraces' => true,
+            ],
+            'replace_placeholders' => true,
+        ],
+
+        'testing' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/testing/testing.log'),
+            'level' => env('TEST_LOG_LEVEL', 'debug'),
+            'days' => (int) env('TEST_LOG_DAYS', 7),
+            'tap' => [SetLogTimezone::class],
+            'formatter' => LineFormatter::class,
+            'formatter_with' => [
+                'format' => "[%datetime%] %level_name% | %message% %context%\n",
+                'dateFormat' => 'Y-m-d H:i:s',
+                'allowInlineLineBreaks' => true,
+                'ignoreEmptyContextAndExtra' => true,
+                'includeStacktraces' => true,
+            ],
+            'replace_placeholders' => true,
+        ],
+
+        'single' => [
+            // Compatibility alias for installations still using LOG_STACK=single.
+            'driver' => 'daily',
+            'path' => storage_path('logs/application/application.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => (int) env('LOG_DAILY_DAYS', 30),
+            'tap' => [SetLogTimezone::class],
+            'formatter' => LineFormatter::class,
+            'formatter_with' => [
+                'format' => "[%datetime%] %level_name% | %message% %context%\n",
+                'dateFormat' => 'Y-m-d H:i:s',
+                'allowInlineLineBreaks' => true,
+                'ignoreEmptyContextAndExtra' => true,
+                'includeStacktraces' => true,
+            ],
             'replace_placeholders' => true,
         ],
 
         'daily' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/laravel.log'),
+            'path' => storage_path('logs/application/application.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
+            'days' => (int) env('LOG_DAILY_DAYS', 30),
             'tap' => [SetLogTimezone::class],
+            'formatter' => LineFormatter::class,
+            'formatter_with' => [
+                'format' => "[%datetime%] %level_name% | %message% %context%\n",
+                'dateFormat' => 'Y-m-d H:i:s',
+                'allowInlineLineBreaks' => true,
+                'ignoreEmptyContextAndExtra' => true,
+                'includeStacktraces' => true,
+            ],
             'replace_placeholders' => true,
         ],
 
         'email' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/email.log'),
+            'path' => storage_path('logs/email/email.log'),
             'level' => env('EMAIL_LOG_LEVEL', 'info'),
-            'days' => env('EMAIL_LOG_DAYS', 14),
+            'days' => (int) env('EMAIL_LOG_DAYS', 30),
             'tap' => [SetLogTimezone::class],
+            'formatter' => LineFormatter::class,
+            'formatter_with' => [
+                'format' => "[%datetime%] %level_name% | %message% %context%\n",
+                'dateFormat' => 'Y-m-d H:i:s',
+                'allowInlineLineBreaks' => true,
+                'ignoreEmptyContextAndExtra' => true,
+                'includeStacktraces' => true,
+            ],
             'replace_placeholders' => true,
         ],
 
@@ -138,7 +199,7 @@ return [
         ],
 
         'emergency' => [
-            'path' => storage_path('logs/laravel.log'),
+            'path' => storage_path('logs/emergency/emergency.log'),
         ],
 
     ],

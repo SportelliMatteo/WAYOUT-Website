@@ -62,7 +62,7 @@ class FounderAvailability
 
     public function waitlistCount(): int
     {
-        return DB::table('waitlist_entries')->count();
+        return DB::table('waitlist_entries')->whereNotNull('email_verified_at')->count();
     }
 
     public function planCount(string $plan): int
