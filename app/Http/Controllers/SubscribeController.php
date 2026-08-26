@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PurchaseConfirmationMail;
+use App\Support\CheckoutFeatures;
 use App\Support\ConsentAuditService;
 use App\Support\DatabaseUuid;
 use App\Support\FounderAvailability;
@@ -25,13 +26,15 @@ class SubscribeController extends Controller
 {
     private const RESERVATION_MINUTES = 15;
 
-    public function show(Request $request)
+    public function show(Request $request, CheckoutFeatures $checkoutFeatures)
     {
         if (! $request->session()->pull('subscribe_entry_allowed')) {
             return redirect()->route('home');
         }
 
-        return view('pages.subscribe');
+        return view('pages.subscribe', [
+            'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
+        ]);
     }
 
     public function access(Request $request)
@@ -229,6 +232,7 @@ class SubscribeController extends Controller
         TransactionalEmailSender $emailSender,
         ConsentAuditService $audit,
         QontoInvoiceService $qontoInvoices,
+        CheckoutFeatures $checkoutFeatures,
     ) {
         if (! $request->session()->get('waitlist_offer_access')) {
             return response()->json([
@@ -252,13 +256,18 @@ class SubscribeController extends Controller
             ], 422);
         }
 
+        $legalEntityInvoiceEnabled = $checkoutFeatures->legalEntityInvoiceEnabled();
+        $allowedBillingCustomerTypes = $legalEntityInvoiceEnabled
+            ? ['individual', 'legal_entity']
+            : ['individual'];
+
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'last_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'invoice_requested' => ['sometimes', 'boolean'],
             'purchase_terms_accepted' => ['required', 'accepted'],
-            'billing_customer_type' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', Rule::in(['individual', 'legal_entity'])],
+            'billing_customer_type' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', Rule::in($allowedBillingCustomerTypes)],
             'billing_address' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', 'string', 'max:255'],
             'billing_postal_code' => [
                 Rule::requiredIf($request->boolean('invoice_requested')),
@@ -322,6 +331,7 @@ class SubscribeController extends Controller
             'before_or_equal' => __('messages.subscribe.birth_date_note'),
             'sdi_code.size' => __('messages.subscribe.invalid_sdi_code'),
             'sdi_code.regex' => __('messages.subscribe.invalid_sdi_code'),
+            'billing_customer_type.in' => __('messages.subscribe.legal_entity_unavailable'),
         ], [
             'first_name' => __('messages.subscribe.first_name'),
             'last_name' => __('messages.subscribe.last_name'),

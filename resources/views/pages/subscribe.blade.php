@@ -250,21 +250,23 @@
                 <input id="invoice-requested" type="checkbox" name="invoice_requested" value="true" class="mt-1 h-5 w-5 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
                 <span>
                     <span class="block text-sm font-black text-slate-950">{{ __('messages.subscribe.invoice_requested') }}</span>
-                    <span class="mt-1 block text-xs font-semibold leading-5 text-slate-500">{{ __('messages.subscribe.invoice_note') }}</span>
+                    <span class="mt-1 block text-xs font-semibold leading-5 text-slate-500">{{ $legalEntityInvoiceEnabled ? __('messages.subscribe.invoice_note') : __('messages.subscribe.invoice_note_individual_only') }}</span>
                 </span>
             </label>
             <section id="invoice-details" class="hidden space-y-4 rounded-2xl border border-slate-200 p-4 sm:p-5">
                 <fieldset>
                     <legend class="mb-3 text-sm font-black text-slate-950">{{ __('messages.subscribe.invoice_holder_type') }}</legend>
-                    <div class="grid gap-3 sm:grid-cols-2">
+                    <div class="grid gap-3 {{ $legalEntityInvoiceEnabled ? 'sm:grid-cols-2' : '' }}">
                         <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-800">
                             <input type="radio" name="billing_customer_type" value="individual" checked class="h-5 w-5 border-slate-300 text-violet-700 focus:ring-violet-500" />
                             {{ __('messages.subscribe.individual') }}
                         </label>
-                        <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-800">
-                            <input type="radio" name="billing_customer_type" value="legal_entity" class="h-5 w-5 border-slate-300 text-violet-700 focus:ring-violet-500" />
-                            {{ __('messages.subscribe.legal_entity') }}
-                        </label>
+                        @if($legalEntityInvoiceEnabled)
+                            <label class="flex cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-800">
+                                <input type="radio" name="billing_customer_type" value="legal_entity" class="h-5 w-5 border-slate-300 text-violet-700 focus:ring-violet-500" />
+                                {{ __('messages.subscribe.legal_entity') }}
+                            </label>
+                        @endif
                     </div>
                 </fieldset>
 
@@ -298,6 +300,7 @@
                     </label>
                 </div>
 
+                @if($legalEntityInvoiceEnabled)
                 <div id="legal-entity-invoice-fields" class="hidden grid gap-4 sm:grid-cols-2">
                     <label class="block sm:col-span-2">
                         <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.company_name') }}</span>
@@ -316,6 +319,7 @@
                         <input type="email" name="pec" autocomplete="email" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                     </label>
                 </div>
+                @endif
             </section>
             <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
                 <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />

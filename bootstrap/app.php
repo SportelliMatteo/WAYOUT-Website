@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceSiteVisibility;
 use App\Http\Middleware\RequireAdminAuthentication;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
@@ -39,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             SetLocale::class,
             SecurityHeaders::class,
+            EnforceSiteVisibility::class,
         ]);
 
         $middleware->api(append: [

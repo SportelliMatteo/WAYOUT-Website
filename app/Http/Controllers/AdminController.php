@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AdminUser;
 use App\Support\AdminAuditService;
+use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use App\Support\LegalDocumentService;
 use App\Support\QontoInvoiceService;
+use App\Support\SiteVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -14,8 +16,12 @@ use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
-    public function dashboard(Request $request, LegalDocumentService $legalDocuments)
-    {
+    public function dashboard(
+        Request $request,
+        LegalDocumentService $legalDocuments,
+        SiteVisibility $siteVisibility,
+        CheckoutFeatures $checkoutFeatures,
+    ) {
         if (! $this->isAuthenticated($request)) {
             return redirect()->route('admin.login');
         }
@@ -171,6 +177,8 @@ class AdminController extends Controller
             'adminUsers' => $adminUsers,
             'currentAdmin' => $request->attributes->get('admin_user'),
             'recentAdminAuditEvents' => $recentAdminAuditEvents,
+            'siteVisibilityMode' => $siteVisibility->mode(),
+            'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
         ]);
     }
 
@@ -281,6 +289,91 @@ class AdminController extends Controller
         });
 
         return back()->with('admin_success', __('messages.admin.admin_success'));
+    }
+
+    public function updateSiteVisibility(
+        Request $request,
+        SiteVisibility $siteVisibility,
+        AdminAuditService $audit,
+    ) {
+        if (! $this->isAuthenticated($request)) {
+            return redirect()->route('admin.login');
+        }
+
+        $validated = $request->validate([
+            'mode' => ['required', 'string', 'in:'.implode(',', $siteVisibility->modes())],
+        ]);
+        $previous = $siteVisibility->mode();
+
+        DB::transaction(function () use ($request, $validated, $previous, $siteVisibility, $audit) {
+            $existing = DB::table('founder_settings')
+                ->where('key', SiteVisibility::SETTING_KEY)
+                ->exists();
+
+            DB::table('founder_settings')->updateOrInsert(
+                ['key' => SiteVisibility::SETTING_KEY],
+                [
+                    'value' => $siteVisibility->valueFor($validated['mode']),
+                    'updated_at' => now(),
+                    ...($existing ? [] : ['id' => DatabaseUuid::new(), 'created_at' => now()]),
+                ],
+            );
+
+            $audit->record(
+                $request,
+                'site_visibility.updated',
+                'site_settings',
+                targetLabel: 'public website',
+                oldValues: ['mode' => $previous],
+                newValues: ['mode' => $validated['mode']],
+            );
+        });
+
+        return redirect()->route('admin.dashboard', ['tab' => 'settings'])
+            ->with('admin_success', __('messages.admin.site_visibility_updated'));
+    }
+
+    public function updateCheckoutSettings(
+        Request $request,
+        CheckoutFeatures $checkoutFeatures,
+        AdminAuditService $audit,
+    ) {
+        if (! $this->isAuthenticated($request)) {
+            return redirect()->route('admin.login');
+        }
+
+        $validated = $request->validate([
+            'legal_entity_invoice_enabled' => ['required', 'boolean'],
+        ]);
+        $previous = $checkoutFeatures->legalEntityInvoiceEnabled();
+        $enabled = (bool) $validated['legal_entity_invoice_enabled'];
+
+        DB::transaction(function () use ($request, $previous, $enabled, $audit) {
+            $existing = DB::table('founder_settings')
+                ->where('key', CheckoutFeatures::LEGAL_ENTITY_INVOICE_KEY)
+                ->exists();
+
+            DB::table('founder_settings')->updateOrInsert(
+                ['key' => CheckoutFeatures::LEGAL_ENTITY_INVOICE_KEY],
+                [
+                    'value' => $enabled ? 1 : 0,
+                    'updated_at' => now(),
+                    ...($existing ? [] : ['id' => DatabaseUuid::new(), 'created_at' => now()]),
+                ],
+            );
+
+            $audit->record(
+                $request,
+                'checkout_settings.updated',
+                'checkout_settings',
+                targetLabel: 'legal entity invoice',
+                oldValues: ['legal_entity_invoice_enabled' => $previous],
+                newValues: ['legal_entity_invoice_enabled' => $enabled],
+            );
+        });
+
+        return redirect()->route('admin.dashboard', ['tab' => 'settings'])
+            ->with('admin_success', __('messages.admin.checkout_settings_updated'));
     }
 
     public function retryInvoice(

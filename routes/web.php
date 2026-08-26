@@ -66,6 +66,8 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/admin/security/password', [AdminAuthController::class, 'changePassword'])->middleware('throttle:admin')->name('admin.password.change');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::post('/admin/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+    Route::post('/admin/site-visibility', [AdminController::class, 'updateSiteVisibility'])->name('admin.site-visibility.update');
+    Route::post('/admin/checkout-settings', [AdminController::class, 'updateCheckoutSettings'])->name('admin.checkout-settings.update');
     Route::post('/admin/purchases/{purchase}/invoice/retry', [AdminController::class, 'retryInvoice'])->name('admin.purchases.invoice.retry');
     Route::post('/admin/purchases/{purchase}/invoice/sync', [AdminController::class, 'syncInvoice'])->name('admin.purchases.invoice.sync');
     Route::post('/admin/legal-documents/{document}', [AdminController::class, 'publishLegalDocument'])->name('admin.legal-documents.publish');

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\PurchaseConfirmationMail;
+use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,8 @@ class SubscribeCheckoutTest extends TestCase
 
         $response->assertOk()
             ->assertViewIs('pages.subscribe')
+            ->assertDontSee('value="legal_entity"', false)
+            ->assertSee('Inserisci i dati di fatturazione della persona fisica.')
             ->assertDontSee('Procedendo al pagamento dichiari di aver letto')
             ->assertSee('Confermi di aver letto i')
             ->assertDontSee('href="'.route('legal.passes').'" target="_blank"', false)
@@ -423,6 +426,7 @@ class SubscribeCheckoutTest extends TestCase
     public function test_legal_entity_invoice_details_are_validated_and_saved(): void
     {
         Mail::fake();
+        $this->enableLegalEntityInvoices();
 
         $response = $this->withSession([
             'waitlist_offer_access' => true,
@@ -463,6 +467,7 @@ class SubscribeCheckoutTest extends TestCase
         Mail::fake();
         Http::fake();
         config()->set('services.stripe.secret', 'sk_test_must_not_be_used');
+        $this->enableLegalEntityInvoices();
 
         $response = $this->withSession([
             'waitlist_offer_access' => true,
@@ -496,6 +501,42 @@ class SubscribeCheckoutTest extends TestCase
         Http::assertNothingSent();
         Mail::assertNothingSent();
         $this->assertDatabaseMissing('purchases', ['email' => 'invalid-company@example.com']);
+    }
+
+    public function test_legal_entity_invoice_is_rejected_while_admin_option_is_disabled(): void
+    {
+        Mail::fake();
+        Http::fake();
+
+        $response = $this->withSession([
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'disabled-company@example.com',
+        ])->postJson(route('subscribe.checkout'), [
+            ...$this->customerPayload(),
+            'plan' => 'creator',
+            'invoice_requested' => true,
+            'billing_customer_type' => 'legal_entity',
+            'billing_address' => 'Via Impresa 10',
+            'billing_postal_code' => '00100',
+            'billing_city' => 'Roma',
+            'billing_province' => 'RM',
+            'billing_country' => 'IT',
+            'company_name' => 'Example S.r.l.',
+            'vat_number' => '14805930964',
+            'sdi_code' => 'ABC1234',
+            'pec' => 'example@pec.example.it',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors('billing_customer_type')
+            ->assertJsonPath(
+                'errors.billing_customer_type.0',
+                'La fatturazione per persona giuridica non è al momento disponibile.',
+            );
+
+        Http::assertNothingSent();
+        Mail::assertNothingSent();
+        $this->assertDatabaseMissing('purchases', ['email' => 'disabled-company@example.com']);
     }
 
     public function test_checkout_requires_waitlist_email_in_session(): void
@@ -1011,5 +1052,12 @@ class SubscribeCheckoutTest extends TestCase
             'billing_country' => 'IT',
             'fiscal_code' => 'rssmra85t10a562s',
         ];
+    }
+
+    private function enableLegalEntityInvoices(): void
+    {
+        DB::table('founder_settings')
+            ->where('key', CheckoutFeatures::LEGAL_ENTITY_INVOICE_KEY)
+            ->update(['value' => 1, 'updated_at' => now()]);
     }
 }

@@ -149,6 +149,57 @@
         <div id="admin-panel-settings" role="tabpanel" aria-labelledby="admin-tab-settings" data-admin-panel="settings" class="{{ $activeAdminTab === 'settings' ? '' : 'hidden' }}">
         <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div class="flex flex-col gap-1 border-b border-slate-200 pb-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-xl font-black">{{ __('messages.admin.site_visibility_title') }}</h2>
+                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-black {{ $siteVisibilityMode === 'online' ? 'bg-emerald-100 text-emerald-800' : ($siteVisibilityMode === 'coming_soon' ? 'bg-violet-100 text-violet-800' : 'bg-amber-100 text-amber-800') }}">
+                        {{ __('messages.admin.site_visibility_'.$siteVisibilityMode) }}
+                    </span>
+                </div>
+                <p class="text-sm font-bold text-slate-500">{{ __('messages.admin.site_visibility_text') }}</p>
+            </div>
+            <form method="POST" action="{{ route('admin.site-visibility.update') }}" class="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                @csrf
+                <div>
+                    <label for="site-visibility-mode" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.site_visibility_mode') }}</label>
+                    <select id="site-visibility-mode" name="mode" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                        @foreach(['online', 'coming_soon', 'maintenance'] as $mode)
+                            <option value="{{ $mode }}" @selected($siteVisibilityMode === $mode)>{{ __('messages.admin.site_visibility_'.$mode) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="submit" class="rounded-lg bg-violet-700 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-800">
+                    {{ __('messages.admin.apply') }}
+                </button>
+            </form>
+        </section>
+
+        <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-col gap-1 border-b border-slate-200 pb-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-xl font-black">{{ __('messages.admin.checkout_settings_title') }}</h2>
+                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-black {{ $legalEntityInvoiceEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">
+                        {{ $legalEntityInvoiceEnabled ? __('messages.admin.enabled') : __('messages.admin.disabled') }}
+                    </span>
+                </div>
+                <p class="text-sm font-bold text-slate-500">{{ __('messages.admin.checkout_settings_text') }}</p>
+            </div>
+            <form method="POST" action="{{ route('admin.checkout-settings.update') }}" class="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                @csrf
+                <div>
+                    <label for="legal-entity-invoice-enabled" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.legal_entity_invoice') }}</label>
+                    <select id="legal-entity-invoice-enabled" name="legal_entity_invoice_enabled" class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
+                        <option value="0" @selected(! $legalEntityInvoiceEnabled)>{{ __('messages.admin.disabled') }}</option>
+                        <option value="1" @selected($legalEntityInvoiceEnabled)>{{ __('messages.admin.enabled') }}</option>
+                    </select>
+                </div>
+                <button type="submit" class="rounded-lg bg-slate-950 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
+                    {{ __('messages.admin.apply') }}
+                </button>
+            </form>
+        </section>
+
+        <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-col gap-1 border-b border-slate-200 pb-4">
                     <h2 class="text-xl font-black">{{ __('messages.admin.settings_title') }}</h2>
                 <p class="text-sm font-bold text-slate-500">{{ __('messages.admin.settings_text') }}</p>
             </div>

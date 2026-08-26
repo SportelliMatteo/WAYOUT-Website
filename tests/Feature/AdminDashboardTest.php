@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AdminUser;
+use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use App\Support\LegalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -112,6 +113,34 @@ class AdminDashboardTest extends TestCase
         $this->assertNotNull($audit);
         $this->assertSame('admin@example.com', $audit->actor_email);
         $this->assertSame(2500, json_decode($audit->new_values, true)['waitlist_capacity']);
+    }
+
+    public function test_admin_can_enable_legal_entity_invoicing(): void
+    {
+        $session = $this->adminSession();
+        $response = $this->withSession($session)
+            ->post(route('admin.checkout-settings.update'), [
+                'legal_entity_invoice_enabled' => true,
+            ]);
+
+        $response->assertRedirect(route('admin.dashboard', ['tab' => 'settings']))
+            ->assertSessionHas('admin_success', 'Opzioni di fatturazione aggiornate.');
+
+        $this->assertDatabaseHas('founder_settings', [
+            'key' => CheckoutFeatures::LEGAL_ENTITY_INVOICE_KEY,
+            'value' => 1,
+        ]);
+        $this->assertDatabaseHas('admin_audit_events', [
+            'actor_email' => 'admin@example.com',
+            'action' => 'checkout_settings.updated',
+            'target_type' => 'checkout_settings',
+        ]);
+
+        $this->withSession($session)
+            ->get(route('admin.dashboard', ['tab' => 'settings']))
+            ->assertOk()
+            ->assertSee('Fattura a persona giuridica')
+            ->assertSee('<option value="1" selected>Abilitato</option>', false);
     }
 
     public function test_admin_can_publish_a_new_legal_version_used_by_the_public_page(): void
