@@ -9,6 +9,7 @@ use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\SubscribeController;
 use App\Http\Controllers\WaitlistController;
+use App\Http\Controllers\WayoutCheckoutController;
 use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,10 +34,11 @@ Route::get('/recedere-dal-contratto/ricevuta/{token}/download', [WithdrawalContr
 Route::redirect('/recesso-e-rimborso', '/recedere-dal-contratto', 301);
 Route::get('/note-legali', [LegalDocumentController::class, 'show'])->defaults('document', 'notice')->name('legal.notice');
 Route::get('/subscribe', [SubscribeController::class, 'show'])->name('subscribe');
-Route::get('/checkout/success', [SubscribeController::class, 'success'])->name('checkout.success');
-Route::post('/stripe/webhook', [SubscribeController::class, 'stripeWebhook'])->name('stripe.webhook');
+Route::get('/checkout/success/{purchase}', [SubscribeController::class, 'success'])->middleware('signed')->name('checkout.success');
+Route::get('/checkout/status/{purchase}', [SubscribeController::class, 'status'])->middleware(['signed', 'throttle:checkout'])->name('checkout.status');
+Route::get('/checkout/cancel/{purchase}', [WayoutCheckoutController::class, 'cancel'])->middleware('signed')->name('checkout.cancel');
 Route::post('/subscribe/access', [SubscribeController::class, 'access'])->middleware('throttle:waitlist')->name('subscribe.access');
-Route::post('/subscribe/checkout', [SubscribeController::class, 'checkout'])->middleware('throttle:checkout')->name('subscribe.checkout');
+Route::post('/subscribe/checkout', [WayoutCheckoutController::class, 'store'])->middleware('throttle:checkout')->name('subscribe.checkout');
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware('throttle:purchase-confirmation')->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware('throttle:contact')->name('contact.store');
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->middleware('throttle:120,1')->name('cookie-consent.store');

@@ -69,4 +69,27 @@
         </div>
     </div>
 </section>
+@if(!$isConfirmed && !$isReview && !empty($statusUrl))
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+    (() => {
+        const delays = [1000, 3000, 8000];
+        const check = async (index) => {
+            try {
+                const response = await fetch(@json($statusUrl), { headers: { Accept: 'application/json' } });
+                const data = await response.json();
+                if (data.state === 'confirmed' || data.state === 'review') {
+                    window.location.reload();
+                    return;
+                }
+            } catch (error) {
+                console.error('Wayout purchase confirmation check failed.', error);
+            }
+
+            if (index + 1 < delays.length) window.setTimeout(() => check(index + 1), delays[index + 1]);
+        };
+
+        window.setTimeout(() => check(0), delays[0]);
+    })();
+</script>
+@endif
 @endsection

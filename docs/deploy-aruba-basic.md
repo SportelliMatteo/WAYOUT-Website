@@ -34,7 +34,7 @@ Il file ZIP non contiene `.env`, password o chiavi API. Contiene già `vendor/` 
 
 1. Carica ed estrai il contenuto dello ZIP nella root del dominio tramite File Manager o FTPS. Abilita il caricamento dei file nascosti: `.htaccess` è obbligatorio.
 2. Carica separatamente `.env.production` come `/web/htdocs/www.wayoutapp.it/home/_wayout/.env`.
-3. Compila almeno `APP_KEY`, credenziali MySQL, Brevo, Stripe, API benefici e admin. `APP_URL` deve essere `https://www.wayoutapp.it`.
+3. Compila almeno `APP_KEY`, credenziali MySQL, Brevo, API benefici, Firebase, backend WAYOUT e admin. `APP_URL` deve essere `https://www.wayoutapp.it`. Imposta `WAYOUT_BASE_URL` e lo stesso segreto HMAC robusto in `WAYOUT_INTERNAL_SECRET` su Laravel e `INTERNAL_API_SECRET` sul backend dell’app. Sul backend autorizza `www.wayoutapp.it` in `CHECKOUT_ALLOWED_HOSTS` e aggiungi soltanto gli host di staging/localhost realmente usati nei test. Le credenziali Stripe restano esclusivamente sul backend dell’app.
 4. Lascia vuoto `ARUBA_RELEASE_ID`: il pacchetto contiene un `RELEASE_ID` privato e univoco usato automaticamente.
 5. Verifica che `_wayout/storage/` e `_wayout/bootstrap/cache/` siano scrivibili dal processo PHP; non dare permessi `777`.
 6. Nel pannello **Processi Cron**, crea temporaneamente un processo di tipo **PHP** verso `/web/htdocs/www.wayoutapp.it/home/_wayout/run-deploy.php`.
@@ -59,6 +59,6 @@ Se il deploy fallisce, lascia `.maintenance`, conserva i log, ripristina i file 
 
 Verifica che la home e `/api/docs` rispondano, mentre `/.env`, `/_wayout/`, `/_wayout/.env`, `/vendor/` e `/database/` restituiscano 403/404.
 
-In Stripe configura il webhook live su `https://www.wayoutapp.it/stripe/webhook` con almeno `checkout.session.completed` e `checkout.session.async_payment_succeeded`.
+Configura webhook e credenziali Stripe sul backend dell’app. Laravel avvia il checkout tramite gli endpoint interni firmati e conferma l’acquisto interrogando l’entitlement dell’utente; non espone un webhook Stripe.
 
 Riferimenti Aruba: [Hosting Linux](https://hosting.aruba.it/web-hosting/linux/), [Laravel su hosting Aruba](https://guide.aruba.it/hosting-e-domini/hosting/strumenti-consigli-cms/installare-laravel), [Processi Cron](https://guide.aruba.it/hosting-e-domini/hosting/hosting-linux/pannello-controllo-linux/processi-cron).

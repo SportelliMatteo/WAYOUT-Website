@@ -2,22 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\WayoutApiException;
 use App\Mail\PurchaseConfirmationMail;
 use App\Support\CheckoutFeatures;
 use App\Support\ConsentAuditService;
 use App\Support\DatabaseUuid;
 use App\Support\FounderAvailability;
+use App\Support\FounderPromoCatalog;
 use App\Support\ItalianFiscalData;
 use App\Support\PrivacySafeLogContext;
 use App\Support\PurchasePdfService;
 use App\Support\QontoInvoiceService;
 use App\Support\TransactionalEmailSender;
+use App\Support\WayoutApiClient;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Throwable;
@@ -26,14 +30,32 @@ class SubscribeController extends Controller
 {
     private const RESERVATION_MINUTES = 15;
 
-    public function show(Request $request, CheckoutFeatures $checkoutFeatures)
-    {
+    public function show(
+        Request $request,
+        CheckoutFeatures $checkoutFeatures,
+        FounderPromoCatalog $catalog,
+    ) {
         if (! $request->session()->pull('subscribe_entry_allowed')) {
             return redirect()->route('home');
         }
 
+        try {
+            $founderPackages = $catalog->founderPackages();
+            $catalogError = null;
+        } catch (WayoutApiException $exception) {
+            Log::warning('Founder promo catalog unavailable.', [
+                'status' => $exception->status,
+                'code' => $exception->apiCode,
+            ]);
+            $founderPackages = ['join' => null, 'creator' => null];
+            $catalogError = __('messages.subscribe.catalog_unavailable');
+        }
+
         return view('pages.subscribe', [
             'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
+            'founderPackages' => $founderPackages,
+            'catalogError' => $catalogError,
+            'firebaseConfig' => config('services.firebase.client'),
         ]);
     }
 
@@ -55,33 +77,62 @@ class SubscribeController extends Controller
         return redirect()->route('subscribe');
     }
 
-    public function success(Request $request, ConsentAuditService $audit)
-    {
-        $sessionId = $request->query('session_id');
-        $checkoutState = 'pending';
-        $purchaseAnalytics = null;
+    public function success(
+        Request $request,
+        string $purchase,
+        WayoutApiClient $wayout,
+        ConsentAuditService $audit,
+        QontoInvoiceService $qontoInvoices,
+        TransactionalEmailSender $emailSender,
+    ) {
+        $order = DB::table('purchases')->where('id', $purchase)->first();
+        abort_unless($order, 404);
 
-        if (is_string($sessionId) && str_starts_with($sessionId, 'cs_')) {
-            $this->registerSuccessfulStripeCheckout($sessionId, $request, $audit);
+        $checkoutState = $this->confirmWayoutPurchase(
+            $request,
+            $order,
+            $wayout,
+            $audit,
+            $qontoInvoices,
+            $emailSender,
+        );
+        $order = DB::table('purchases')->where('id', $purchase)->first();
+        $purchaseAnalytics = $checkoutState === 'confirmed'
+            ? $this->purchaseAnalytics($order)
+            : null;
+        $statusUrl = URL::temporarySignedRoute('checkout.status', now()->addHour(), ['purchase' => $purchase]);
 
-            $purchase = DB::table('purchases')
-                ->where('stripe_session_id', $sessionId)
-                ->first();
+        return view('pages.checkout-success', compact('checkoutState', 'purchaseAnalytics', 'statusUrl'));
+    }
 
-            if ($purchase?->status === 'succeeded') {
-                $checkoutState = 'confirmed';
-                $purchaseAnalytics = [
-                    'transaction_id' => $purchase->order_reference ?: (string) $purchase->id,
-                    'plan' => $purchase->plan,
-                    'value' => ((int) $purchase->amount) / 100,
-                    'currency' => strtoupper($purchase->currency ?: 'eur'),
-                ];
-            } elseif ($purchase?->status === 'overbooked') {
-                $checkoutState = 'review';
-            }
+    public function status(
+        Request $request,
+        string $purchase,
+        WayoutApiClient $wayout,
+        ConsentAuditService $audit,
+        QontoInvoiceService $qontoInvoices,
+        TransactionalEmailSender $emailSender,
+    ) {
+        $order = DB::table('purchases')->where('id', $purchase)->first();
+
+        if (! $order) {
+            return response()->json(['state' => 'not_found'], 404);
         }
 
-        return view('pages.checkout-success', compact('checkoutState', 'purchaseAnalytics'));
+        $state = $this->confirmWayoutPurchase(
+            $request,
+            $order,
+            $wayout,
+            $audit,
+            $qontoInvoices,
+            $emailSender,
+        );
+        $order = DB::table('purchases')->where('id', $purchase)->first();
+
+        return response()->json([
+            'state' => $state,
+            'analytics' => $state === 'confirmed' ? $this->purchaseAnalytics($order) : null,
+        ]);
     }
 
     public function resendPurchaseConfirmation(Request $request, TransactionalEmailSender $emailSender)
@@ -975,6 +1026,102 @@ class SubscribeController extends Controller
         $request->session()->put('checkout_plan', $plan);
 
         return true;
+    }
+
+    private function confirmWayoutPurchase(
+        Request $request,
+        object $purchase,
+        WayoutApiClient $wayout,
+        ConsentAuditService $audit,
+        QontoInvoiceService $qontoInvoices,
+        TransactionalEmailSender $emailSender,
+    ): string {
+        if ($purchase->status === 'succeeded') {
+            return 'confirmed';
+        }
+
+        if (in_array($purchase->status, ['failed', 'canceled', 'expired', 'overbooked'], true)) {
+            return 'review';
+        }
+
+        if (! is_string($purchase->wayout_user_id ?? null) || $purchase->wayout_user_id === '') {
+            return 'review';
+        }
+
+        try {
+            $response = $wayout->internalGet('/api/v1/internal/users/'.$purchase->wayout_user_id.'/subscription');
+        } catch (WayoutApiException $exception) {
+            Log::warning('Wayout purchase confirmation unavailable.', [
+                'purchase_id' => $purchase->id,
+                'status' => $exception->status,
+                'code' => $exception->apiCode,
+            ]);
+
+            return 'pending';
+        }
+
+        if (data_get($response, 'data.has_active_entitlement') !== true) {
+            return 'pending';
+        }
+
+        $stripeSubscriptionId = data_get($response, 'data.subscription.stripe_subscription_id');
+        $source = data_get($response, 'data.subscription.source');
+
+        if ($source !== 'STRIPE') {
+            Log::warning('Wayout confirmation returned a non-Stripe entitlement.', [
+                'purchase_id' => $purchase->id,
+                'source' => $source,
+            ]);
+
+            return 'pending';
+        }
+
+        DB::transaction(function () use ($purchase, $stripeSubscriptionId): void {
+            $locked = DB::table('purchases')->where('id', $purchase->id)->lockForUpdate()->first();
+
+            if (! $locked || $locked->status === 'succeeded') {
+                return;
+            }
+
+            DB::table('purchases')->where('id', $purchase->id)->update([
+                'status' => 'succeeded',
+                'wayout_subscription_id' => is_string($stripeSubscriptionId) ? $stripeSubscriptionId : null,
+                'updated_at' => now(),
+            ]);
+        });
+
+        $confirmed = DB::table('purchases')->where('id', $purchase->id)->first();
+
+        if (! $confirmed || $confirmed->status !== 'succeeded') {
+            return 'pending';
+        }
+
+        $this->recordSuccessfulPurchaseConsent(
+            $request,
+            $audit,
+            $confirmed->id,
+            $confirmed->email,
+            'wayout_payment_confirmation',
+            $confirmed->plan,
+            $confirmed->waitlist_entry_id,
+        );
+
+        $qontoInvoices->sendForPurchase($confirmed->id);
+        $this->sendAutomaticPurchaseConfirmation($confirmed->id, $emailSender);
+        $request->session()->put('checkout_plan', $confirmed->plan);
+        $request->session()->put('purchase_confirmation_email', $confirmed->email);
+
+        return 'confirmed';
+    }
+
+    private function purchaseAnalytics(object $purchase): array
+    {
+        return [
+            'transaction_id' => $purchase->order_reference ?: (string) $purchase->id,
+            'plan' => $purchase->plan,
+            'value' => ((int) $purchase->amount) / 100,
+            'currency' => strtoupper($purchase->currency ?: 'eur'),
+        ];
     }
 
     private function recordSuccessfulPurchaseConsent(

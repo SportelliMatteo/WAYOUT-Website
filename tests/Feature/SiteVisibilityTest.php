@@ -32,6 +32,8 @@ class SiteVisibilityTest extends TestCase
         $this->get(route('contact'))
             ->assertOk()
             ->assertSee('Qualcosa di nuovo sta arrivando.')
+            ->assertSee('site-unavailable-page', false)
+            ->assertSee('text-slate-100', false)
             ->assertSee('border-slate-300 bg-slate-100 text-slate-700', false);
 
         $this->get(route('home', ['lang' => 'en']))

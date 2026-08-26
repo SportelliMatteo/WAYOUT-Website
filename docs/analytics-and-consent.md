@@ -22,8 +22,8 @@ Non vengono inviati ai fornitori dati dei form, email, telefono, nome, codice fi
 | `founder_offer_view` | apertura offerta Founder | `returning` |
 | `view_founder_passes` | visualizzazione pagina pass | nessuno |
 | `select_founder_plan` | scelta del pass | `plan`, `location` |
-| `begin_checkout` | invio dati validi verso Stripe | `plan`, `value`, `currency`, `invoice_requested` |
-| `purchase` | acquisto confermato lato server da Stripe | `transaction_id`, `plan`, `value`, `currency` |
+| `begin_checkout` | invio dati validi al backend WAYOUT | `plan`, `value`, `currency`, `invoice_requested` |
+| `purchase` | entitlement di pagamento confermato lato server dal backend WAYOUT | `transaction_id`, `plan`, `value`, `currency` |
 | `contact_submitted` | form contatti riuscito | nessuno |
 
 `purchase` è deduplicato nel browser per riferimento ordine e non viene emesso per callback non pagate, sconosciute o ordini in revisione.
@@ -70,7 +70,7 @@ Quando GTM è configurato ha la precedenza sul caricamento GA4 diretto. Non inse
 2. Provare “Rifiuta tutto”: sito, waitlist e checkout devono continuare a funzionare senza tracker.
 3. Provare separatamente solo Analytics, solo Marketing e consenso completo.
 4. Verificare il pulsante nel footer e la revoca.
-5. Completare un pagamento Stripe test e verificare un solo evento `purchase` con lo stesso riferimento ordine.
+5. Completare un pagamento di test tramite il backend WAYOUT e verificare un solo evento `purchase` con lo stesso riferimento ordine.
 6. Controllare GA4 DebugView/Tag Assistant e Meta Test Events.
 7. In produzione impostare `ANALYTICS_DEBUG=false`, quindi eseguire `php artisan optimize:clear`, `php artisan config:cache` e `npm run build` durante il deploy.
 

@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Support\DatabaseUuid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -33,9 +36,27 @@ class AnalyticsConsentTest extends TestCase
 
     public function test_unconfirmed_checkout_return_does_not_claim_success_or_emit_purchase(): void
     {
-        config()->set('services.stripe.secret', null);
+        $purchaseId = DatabaseUuid::new();
+        $userId = 'b66b8442-67af-4dd7-813c-26ff521f82cd';
+        DB::table('purchases')->insert([
+            'id' => $purchaseId,
+            'wayout_user_id' => $userId,
+            'promo_package_code' => 'FOUNDER_JOIN_12M_PASS',
+            'email' => 'pending@example.com',
+            'plan' => 'join',
+            'amount' => 2990,
+            'currency' => 'eur',
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        Http::fake([
+            "https://staging-app.wayoutapp.test/api/v1/internal/users/{$userId}/subscription" => Http::response([
+                'data' => ['has_active_entitlement' => false],
+            ]),
+        ]);
 
-        $this->get(route('checkout.success', ['session_id' => 'cs_unknown']))
+        $this->get(URL::temporarySignedRoute('checkout.success', now()->addMinute(), ['purchase' => $purchaseId]))
             ->assertOk()
             ->assertSee('Stiamo verificando il pagamento.')
             ->assertDontSee('Il tuo Founder Pass è confermato.')

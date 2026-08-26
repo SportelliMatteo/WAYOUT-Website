@@ -196,7 +196,7 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">10. Trasferimenti di dati al di fuori dello Spazio Economico Europeo</h2>
-        <p class="mt-3">L’hosting principale del sito tramite SiteGround è configurato all’interno dell’Unione europea. Brevo dichiara che i server sui quali elabora e conserva i propri database sono situati nell’Unione europea. Google, Meta, Stripe o alcuni fornitori e subfornitori possono tuttavia trattare o rendere accessibili dati anche in Paesi situati al di fuori dello Spazio Economico Europeo.</p>
+        <p class="mt-3">L’hosting principale del sito è configurato all’interno dell’Unione europea. Brevo dichiara che i server sui quali elabora e conserva i propri database sono situati nell’Unione europea. Google, Meta, Stripe o alcuni fornitori e subfornitori possono tuttavia trattare o rendere accessibili dati anche in Paesi situati al di fuori dello Spazio Economico Europeo.</p>
         <p class="mt-3">In tali casi WAYOUT verifica, per quanto di propria competenza, che il trasferimento avvenga nel rispetto degli articoli 44 e seguenti del GDPR, sulla base di una decisione di adeguatezza della Commissione europea, dell’adesione del destinatario a un quadro riconosciuto come adeguato, delle Clausole Contrattuali Standard approvate dalla Commissione europea o di un altro meccanismo valido, con eventuali misure supplementari ove necessarie.</p>
         <p class="mt-3">Ulteriori informazioni sulle garanzie applicate e, ove disponibile, una copia delle stesse possono essere richieste scrivendo a <a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a>.</p>
     </section>

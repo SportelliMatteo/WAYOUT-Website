@@ -91,11 +91,11 @@ La retention dei log applicativi deve essere proporzionata e documentata in base
 
 Il database conserva i timestamp in UTC. Dashboard e nuovi log li presentano in `Europe/Rome`, configurabile con `APP_DISPLAY_TIMEZONE` e `LOG_TIMEZONE`; `APP_TIMEZONE` deve restare `UTC` per evitare timestamp incoerenti e gestire correttamente l’ora legale.
 
-## Conferma pagamenti Stripe tramite webhook
+## Pagamenti tramite backend WAYOUT
 
-La conferma definitiva del pagamento non dipende dal ritorno del browser. In Stripe creare un endpoint webhook HTTPS verso `https://DOMINIO/stripe/webhook`, selezionando gli eventi `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Copiare il signing secret `whsec_...` in `STRIPE_WEBHOOK_SECRET` nel file privato `_wayout/.env` dell'hosting. Il server verifica firma e timestamp del messaggio, recupera poi la Checkout Session direttamente dalle API Stripe e registra l'ordine soltanto se Stripe la dichiara pagata. La pagina di successo rimane un fallback idempotente.
+Il sito Laravel non conserva credenziali Stripe e non riceve webhook Stripe. Recupera i Founder Pass dal backend WAYOUT, verifica l’utente tramite Firebase Phone Authentication e chiama gli endpoint interni firmando ogni richiesta con HMAC-SHA256. Il backend crea la Checkout Session Stripe e resta l’autorità sul pagamento e sull’entitlement.
 
-Per una prova locale è possibile usare Stripe CLI, inoltrare gli eventi a `/stripe/webhook` e usare come `STRIPE_WEBHOOK_SECRET` il signing secret temporaneo mostrato dal comando `stripe listen`.
+Configurare `WAYOUT_BASE_URL` e un `WAYOUT_INTERNAL_SECRET` casuale di almeno 32 caratteri. Il medesimo valore deve essere impostato come `INTERNAL_API_SECRET` sul backend dell’app. Dopo il ritorno dal checkout, Laravel interroga l’entitlement, registra l’acquisto locale, invia l’email di conferma ed emette l’eventuale fattura tramite Qonto.
 
 ## Audit dei consensi
 

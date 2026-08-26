@@ -35,12 +35,21 @@ return [
         ],
     ],
 
-    'stripe' => [
-        'key' => env('STRIPE_KEY'),
-        'secret' => env('STRIPE_SECRET'),
-        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
-        // Hard-disabled at runtime; PHPUnit explicitly overrides this value.
-        'direct_checkout_enabled_for_tests' => false,
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'client' => [
+            'api_key' => env('FIREBASE_API_KEY'),
+            'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),
+            'app_id' => env('FIREBASE_APP_ID'),
+        ],
+    ],
+
+    'wayout' => [
+        'base_url' => env('WAYOUT_BASE_URL', 'https://staging-app.wayoutapp.it'),
+        'internal_secret' => env('WAYOUT_INTERNAL_SECRET'),
+        'connect_timeout' => (int) env('WAYOUT_CONNECT_TIMEOUT', 5),
+        'timeout' => (int) env('WAYOUT_TIMEOUT', 15),
+        'catalog_cache_seconds' => (int) env('WAYOUT_CATALOG_CACHE_SECONDS', 60),
     ],
 
     'qonto' => [

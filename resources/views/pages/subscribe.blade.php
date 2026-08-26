@@ -6,12 +6,44 @@
 @section('content')
 @php
     $capacity = fn (string $key) => number_format(($founderCapacities[$key] ?? config('founder.default_capacities')[$key]), 0, ',', '.');
-    $joinFull = $founderAvailability['join']['is_full'] ?? false;
-    $creatorFull = $founderAvailability['creator']['is_full'] ?? false;
+    $joinPackage = $founderPackages['join'] ?? null;
+    $creatorPackage = $founderPackages['creator'] ?? null;
+    $joinFull = !$joinPackage || ($joinPackage['available'] ?? null) === 0;
+    $creatorFull = !$creatorPackage || ($creatorPackage['available'] ?? null) === 0;
     $allPassesFull = $joinFull && $creatorFull;
     $defaultPlan = $joinFull && ! $creatorFull ? 'creator' : 'join';
     $waitlistProfile = session('waitlist_profile', []);
     $adultMaxDate = now()->subYears(18)->toDateString();
+    $price = fn (?array $package) => $package ? number_format((float) $package['price'], 2, ',', '.').' €' : '—';
+    $availability = function (?array $package) {
+        if (!$package || ($package['available'] ?? null) === 0) return __('messages.subscribe.sold_out');
+        if (($package['available'] ?? null) === null) return __('messages.subscribe.unlimited_availability');
+        return __('messages.subscribe.spots_available', ['count' => number_format((int) $package['available'], 0, ',', '.')]);
+    };
+    $phonePrefixes = [
+        '+39' => 'IT +39',
+        '+33' => 'FR +33',
+        '+34' => 'ES +34',
+        '+49' => 'DE +49',
+        '+44' => 'UK +44',
+        '+1' => 'US +1',
+    ];
+    $firebaseBrowserConfig = [
+        'apiKey' => $firebaseConfig['api_key'] ?? null,
+        'authDomain' => $firebaseConfig['auth_domain'] ?? null,
+        'projectId' => config('services.firebase.project_id'),
+        'appId' => $firebaseConfig['app_id'] ?? null,
+    ];
+    $phoneVerificationMessages = [
+        'configurationError' => __('messages.subscribe.phone_configuration_error'),
+        'invalidPhone' => __('messages.subscribe.phone_invalid'),
+        'sending' => __('messages.subscribe.phone_sending'),
+        'codeSent' => __('messages.subscribe.phone_code_sent'),
+        'sendError' => __('messages.subscribe.phone_send_error'),
+        'verifying' => __('messages.subscribe.phone_verifying'),
+        'verified' => __('messages.subscribe.phone_verified'),
+        'codeError' => __('messages.subscribe.phone_code_error'),
+    ];
 @endphp
 <span class="hidden" data-analytics-page-event="view_founder_passes" data-analytics-dedupe="view_founder_passes"></span>
 <section class="relative overflow-hidden py-10 lg:py-20">
@@ -41,14 +73,20 @@
 
             <div class="mt-6 wayout-panel rounded-[2rem] p-5 sm:rounded-[2.5rem] sm:p-6">
                 <p class="text-sm font-black uppercase tracking-[0.22em] text-slate-500">{{ __('messages.subscribe.choose_plan') }}</p>
-                @if($allPassesFull)
+                @if($catalogError)
+                    <p class="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-black text-amber-800">{{ $catalogError }}</p>
+                @endif
+                @if(session('checkout_error'))
+                    <p class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-800">{{ session('checkout_error') }}</p>
+                @endif
+                @if($allPassesFull && !$catalogError)
                     <p class="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-black text-rose-700">
                         {{ __('messages.subscribe.passes_sold_out_message') }}
                     </p>
                 @endif
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     <label class="{{ $joinFull ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:border-violet-300 has-[:checked]:border-violet-600 has-[:checked]:shadow-[0_18px_45px_rgba(124,35,245,0.15)]' }} rounded-[2rem] border border-slate-200 bg-white p-5 transition">
-                        <input type="radio" name="plan" value="join" data-analytics-event="select_founder_plan" data-analytics-plan="join" data-analytics-trigger="change" @checked($defaultPlan === 'join' && ! $joinFull) @disabled($joinFull) class="sr-only" />
+                        <input type="radio" name="plan" value="join" data-price="{{ $joinPackage['price'] ?? '' }}" data-currency="{{ $joinPackage['currency'] ?? 'EUR' }}" data-analytics-event="select_founder_plan" data-analytics-plan="join" data-analytics-trigger="change" @checked($defaultPlan === 'join' && ! $joinFull) @disabled($joinFull) class="sr-only" />
                         <div class="flex h-full flex-col">
                             <div class="flex items-start justify-between gap-4">
                                 <div>
@@ -56,11 +94,11 @@
                                     <p class="mt-2 text-sm font-semibold leading-6 text-slate-500">{{ __('messages.subscribe.join_card_text') }}</p>
                                 </div>
                                 <div class="shrink-0 text-right">
-                                    <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-950">29€</span>
+                                    <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-950">{{ $price($joinPackage) }}</span>
                                     <p class="mt-2 max-w-[8rem] text-[0.68rem] font-bold leading-4 text-slate-500">{{ __('messages.subscribe.join_card_price_label') }}</p>
                                 </div>
                             </div>
-                            <p class="mt-4 text-sm font-black text-violet-700">{{ $joinFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
+                            <p class="mt-4 text-sm font-black text-violet-700">{{ $availability($joinPackage) }}</p>
                             <div class="mt-5 space-y-4 text-sm leading-6">
                                 
                                 <div>
@@ -87,7 +125,7 @@
                         </div>
                     </label>
                     <label class="{{ $creatorFull ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:border-violet-300 has-[:checked]:border-violet-600 has-[:checked]:shadow-[0_18px_45px_rgba(124,35,245,0.15)]' }} rounded-[2rem] border border-slate-200 bg-white p-5 transition">
-                        <input type="radio" name="plan" value="creator" data-analytics-event="select_founder_plan" data-analytics-plan="creator" data-analytics-trigger="change" @checked($defaultPlan === 'creator' && ! $creatorFull) @disabled($creatorFull) class="sr-only" />
+                        <input type="radio" name="plan" value="creator" data-price="{{ $creatorPackage['price'] ?? '' }}" data-currency="{{ $creatorPackage['currency'] ?? 'EUR' }}" data-analytics-event="select_founder_plan" data-analytics-plan="creator" data-analytics-trigger="change" @checked($defaultPlan === 'creator' && ! $creatorFull) @disabled($creatorFull) class="sr-only" />
                         <div class="flex h-full flex-col">
                             <div class="flex items-start justify-between gap-4">
                                 <div>
@@ -95,11 +133,11 @@
                                     <p class="mt-2 text-sm font-semibold leading-6 text-slate-500">{{ __('messages.subscribe.creator_card_text') }}</p>
                                 </div>
                                 <div class="shrink-0 text-right">
-                                    <span class="inline-flex rounded-full wayout-purple px-3 py-1 text-sm font-black text-white">59€</span>
+                                    <span class="inline-flex rounded-full wayout-purple px-3 py-1 text-sm font-black text-white">{{ $price($creatorPackage) }}</span>
                                     <p class="mt-2 max-w-[8rem] text-[0.68rem] font-bold leading-4 text-slate-500">{{ __('messages.subscribe.creator_card_price_label') }}</p>
                                 </div>
                             </div>
-                            <p class="mt-4 text-sm font-black text-violet-700">{{ $creatorFull ? __('messages.subscribe.sold_out') : __('messages.subscribe.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
+                            <p class="mt-4 text-sm font-black text-violet-700">{{ $availability($creatorPackage) }}</p>
                             <div class="mt-5 space-y-4 text-sm leading-6">
                                
                                 <div>
@@ -124,7 +162,7 @@
             </div>
 
             <div class="mt-6 flex flex-col gap-4 sm:flex-row">
-                <button id="stripe-checkout-button" @disabled($allPassesFull) class="inline-flex w-full items-center justify-center rounded-full px-7 py-4 text-lg font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition {{ $allPassesFull ? 'cursor-not-allowed bg-slate-400' : 'wayout-purple hover:scale-[1.01]' }}">
+                <button id="founder-checkout-button" @disabled($allPassesFull) class="inline-flex w-full items-center justify-center rounded-full px-7 py-4 text-lg font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition {{ $allPassesFull ? 'cursor-not-allowed bg-slate-400' : 'wayout-purple hover:scale-[1.01]' }}">
                     {{ $allPassesFull ? __('messages.subscribe.passes_sold_out') : __('messages.subscribe.checkout') }}
                 </button>
                 <a href="{{ route('home') }}" class="inline-flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-7 py-4 text-lg font-black text-slate-950 shadow-sm transition hover:border-violet-300">
@@ -142,16 +180,16 @@
                         <div class="rounded-3xl bg-white/[0.08] p-5">
                             <div class="flex items-center justify-between gap-4">
                                 <p class="font-black">Join</p>
-                                <p class="text-3xl font-black">29€</p>
+                                <p class="text-3xl font-black">{{ $price($joinPackage) }}</p>
                             </div>
-                            <p class="mt-2 text-sm text-slate-300">{{ $joinFull ? __('messages.subscribe.sold_out').'.' : __('messages.subscribe.spots_available', ['count' => $capacity('join_capacity')]).'.' }}</p>
+                            <p class="mt-2 text-sm text-slate-300">{{ $availability($joinPackage) }}.</p>
                         </div>
                         <div class="rounded-3xl bg-white p-5 text-slate-950">
                             <div class="flex items-center justify-between gap-4">
                                 <p class="font-black">Creator</p>
-                                <p class="text-3xl font-black">59€</p>
+                                <p class="text-3xl font-black">{{ $price($creatorPackage) }}</p>
                             </div>
-                            <p class="mt-2 text-sm font-semibold text-slate-500">{{ $creatorFull ? __('messages.subscribe.sold_out').'.' : __('messages.subscribe.spots_available', ['count' => $capacity('creator_capacity')]).'.' }}</p>
+                            <p class="mt-2 text-sm font-semibold text-slate-500">{{ $availability($creatorPackage) }}.</p>
                         </div>
                         <div class="rounded-3xl border border-white/10 bg-white/[0.06] p-5">
                             <p class="font-black">{{ __('messages.subscribe.duration') }}</p>
@@ -183,8 +221,8 @@
                             <tr>
                                 <td class="py-3 pr-4 font-black text-slate-950">{{ $row[0] }}</td>
                                 <td class="px-4 py-3 text-right">{{ $isCapacityRow ? __('messages.subscribe.spots_available', ['count' => $capacity('waitlist_capacity')]) : $row[1] }}</td>
-                                <td class="px-4 py-3 text-right">{{ $isCapacityRow ? __('messages.subscribe.spots_available', ['count' => $capacity('join_capacity')]) : $row[2] }}</td>
-                                <td class="py-3 pl-4 text-right">{{ $isCapacityRow ? __('messages.subscribe.spots_available', ['count' => $capacity('creator_capacity')]) : $row[3] }}</td>
+                                <td class="px-4 py-3 text-right">{{ $rowIndex === 0 ? $price($joinPackage) : ($isCapacityRow ? $availability($joinPackage) : $row[2]) }}</td>
+                                <td class="py-3 pl-4 text-right">{{ $rowIndex === 0 ? $price($creatorPackage) : ($isCapacityRow ? $availability($creatorPackage) : $row[3]) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -228,6 +266,7 @@
             </button>
         </div>
         <form id="payment-details-form" class="mt-5 space-y-4">
+            <input id="payment-firebase-token" type="hidden" name="firebase_token" value="" />
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block sm:col-span-2">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.email') }}</span>
@@ -241,11 +280,41 @@
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.last_name') }}</span>
                     <input type="text" name="last_name" value="{{ $waitlistProfile['last_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
-                <label class="block sm:col-span-2">
+                <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.birth_date') }}</span>
                     <input type="date" name="birth_date" value="{{ $waitlistProfile['birth_date'] ?? '' }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
+                <label class="block">
+                    <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.gender') }}</span>
+                    <select name="gender" required class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100">
+                        <option value="">{{ __('messages.subscribe.gender_placeholder') }}</option>
+                        <option value="MALE" @selected(($waitlistProfile['gender'] ?? '') === 'MALE')>{{ __('messages.subscribe.gender_male') }}</option>
+                        <option value="FEMALE" @selected(($waitlistProfile['gender'] ?? '') === 'FEMALE')>{{ __('messages.subscribe.gender_female') }}</option>
+                        <option value="OTHER" @selected(($waitlistProfile['gender'] ?? '') === 'OTHER')>{{ __('messages.subscribe.gender_other') }}</option>
+                    </select>
+                </label>
             </div>
+            <section class="space-y-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 sm:p-5">
+                <div>
+                    <p class="text-sm font-black text-slate-950">{{ __('messages.subscribe.phone_verification_title') }}</p>
+                    <p class="mt-1 text-xs font-semibold leading-5 text-slate-600">{{ __('messages.subscribe.phone_verification_text') }}</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-[7rem_1fr_auto]">
+                    <select id="payment-phone-prefix" name="phone_prefix" required autocomplete="tel-country-code" class="min-h-12 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100">
+                        @foreach($phonePrefixes as $prefix => $label)
+                            <option value="{{ $prefix }}" @selected(($waitlistProfile['phone_prefix'] ?? '+39') === $prefix)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <input id="payment-phone-number" type="tel" name="phone_number" value="" required minlength="5" maxlength="32" autocomplete="tel-national" inputmode="tel" placeholder="333 1234567" class="min-h-12 min-w-0 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    <button id="payment-phone-send" type="button" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-violet-800 disabled:cursor-wait disabled:opacity-60">{{ __('messages.subscribe.phone_send_code') }}</button>
+                </div>
+                <div id="payment-phone-code-panel" class="hidden grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <input id="payment-phone-code" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" placeholder="000000" class="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-center text-lg font-black tracking-[0.35em] text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    <button id="payment-phone-verify" type="button" class="inline-flex min-h-12 items-center justify-center rounded-2xl wayout-purple px-5 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60">{{ __('messages.subscribe.phone_verify_code') }}</button>
+                </div>
+                <div id="payment-phone-recaptcha"></div>
+                <p id="payment-phone-status" class="hidden rounded-2xl px-4 py-3 text-sm font-bold" role="status" aria-live="polite"></p>
+            </section>
             <label class="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
                 <input id="invoice-requested" type="checkbox" name="invoice_requested" value="true" class="mt-1 h-5 w-5 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
                 <span>
@@ -328,7 +397,7 @@
                 </span>
             </label>
             <p id="payment-details-error" role="alert" class="hidden whitespace-pre-line rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"></p>
-            <button id="payment-details-submit" type="submit" class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-80">
+            <button id="payment-details-submit" type="submit" disabled class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-60">
                 <span class="payment-submit-text">{{ __('messages.subscribe.confirm_and_pay') }}</span>
                 <span class="payment-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true"></span>
             </button>
@@ -336,9 +405,10 @@
     </div>
 </div>
 
-<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}" src="https://js.stripe.com/v3/"></script>
 <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
-    const button = document.getElementById('stripe-checkout-button');
+    window.wayoutFirebaseConfig = {{ Illuminate\Support\Js::from($firebaseBrowserConfig) }};
+    window.wayoutPhoneVerificationMessages = {{ Illuminate\Support\Js::from($phoneVerificationMessages) }};
+    const button = document.getElementById('founder-checkout-button');
     const paymentModal = document.getElementById('payment-details-modal');
     const paymentForm = document.getElementById('payment-details-form');
     const paymentError = document.getElementById('payment-details-error');
@@ -379,7 +449,7 @@
     function setPaymentLoading(isLoading) {
         if (!paymentSubmit) return;
 
-        paymentSubmit.disabled = isLoading;
+        paymentSubmit.disabled = isLoading || !document.getElementById('payment-firebase-token')?.value;
         paymentSubmitText?.classList.toggle('hidden', isLoading);
         paymentSubmitLoader?.classList.toggle('hidden', !isLoading);
     }
@@ -523,24 +593,25 @@
             return;
         }
 
+        const selectedPlanInput = document.querySelector('input[name="plan"]:checked');
         window.wayoutTrack?.('begin_checkout', {
             plan: selectedPlan,
-            value: selectedPlan === 'creator' ? 59 : 29,
-            currency: 'EUR',
+            value: Number(selectedPlanInput?.dataset.price || 0),
+            currency: selectedPlanInput?.dataset.currency || 'EUR',
             invoice_requested: invoiceCheckbox?.checked || false,
         });
 
         button.disabled = true;
         button.textContent = @json(__('messages.subscribe.loading'));
         setPaymentLoading(true);
-        const stripeKey = @json(config('services.stripe.key'));
         const formData = new FormData(paymentForm);
         const payload = {
             plan: selectedPlan,
-            direct_checkout: false,
+            firebase_token: formData.get('firebase_token'),
             first_name: formData.get('first_name'),
             last_name: formData.get('last_name'),
             birth_date: formData.get('birth_date'),
+            gender: formData.get('gender'),
             invoice_requested: invoiceCheckbox?.checked || false,
             purchase_terms_accepted: formData.get('purchase_terms_accepted') === 'true',
             billing_customer_type: invoiceCheckbox?.checked ? formData.get('billing_customer_type') : null,
@@ -577,30 +648,8 @@
                 return;
             }
 
-            if (data.completed) {
-                window.location.href = data.redirectUrl || '{{ route('checkout.success') }}';
-                return;
-            }
-
-            if (!stripeKey) {
-                paymentError.textContent = @json(__('messages.subscribe.stripe_key_missing'));
-                paymentError.classList.remove('hidden');
-                button.disabled = false;
-                button.textContent = originalButtonText;
-                setPaymentLoading(false);
-                return;
-            }
-
-            const stripe = Stripe(stripeKey);
-            const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
-
-            if (result.error) {
-                paymentError.textContent = result.error.message;
-                paymentError.classList.remove('hidden');
-                button.disabled = false;
-                button.textContent = originalButtonText;
-                setPaymentLoading(false);
-            }
+            if (!data.redirectUrl) throw new Error('Missing checkout URL');
+            window.location.assign(data.redirectUrl);
         } catch (error) {
             paymentError.textContent = @json(__('messages.subscribe.checkout_retry'));
             paymentError.classList.remove('hidden');

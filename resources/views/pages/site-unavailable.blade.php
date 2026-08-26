@@ -12,8 +12,8 @@
     <link rel="shortcut icon" href="/favicon.jpg" type="image/jpeg">
     @vite(['resources/css/app.css'])
 </head>
-<body class="min-h-screen overflow-hidden bg-slate-950 text-white antialiased">
-    <main class="relative flex min-h-screen items-center justify-center px-5 py-12">
+<body class="site-unavailable-page min-h-screen overflow-x-hidden antialiased">
+    <main class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-5 sm:py-12">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(124,35,245,0.55),transparent_30rem),radial-gradient(circle_at_88%_82%,rgba(185,255,74,0.20),transparent_28rem)]"></div>
         <div class="absolute -left-28 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full border border-white/10"></div>
         <div class="absolute -right-16 top-10 h-52 w-52 rounded-full border border-white/10"></div>
@@ -29,7 +29,7 @@
             <h1 class="mt-6 text-4xl font-black tracking-tight sm:text-6xl">
                 {{ $isMaintenance ? __('messages.site_visibility.maintenance_heading') : __('messages.site_visibility.coming_soon_heading') }}
             </h1>
-            <p class="mx-auto mt-6 max-w-xl text-lg font-semibold leading-8 text-slate-300 sm:text-xl">
+            <p class="mx-auto mt-6 max-w-xl text-lg font-semibold leading-8 text-slate-100 sm:text-xl">
                 {{ $isMaintenance ? __('messages.site_visibility.maintenance_text') : __('messages.site_visibility.coming_soon_text') }}
             </p>
 

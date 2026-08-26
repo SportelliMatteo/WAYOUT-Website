@@ -3,1061 +3,277 @@
 namespace Tests\Feature;
 
 use App\Mail\PurchaseConfirmationMail;
-use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class SubscribeCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function withSession(array $data)
-    {
-        if (($data['waitlist_offer_access'] ?? false) && isset($data['waitlist_email'])) {
-            $email = strtolower((string) $data['waitlist_email']);
-            if (! DB::table('waitlist_entries')->where('email', $email)->exists()) {
-                $entry = $this->createVerifiedWaitlistEntry($email, DB::table('waitlist_entries')->count() + 1);
-                $data['waitlist_verified_entry_id'] = $entry->id;
-            }
-        }
-
-        return parent::withSession($data);
-    }
-
     public function test_sales_terms_use_the_canonical_url(): void
     {
-        $this->get('/termini-di-vendita')
-            ->assertOk()
-            ->assertSee('Termini di vendita');
-
-        $this->get('/condizioni-di-vendita')
-            ->assertRedirect('/termini-di-vendita')
-            ->assertStatus(301);
+        $this->get('/termini-di-vendita')->assertOk();
+        $this->get('/condizioni-di-vendita')->assertRedirect('/termini-di-vendita')->assertStatus(301);
     }
 
     public function test_subscribe_page_requires_waitlist_banner_context(): void
     {
-        $response = $this->get(route('subscribe'));
-
-        $response->assertRedirect(route('home'));
+        $this->get(route('subscribe'))->assertRedirect(route('home'));
     }
 
-    public function test_subscribe_page_is_allowed_from_waitlist_banner(): void
+    public function test_subscribe_page_uses_only_the_two_paid_founder_packages(): void
     {
-        $response = $this->withSession(['subscribe_entry_allowed' => true])
-            ->get(route('subscribe'));
+        $this->fakeCatalog();
+
+        $response = $this->withSession(['subscribe_entry_allowed' => true])->get(route('subscribe'));
 
         $response->assertOk()
-            ->assertViewIs('pages.subscribe')
-            ->assertDontSee('value="legal_entity"', false)
-            ->assertSee('Inserisci i dati di fatturazione della persona fisica.')
-            ->assertDontSee('Procedendo al pagamento dichiari di aver letto')
-            ->assertSee('Confermi di aver letto i')
-            ->assertDontSee('href="'.route('legal.passes').'" target="_blank"', false)
-            ->assertDontSee('href="'.route('legal.sales').'" target="_blank"', false)
-            ->assertDontSee('href="'.route('legal.presale').'" target="_blank"', false)
-            ->assertDontSee('href="'.route('legal.refunds').'#recedere" target="_blank"', false)
-            ->assertSee('/condizioni-di-pre-sale', false)
-            ->assertSee(route('legal.sales'))
-            ->assertSee(route('legal.refunds'))
-            ->assertDontSee('Versioni documenti:');
-
-        $response->assertSee('1. Che cosa acquisto con un Founder Pass?')
-            ->assertSee('26. Dove trovo le condizioni complete e chi posso contattare?')
-            ->assertSee('Non è prevista una selezione o approvazione discrezionale specifica')
-            ->assertDontSee('Che cos’è il Waitlist Pass?');
-        $this->assertSame(26, substr_count($response->getContent(), 'data-legal-faq'));
+            ->assertSee('29,90 €')
+            ->assertSee('59,90 €')
+            ->assertSee('37 posti disponibili')
+            ->assertSee('name="gender"', false)
+            ->assertSee('id="payment-phone-send"', false)
+            ->assertSee('id="payment-phone-verify"', false)
+            ->assertDontSee('WAITLIST_60D_PASS')
+            ->assertDontSee('js.stripe.com', false);
     }
 
-    public function test_subscribe_plan_comparison_uses_configured_capacities(): void
+    public function test_catalog_failure_is_not_reported_as_sold_out(): void
     {
-        DB::table('founder_settings')->updateOrInsert(
-            ['key' => 'waitlist_capacity'],
-            ['value' => 1234]
-        );
-        DB::table('founder_settings')->updateOrInsert(
-            ['key' => 'join_capacity'],
-            ['value' => 734]
-        );
-        DB::table('founder_settings')->updateOrInsert(
-            ['key' => 'creator_capacity'],
-            ['value' => 91]
-        );
+        Http::fake([
+            'https://staging-app.wayoutapp.test/api/v1/internal/promo-packages' => Http::response([], 403),
+        ]);
 
-        $response = $this->withSession(['subscribe_entry_allowed' => true])
-            ->get(route('subscribe'));
-
-        $response->assertOk()
-            ->assertSee('1.234 posti disponibili')
-            ->assertSee('734 posti disponibili')
-            ->assertSee('91 posti disponibili')
-            ->assertDontSee('600 pass')
-            ->assertDontSee('200 pass');
+        $this->withSession(['subscribe_entry_allowed' => true])
+            ->get(route('subscribe'))
+            ->assertOk()
+            ->assertSee('Il catalogo Founder non è temporaneamente disponibile.')
+            ->assertDontSee('I Founder Pass sono esauriti.');
     }
 
-    public function test_subscribe_page_cannot_be_opened_directly_after_checkout_was_unlocked(): void
+    public function test_subscribe_access_keeps_the_verified_waitlist_flow(): void
     {
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])->get(route('subscribe'));
-
-        $response->assertRedirect(route('home'));
-    }
-
-    public function test_subscribe_access_stores_the_waitlist_email_in_session(): void
-    {
-        Mail::fake();
         $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
 
-        $response = $this->from(route('home'))
-            ->withSession(['waitlist_verified_entry_id' => $entry->id])
-            ->post(route('subscribe.access'));
-
-        $response->assertRedirect(route('subscribe'))
-            ->assertSessionHas('waitlist_offer_access', true)
-            ->assertSessionHas('waitlist_email', 'founder@example.com')
-            ->assertSessionHas('subscribe_entry_allowed', true);
-
-        Mail::assertNothingSent();
-    }
-
-    public function test_unverified_waitlist_entry_cannot_open_the_founder_offer(): void
-    {
-        DB::table('waitlist_entries')->insert([
-            'id' => DatabaseUuid::new(),
-            'benefit_id' => DatabaseUuid::new(),
-            'email' => 'legacy@example.com',
-            'email_verified_at' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $entryId = DB::table('waitlist_entries')->where('email', 'legacy@example.com')->value('id');
-
-        $this->from(route('home'))
-            ->withSession(['waitlist_verified_entry_id' => $entryId])
+        $this->withSession(['waitlist_verified_entry_id' => $entry->id])
             ->post(route('subscribe.access'))
-            ->assertRedirect(route('home'))
-            ->assertSessionHas('waitlist_error');
+            ->assertRedirect(route('subscribe'))
+            ->assertSessionHas('waitlist_offer_access', true)
+            ->assertSessionHas('waitlist_email', 'founder@example.com');
     }
 
-    public function test_checkout_uses_the_selected_founder_plan(): void
+    public function test_checkout_creates_backend_session_for_an_existing_wayout_user(): void
     {
-        config()->set('services.stripe.secret', 'sk_test_123');
+        [$entry, $userId] = $this->fakeExistingUserCheckout();
 
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_test_123'], 200),
+        $response = $this->withSession($this->checkoutSession($entry))
+            ->postJson(route('subscribe.checkout'), $this->checkoutPayload('creator'));
+
+        $response->assertOk()->assertJson([
+            'redirectUrl' => 'https://checkout.stripe.test/session',
         ]);
 
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])
-            ->postJson(route('subscribe.checkout'), [
-                ...$this->customerPayload(),
-                ...$this->individualInvoicePayload(),
-                'plan' => 'creator',
-                'direct_checkout' => false,
-            ]);
+        $this->assertDatabaseHas('purchases', [
+            'email' => 'founder@example.com',
+            'plan' => 'creator',
+            'promo_package_code' => 'FOUNDER_CREATOR_12M_PASS',
+            'wayout_user_id' => $userId,
+            'amount' => 5990,
+            'status' => 'pending',
+        ]);
 
-        $response->assertOk()
-            ->assertJson(['sessionId' => 'cs_test_123']);
+        Http::assertSent(function (Request $request): bool {
+            if (! str_ends_with($request->url(), '/api/v1/internal/checkout-sessions')) {
+                return false;
+            }
 
-        Http::assertSent(function ($request) {
             $body = $request->data();
 
-            return $request->url() === 'https://api.stripe.com/v1/checkout/sessions'
-                && $body['mode'] === 'payment'
-                && $body['line_items[0][price_data][unit_amount]'] === '5900'
-                && $body['line_items[0][price_data][product_data][name]'] === 'Founder 12M Creator Pass'
-                && $body['customer_email'] === 'founder@example.com'
-                && $body['metadata[email]'] === 'founder@example.com'
-                && filled($body['metadata[waitlist_entry_id]'] ?? null)
-                && filled($body['metadata[purchase_id]'] ?? null)
-                && $body['metadata[fiscal_code]'] === 'RSSMRA85T10A562S';
-        });
-
-        $this->assertDatabaseHas('purchases', [
-            'email' => 'founder@example.com',
-            'plan' => 'creator',
-            'status' => 'pending',
-            'stripe_session_id' => 'cs_test_123',
-        ]);
-
-        $this->assertDatabaseMissing('consent_events', [
-            'subject_email' => 'founder@example.com',
-            'consent_type' => 'purchase_legal',
-        ]);
-    }
-
-    public function test_stripe_checkout_reserves_the_last_founder_pass_before_payment(): void
-    {
-        config()->set('services.stripe.secret', 'sk_test_123');
-
-        DB::table('founder_settings')->updateOrInsert(
-            ['key' => 'join_capacity'],
-            ['value' => 1, 'created_at' => now(), 'updated_at' => now()]
-        );
-
-        DB::table('purchases')->insert([
-            'id' => DatabaseUuid::new(),
-            'email' => 'reserved@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'cs_reserved',
-            'status' => 'pending',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_should_not_be_created'], 200),
-        ]);
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'plan' => 'join',
-            'direct_checkout' => false,
-        ]);
-
-        $response->assertUnprocessable()
-            ->assertJson([
-                'error' => 'Founder Join 12M Pass è esaurito. Scegli un altro pass o resta in waitlist.',
-            ]);
-
-        Http::assertNothingSent();
-    }
-
-    public function test_expired_stripe_reservations_do_not_block_a_founder_pass(): void
-    {
-        config()->set('services.stripe.secret', 'sk_test_123');
-
-        DB::table('founder_settings')->updateOrInsert(
-            ['key' => 'join_capacity'],
-            ['value' => 1, 'created_at' => now(), 'updated_at' => now()]
-        );
-
-        DB::table('purchases')->insert([
-            'id' => DatabaseUuid::new(),
-            'email' => 'expired@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'cs_expired',
-            'status' => 'pending',
-            'created_at' => now()->subMinutes(16),
-            'updated_at' => now()->subMinutes(16),
-        ]);
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_new'], 200),
-        ]);
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'plan' => 'join',
-            'direct_checkout' => false,
-        ]);
-
-        $response->assertOk()
-            ->assertJson(['sessionId' => 'cs_new']);
-
-        $this->assertDatabaseHas('purchases', [
-            'email' => 'founder@example.com',
-            'plan' => 'join',
-            'status' => 'pending',
-            'stripe_session_id' => 'cs_new',
-        ]);
-
-        $this->assertDatabaseHas('purchases', [
-            'email' => 'expired@example.com',
-            'stripe_session_id' => 'cs_expired',
-            'status' => 'expired',
-        ]);
-    }
-
-    public function test_retrying_stripe_checkout_reuses_the_existing_pending_purchase(): void
-    {
-        config()->set('services.stripe.secret', 'sk_test_123');
-
-        $originalCreatedAt = now()->subMinutes(5)->startOfSecond();
-
-        $purchaseId = DatabaseUuid::insert('purchases', [
-            'email' => 'founder@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'cs_previous',
-            'status' => 'pending',
-            'created_at' => $originalCreatedAt,
-            'updated_at' => $originalCreatedAt,
-        ]);
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_retried'], 200),
-        ]);
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'plan' => 'join',
-            'direct_checkout' => false,
-        ]);
-
-        $response->assertOk()
-            ->assertJson(['sessionId' => 'cs_retried']);
-
-        $this->assertSame(1, DB::table('purchases')
-            ->where('email', 'founder@example.com')
-            ->where('plan', 'join')
-            ->count());
-
-        $this->assertDatabaseHas('purchases', [
-            'id' => $purchaseId,
-            'status' => 'pending',
-            'stripe_session_id' => 'cs_retried',
-            'created_at' => $originalCreatedAt,
-        ]);
-
-        $this->assertDatabaseMissing('consent_events', [
-            'purchase_id' => $purchaseId,
-            'consent_type' => 'purchase_legal',
-        ]);
-    }
-
-    public function test_direct_checkout_uses_the_waitlist_email(): void
-    {
-        Mail::fake();
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            ...$this->individualInvoicePayload(),
-            'plan' => 'join',
-            'direct_checkout' => true,
-        ]);
-
-        $response->assertOk()
-            ->assertJson([
-                'completed' => true,
-                'redirectUrl' => route('checkout.success'),
-            ]);
-
-        $this->assertDatabaseHas('purchases', [
-            'email' => 'founder@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'status' => 'succeeded',
-            'invoice_requested' => true,
-            'fiscal_code' => 'RSSMRA85T10A562S',
-            'billing_customer_type' => 'individual',
-            'billing_city' => 'Milano',
-        ]);
-
-        $this->assertDatabaseMissing('purchases', [
-            'email' => 'placeholder@example.com',
-        ]);
-
-        Mail::assertSent(PurchaseConfirmationMail::class, fn (PurchaseConfirmationMail $mail) => $mail->hasTo('founder@example.com') && $mail->purchase['plan_name'] === 'Founder Join 12M Pass'
-        );
-
-        $this->assertNotNull(DB::table('purchases')
-            ->where('email', 'founder@example.com')
-            ->value('confirmation_email_sent_at'));
-
-        $purchaseId = DB::table('purchases')->where('email', 'founder@example.com')->value('id');
-        $this->assertDatabaseHas('consent_events', [
-            'purchase_id' => $purchaseId,
-            'subject_email' => 'founder@example.com',
-            'consent_type' => 'purchase_legal',
-            'action' => 'granted',
-            'source' => 'direct_checkout',
-        ]);
-
-        $purchaseConsent = DB::table('consent_events')->where('purchase_id', $purchaseId)->first();
-        $this->assertArrayHasKey('purchase_acceptance', json_decode($purchaseConsent->document_versions, true));
-    }
-
-    public function test_client_cannot_enable_direct_checkout_when_test_shortcut_is_disabled(): void
-    {
-        config()->set('services.stripe.direct_checkout_enabled_for_tests', false);
-        config()->set('services.stripe.secret', 'sk_test_123');
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_secure_checkout'], 200),
-        ]);
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'secure@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'plan' => 'join',
-            'direct_checkout' => true,
-        ]);
-
-        $response->assertOk()->assertJson(['sessionId' => 'cs_secure_checkout']);
-        $this->assertDatabaseHas('purchases', [
-            'email' => 'secure@example.com',
-            'status' => 'pending',
-            'stripe_session_id' => 'cs_secure_checkout',
-        ]);
-        $this->assertDatabaseMissing('purchases', [
-            'email' => 'secure@example.com',
-            'status' => 'succeeded',
-        ]);
-    }
-
-    public function test_legal_entity_invoice_details_are_validated_and_saved(): void
-    {
-        Mail::fake();
-        $this->enableLegalEntityInvoices();
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'company@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'plan' => 'creator',
-            'direct_checkout' => true,
-            'invoice_requested' => true,
-            'billing_customer_type' => 'legal_entity',
-            'billing_address' => 'Via Impresa 10',
-            'billing_postal_code' => '00100',
-            'billing_city' => 'Roma',
-            'billing_province' => 'RM',
-            'billing_country' => 'IT',
-            'company_name' => 'Example S.r.l.',
-            'vat_number' => '14805930964',
-            'sdi_code' => 'ABC1234',
-            'pec' => 'example@pec.example.it',
-        ]);
-
-        $response->assertOk();
-        $this->assertDatabaseHas('purchases', [
-            'email' => 'company@example.com',
-            'billing_customer_type' => 'legal_entity',
-            'billing_address' => 'Via Impresa 10',
-            'company_name' => 'Example S.r.l.',
-            'vat_number' => '14805930964',
-            'sdi_code' => 'ABC1234',
-            'pec' => 'example@pec.example.it',
-            'fiscal_code' => null,
-            'electronic_invoice_status' => 'pending',
-        ]);
-    }
-
-    public function test_invalid_invoice_fields_stop_before_payment_email_and_database_writes(): void
-    {
-        Mail::fake();
-        Http::fake();
-        config()->set('services.stripe.secret', 'sk_test_must_not_be_used');
-        $this->enableLegalEntityInvoices();
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'invalid-company@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'plan' => 'creator',
-            'direct_checkout' => false,
-            'invoice_requested' => true,
-            'billing_customer_type' => 'legal_entity',
-            'billing_address' => 'Via Impresa 10',
-            'billing_postal_code' => '12',
-            'billing_city' => 'Roma',
-            'billing_province' => 'Roma',
-            'billing_country' => 'IT',
-            'company_name' => 'Example S.r.l.',
-            'vat_number' => '12345678901',
-            'sdi_code' => 'ABC',
-            'pec' => 'not-an-email',
-        ]);
-
-        $response->assertUnprocessable()
-            ->assertJsonValidationErrors([
-                'billing_postal_code',
-                'billing_province',
-                'vat_number',
-                'sdi_code',
-                'pec',
-            ]);
-
-        Http::assertNothingSent();
-        Mail::assertNothingSent();
-        $this->assertDatabaseMissing('purchases', ['email' => 'invalid-company@example.com']);
-    }
-
-    public function test_legal_entity_invoice_is_rejected_while_admin_option_is_disabled(): void
-    {
-        Mail::fake();
-        Http::fake();
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'disabled-company@example.com',
-        ])->postJson(route('subscribe.checkout'), [
-            ...$this->customerPayload(),
-            'plan' => 'creator',
-            'invoice_requested' => true,
-            'billing_customer_type' => 'legal_entity',
-            'billing_address' => 'Via Impresa 10',
-            'billing_postal_code' => '00100',
-            'billing_city' => 'Roma',
-            'billing_province' => 'RM',
-            'billing_country' => 'IT',
-            'company_name' => 'Example S.r.l.',
-            'vat_number' => '14805930964',
-            'sdi_code' => 'ABC1234',
-            'pec' => 'example@pec.example.it',
-        ]);
-
-        $response->assertUnprocessable()
-            ->assertJsonValidationErrors('billing_customer_type')
-            ->assertJsonPath(
-                'errors.billing_customer_type.0',
-                'La fatturazione per persona giuridica non è al momento disponibile.',
-            );
-
-        Http::assertNothingSent();
-        Mail::assertNothingSent();
-        $this->assertDatabaseMissing('purchases', ['email' => 'disabled-company@example.com']);
-    }
-
-    public function test_checkout_requires_waitlist_email_in_session(): void
-    {
-        $response = $this->withSession(['waitlist_offer_access' => true])
-            ->postJson(route('subscribe.checkout'), [
-                'plan' => 'join',
-            ]);
-
-        $response->assertForbidden()
-            ->assertJson([
-                'error' => 'Email waitlist non trovata. Reinserisci la tua email dalla home.',
-            ]);
-    }
-
-    public function test_checkout_rejects_unknown_plan(): void
-    {
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])
-            ->postJson(route('subscribe.checkout'), [
-                'plan' => 'enterprise',
-            ]);
-
-        $response->assertUnprocessable()
-            ->assertJson([
-                'error' => 'Seleziona un Founder Pass valido.',
-            ]);
-    }
-
-    public function test_direct_checkout_database_failure_returns_a_user_friendly_error(): void
-    {
-        if (DB::getDriverName() === 'mysql') {
-            $this->markTestSkipped('La simulazione elimina una tabella e MySQL esegue un commit DDL implicito; il caso è coperto dalla suite SQLite.');
-        }
-
-        Schema::withoutForeignKeyConstraints(fn () => Schema::dropIfExists('purchases'));
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])
-            ->postJson(route('subscribe.checkout'), [
-                ...$this->customerPayload(),
-                'plan' => 'join',
-                'direct_checkout' => true,
-            ]);
-
-        $response->assertStatus(500)
-            ->assertJson([
-                'error' => 'Non siamo riusciti a registrare il pagamento. Riprova tra qualche minuto.',
-            ]);
-    }
-
-    public function test_stripe_error_is_not_exposed_to_the_browser(): void
-    {
-        config()->set('services.stripe.secret', 'sk_test_123');
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response('secret stripe details', 500),
-        ]);
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])
-            ->postJson(route('subscribe.checkout'), [
-                ...$this->customerPayload(),
-                'plan' => 'join',
-                'direct_checkout' => false,
-            ]);
-
-        $response->assertStatus(502)
-            ->assertJson([
-                'error' => 'Checkout temporaneamente non disponibile. Riprova tra qualche minuto.',
-            ])
-            ->assertDontSee('secret stripe details');
-    }
-
-    public function test_stripe_response_without_session_id_is_rejected(): void
-    {
-        config()->set('services.stripe.secret', 'sk_test_123');
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['ok' => true], 200),
-        ]);
-
-        $response = $this->withSession([
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-        ])
-            ->postJson(route('subscribe.checkout'), [
-                ...$this->customerPayload(),
-                'plan' => 'join',
-                'direct_checkout' => false,
-            ]);
-
-        $response->assertStatus(502)
-            ->assertJson([
-                'error' => 'Checkout temporaneamente non disponibile. Riprova tra qualche minuto.',
-            ]);
-    }
-
-    public function test_successful_stripe_callback_confirms_the_reserved_purchase(): void
-    {
-        Mail::fake();
-        config()->set('services.stripe.secret', 'sk_test_123');
-
-        $purchaseId = DatabaseUuid::insert('purchases', [
-            'email' => 'founder@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'cs_test_paid',
-            'status' => 'pending',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions/cs_test_paid' => Http::response($this->paidStripeSession($purchaseId), 200),
-        ]);
-
-        $response = $this->get(route('checkout.success', ['session_id' => 'cs_test_paid']));
-
-        $response->assertOk()
-            ->assertSee('Documenti relativi all’acquisto')
-            ->assertSee('data-analytics-page-event="purchase"', false)
-            ->assertSee('"value":29', false)
-            ->assertSee('"currency":"EUR"', false)
-            ->assertSee('href="'.route('legal.passes').'" target="_blank"', false)
-            ->assertSee('href="'.route('legal.sales').'" target="_blank"', false)
-            ->assertSee('href="'.route('legal.presale').'" target="_blank"', false)
-            ->assertSee('href="'.route('legal.refunds').'#recedere" target="_blank"', false)
-            ->assertSee('Recedere dal contratto');
-
-        $this->assertDatabaseHas('purchases', [
-            'id' => $purchaseId,
-            'status' => 'succeeded',
-            'stripe_session_id' => 'cs_test_paid',
-            'fiscal_code' => 'RSSMRA85T10A562S',
-        ]);
-
-        $this->assertDatabaseHas('consent_events', [
-            'purchase_id' => $purchaseId,
-            'subject_email' => 'founder@example.com',
-            'consent_type' => 'purchase_legal',
-            'action' => 'granted',
-            'source' => 'stripe_payment_success',
-        ]);
-
-        Mail::assertSent(PurchaseConfirmationMail::class, 1);
-
-        $this->get(route('checkout.success', ['session_id' => 'cs_test_paid']))->assertOk();
-        Mail::assertSent(PurchaseConfirmationMail::class, 1);
-        $this->assertSame(1, DB::table('consent_events')
-            ->where('purchase_id', $purchaseId)
-            ->where('consent_type', 'purchase_legal')
-            ->count());
-    }
-
-    public function test_signed_stripe_webhook_confirms_payment_without_browser_redirect(): void
-    {
-        Mail::fake();
-        config()->set('services.stripe.secret', 'sk_test_123');
-        config()->set('services.stripe.webhook_secret', 'whsec_test_123');
-        config()->set('services.qonto.invoicing_enabled', false);
-
-        $purchaseId = DatabaseUuid::insert('purchases', [
-            'email' => 'webhook@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'cs_webhook_paid',
-            'status' => 'pending',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions/cs_webhook_paid' => Http::response(
-                $this->paidStripeSession($purchaseId, 'webhook@example.com'),
-                200,
-            ),
-        ]);
-
-        $payload = json_encode([
-            'id' => 'evt_checkout_completed',
-            'type' => 'checkout.session.completed',
-            'data' => ['object' => ['id' => 'cs_webhook_paid']],
-        ], JSON_THROW_ON_ERROR);
-        $timestamp = time();
-        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test_123');
-
-        $this->call(
-            'POST',
-            route('stripe.webhook'),
-            server: [
-                'CONTENT_TYPE' => 'application/json',
-                'HTTP_STRIPE_SIGNATURE' => 't='.$timestamp.',v1='.$signature,
-            ],
-            content: $payload,
-        )->assertOk()->assertJson(['received' => true]);
-
-        $this->assertDatabaseHas('purchases', [
-            'id' => $purchaseId,
-            'status' => 'succeeded',
-        ]);
-        Mail::assertSent(PurchaseConfirmationMail::class, 1);
-    }
-
-    public function test_stripe_webhook_rejects_an_invalid_signature_before_external_calls(): void
-    {
-        config()->set('services.stripe.webhook_secret', 'whsec_test_123');
-        Http::fake();
-
-        $payload = json_encode([
-            'type' => 'checkout.session.completed',
-            'data' => ['object' => ['id' => 'cs_forged']],
-        ], JSON_THROW_ON_ERROR);
-
-        $this->call(
-            'POST',
-            route('stripe.webhook'),
-            server: [
-                'CONTENT_TYPE' => 'application/json',
-                'HTTP_STRIPE_SIGNATURE' => 't='.time().',v1=invalid',
-            ],
-            content: $payload,
-        )->assertBadRequest();
-
-        Http::assertNothingSent();
-    }
-
-    public function test_stripe_webhook_requests_a_retry_when_stripe_lookup_temporarily_fails(): void
-    {
-        config()->set('services.stripe.secret', 'sk_test_123');
-        config()->set('services.stripe.webhook_secret', 'whsec_test_123');
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions/cs_retry' => Http::response([], 503),
-        ]);
-
-        $payload = json_encode([
-            'id' => 'evt_retry',
-            'type' => 'checkout.session.completed',
-            'data' => ['object' => ['id' => 'cs_retry']],
-        ], JSON_THROW_ON_ERROR);
-        $timestamp = time();
-        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test_123');
-
-        $this->call(
-            'POST',
-            route('stripe.webhook'),
-            server: [
-                'CONTENT_TYPE' => 'application/json',
-                'HTTP_STRIPE_SIGNATURE' => 't='.$timestamp.',v1='.$signature,
-            ],
-            content: $payload,
-        )->assertServerError()->assertJson(['received' => false]);
-    }
-
-    public function test_successful_stripe_callback_does_not_overbook_when_capacity_is_gone(): void
-    {
-        config()->set('services.stripe.secret', 'sk_test_123');
-
-        DB::table('founder_settings')->updateOrInsert(
-            ['key' => 'join_capacity'],
-            ['value' => 1, 'created_at' => now(), 'updated_at' => now()]
-        );
-
-        DB::table('purchases')->insert([
-            'id' => DatabaseUuid::new(),
-            'email' => 'winner@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'cs_winner',
-            'status' => 'succeeded',
-            'created_at' => now()->subMinute(),
-            'updated_at' => now()->subMinute(),
-        ]);
-
-        $purchaseId = DatabaseUuid::insert('purchases', [
-            'email' => 'late@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'cs_late',
-            'status' => 'pending',
-            'created_at' => now()->subMinutes(20),
-            'updated_at' => now()->subMinutes(20),
-        ]);
-
-        Http::fake([
-            'https://api.stripe.com/v1/checkout/sessions/cs_late' => Http::response($this->paidStripeSession($purchaseId, 'late@example.com'), 200),
-        ]);
-
-        $response = $this->get(route('checkout.success', ['session_id' => 'cs_late']));
-
-        $response->assertOk()
-            ->assertSee('Il pagamento richiede assistenza.')
-            ->assertDontSee('data-analytics-page-event="purchase"', false)
-            ->assertDontSee('Documenti relativi all’acquisto');
-
-        $this->assertDatabaseHas('purchases', [
-            'id' => $purchaseId,
-            'status' => 'overbooked',
-            'stripe_session_id' => 'cs_late',
-        ]);
-
-        $this->assertDatabaseMissing('consent_events', [
-            'purchase_id' => $purchaseId,
-            'consent_type' => 'purchase_legal',
-        ]);
-
-        $this->assertSame(1, DB::table('purchases')
-            ->where('plan', 'join')
-            ->where('status', 'succeeded')
-            ->count());
-    }
-
-    public function test_purchase_confirmation_email_can_be_requested_again(): void
-    {
-        Mail::fake();
-
-        DB::table('purchases')->insert([
-            'id' => DatabaseUuid::new(),
-            'email' => 'buyer@example.com',
-            'plan' => 'creator',
-            'amount' => 5900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'direct_test',
-            'status' => 'succeeded',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $response = $this->from(route('home'))
-            ->withSession(['waitlist_email' => 'buyer@example.com'])
-            ->post(route('purchase.confirmation.resend'));
-
-        $response->assertRedirect(route('home'))
-            ->assertSessionHas('purchase_confirmation_success', 'Ti abbiamo inviato nuovamente l’email di conferma acquisto.')
-            ->assertSessionHas('purchased_plan.name', 'Founder 12M Creator Pass');
-
-        Mail::assertSent(PurchaseConfirmationMail::class, function (PurchaseConfirmationMail $mail) {
-            return $mail->hasTo('buyer@example.com')
-                && $mail->purchase['plan_name'] === 'Founder 12M Creator Pass'
-                && $mail->purchase['amount'] === 5900
-                && $mail->purchase['attachment_kind'] === 'order_summary'
-                && str_starts_with($mail->pdfAttachment['data'], '%PDF-')
-                && str_starts_with($mail->pdfAttachment['filename'], 'riepilogo-ordine-');
+            return ($body['promo_package_code'] ?? null) === 'FOUNDER_CREATOR_12M_PASS'
+                && str_contains((string) ($body['success_url'] ?? ''), '/checkout/success/')
+                && filled($request->header('X-Wayout-Signature')[0] ?? null);
         });
     }
 
-    public function test_purchase_confirmation_resend_returns_visible_json_feedback(): void
+    public function test_checkout_creates_a_new_profile_with_gender_verified_phone_and_generated_nickname(): void
+    {
+        $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
+        $userId = '90c5cf65-226a-4808-91a7-d7b22930a1e4';
+        $profileRequest = null;
+
+        Http::fake(function (Request $request) use ($userId, &$profileRequest) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+
+            return match ($path) {
+                '/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
+                '/api/auth/verify-firebase-token' => Http::response(['data' => []], 200, ['X-Temp-Token' => 'temporary-profile-token']),
+                '/api/auth/create-profile' => (function () use ($request, &$profileRequest) {
+                    $profileRequest = $request;
+
+                    return Http::response(['data' => ['access_token' => 'new-user-token']]);
+                })(),
+                '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
+                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
+                '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_new', 'url' => 'https://checkout.stripe.test/new']]]),
+                default => Http::response([], 404),
+            };
+        });
+
+        $this->withSession($this->checkoutSession($entry))
+            ->postJson(route('subscribe.checkout'), $this->checkoutPayload('join'))
+            ->assertOk();
+
+        $this->assertNotNull($profileRequest);
+        $profile = $profileRequest->data();
+        $this->assertSame('FEMALE', $profile['gender']);
+        $this->assertSame('+393331234567', $profile['mobile_number']);
+        $this->assertNotEmpty($profile['nickname']);
+        $this->assertSame('temporary-profile-token', $profileRequest->header('X-Temp-Token')[0]);
+    }
+
+    public function test_backend_eligibility_rejection_prevents_checkout_session(): void
+    {
+        $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
+        $userId = '3f143fe2-c9e5-4698-809d-72c80c563e0c';
+
+        Http::fake(function (Request $request) use ($userId) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+
+            return match ($path) {
+                '/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
+                '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
+                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => false, 'reason' => 'ALREADY_ACTIVE', 'message' => 'Promo non disponibile.']]),
+                default => Http::response([], 404),
+            };
+        });
+
+        $this->withSession($this->checkoutSession($entry))
+            ->postJson(route('subscribe.checkout'), $this->checkoutPayload())
+            ->assertUnprocessable()
+            ->assertJson(['reason' => 'ALREADY_ACTIVE']);
+
+        Http::assertNotSent(fn (Request $request): bool => str_ends_with($request->url(), '/checkout-sessions'));
+        $this->assertDatabaseCount('purchases', 0);
+    }
+
+    public function test_signed_success_confirms_entitlement_and_sends_confirmation_email(): void
     {
         Mail::fake();
+        config()->set('services.qonto.enabled', false);
+        $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
+        $purchaseId = DatabaseUuid::new();
+        $userId = '0ea57493-fdcc-4093-965a-8a7774679116';
 
         DB::table('purchases')->insert([
-            'id' => DatabaseUuid::new(),
-            'email' => 'ajax-buyer@example.com',
+            'id' => $purchaseId,
+            'waitlist_entry_id' => $entry->id,
+            'wayout_user_id' => $userId,
+            'promo_package_code' => 'FOUNDER_JOIN_12M_PASS',
+            'email' => 'founder@example.com',
+            'first_name' => 'Matteo',
+            'last_name' => 'Sportelli',
+            'birth_date' => '1990-01-01',
             'plan' => 'join',
-            'amount' => 2900,
+            'amount' => 2990,
             'currency' => 'eur',
-            'stripe_session_id' => 'direct_ajax_feedback',
-            'status' => 'succeeded',
+            'order_reference' => 'WYO-TEST123',
+            'status' => 'pending',
+            'invoice_requested' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        $this->withSession(['waitlist_email' => 'ajax-buyer@example.com'])
-            ->postJson(route('purchase.confirmation.resend'))
-            ->assertOk()
-            ->assertJson([
-                'ok' => true,
-                'message' => 'Ti abbiamo inviato nuovamente l’email di conferma acquisto.',
-            ]);
-
-        Mail::assertSent(PurchaseConfirmationMail::class, 1);
-    }
-
-    public function test_repeated_purchase_confirmation_requests_are_blocked_during_cooldown(): void
-    {
-        Mail::fake();
-        config()->set('email.resend_cooldown_seconds', 300);
-        $this->travelTo(now()->startOfSecond());
-
-        DB::table('purchases')->insert([
-            'id' => DatabaseUuid::new(),
-            'email' => 'buyer@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'stripe_session_id' => 'direct_cooldown',
-            'status' => 'succeeded',
-            'created_at' => now(),
-            'updated_at' => now(),
+        Http::fake([
+            "https://staging-app.wayoutapp.test/api/v1/internal/users/{$userId}/subscription" => Http::response([
+                'data' => [
+                    'has_active_entitlement' => true,
+                    'subscription' => ['source' => 'STRIPE', 'stripe_subscription_id' => 'sub_123'],
+                ],
+            ]),
         ]);
 
-        $session = ['waitlist_email' => 'buyer@example.com'];
+        $this->get(URL::temporarySignedRoute(
+            'checkout.success', now()->addMinute(), ['purchase' => $purchaseId]
+        ))->assertOk();
 
-        $this->from(route('home'))
-            ->withSession($session)
-            ->post(route('purchase.confirmation.resend'))
-            ->assertSessionHas('purchase_confirmation_success');
-
-        $this->from(route('home'))
-            ->withSession($session)
-            ->post(route('purchase.confirmation.resend'))
-            ->assertSessionHas(
-                'purchase_confirmation_error',
-                'Email già inviata. Attendi 300 secondi prima di richiederne un’altra.',
-            );
-
-        Mail::assertSent(PurchaseConfirmationMail::class, 1);
-
-        $this->travel(301)->seconds();
-
-        $this->from(route('home'))
-            ->withSession($session)
-            ->post(route('purchase.confirmation.resend'))
-            ->assertSessionHas('purchase_confirmation_success');
-
-        Mail::assertSent(PurchaseConfirmationMail::class, 2);
-        $this->travelBack();
+        $this->assertDatabaseHas('purchases', [
+            'id' => $purchaseId,
+            'status' => 'succeeded',
+            'wayout_subscription_id' => 'sub_123',
+        ]);
+        Mail::assertSent(PurchaseConfirmationMail::class);
     }
 
-    public function test_purchase_confirmation_resend_requires_a_confirmed_purchase(): void
+    private function fakeCatalog(): void
     {
-        Mail::fake();
-
-        $response = $this->from(route('home'))
-            ->withSession(['waitlist_email' => 'buyer@example.com'])
-            ->post(route('purchase.confirmation.resend'));
-
-        $response->assertRedirect(route('home'))
-            ->assertSessionHas('purchase_confirmation_error', 'Non risulta ancora un acquisto confermato per questa email.');
-
-        Mail::assertNothingSent();
+        Http::fake([
+            'https://staging-app.wayoutapp.test/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
+        ]);
     }
 
-    public function test_purchase_confirmation_resend_database_failure_returns_a_user_friendly_error(): void
+    /** @return array{object, string} */
+    private function fakeExistingUserCheckout(): array
     {
-        Mail::fake();
+        $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
+        $userId = '32131864-6d52-4b97-919d-99d4f2abc845';
 
-        if (DB::getDriverName() === 'mysql') {
-            $this->markTestSkipped('La simulazione elimina una tabella e MySQL esegue un commit DDL implicito; il caso è coperto dalla suite SQLite.');
-        }
+        Http::fake(function (Request $request) use ($userId) {
+            return match (parse_url($request->url(), PHP_URL_PATH)) {
+                '/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
+                '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
+                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
+                '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_123', 'url' => 'https://checkout.stripe.test/session']]]),
+                default => Http::response([], 404),
+            };
+        });
 
-        Schema::withoutForeignKeyConstraints(fn () => Schema::dropIfExists('purchases'));
-
-        $response = $this->from(route('home'))
-            ->withSession(['waitlist_email' => 'buyer@example.com'])
-            ->post(route('purchase.confirmation.resend'));
-
-        $response->assertRedirect(route('home'))
-            ->assertSessionHas('purchase_confirmation_error', 'Non siamo riusciti a inviare nuovamente l’email. Riprova tra qualche minuto.');
-
-        Mail::assertNothingSent();
+        return [$entry, $userId];
     }
 
-    private function customerPayload(): array
+    private function checkoutSession(object $entry): array
     {
         return [
-            'first_name' => 'Ada',
-            'last_name' => 'Lovelace',
+            'waitlist_offer_access' => true,
+            'waitlist_email' => 'founder@example.com',
+            'waitlist_verified_entry_id' => $entry->id,
+        ];
+    }
+
+    private function checkoutPayload(string $plan = 'join'): array
+    {
+        return [
+            'plan' => $plan,
+            'firebase_token' => $this->firebaseToken('+393331234567'),
+            'first_name' => 'Matteo',
+            'last_name' => 'Sportelli',
             'birth_date' => '1990-01-01',
+            'gender' => 'FEMALE',
+            'invoice_requested' => false,
             'purchase_terms_accepted' => true,
         ];
     }
 
-    private function paidStripeSession(string $purchaseId, string $email = 'founder@example.com'): array
+    private function firebaseToken(string $phone): string
     {
-        return [
-            'payment_status' => 'paid',
-            'amount_total' => 2900,
-            'currency' => 'eur',
-            'customer_email' => $email,
-            'metadata' => [
-                'purchase_id' => (string) $purchaseId,
-                'email' => $email,
-                'first_name' => 'Ada',
-                'last_name' => 'Lovelace',
-                'birth_date' => '1990-01-01',
-                'plan' => 'join',
-                'invoice_requested' => 'true',
-                'fiscal_code' => 'rssmra85t10a562s',
-                'billing_customer_type' => 'individual',
-                'billing_address' => 'Via Roma 1',
-                'billing_postal_code' => '20100',
-                'billing_city' => 'Milano',
-                'billing_province' => 'MI',
-                'billing_country' => 'IT',
-                'company_name' => '',
-                'vat_number' => '',
-                'sdi_code' => '',
-                'pec' => '',
-            ],
-        ];
+        $payload = rtrim(strtr(base64_encode(json_encode(['phone_number' => $phone], JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+
+        return 'header.'.$payload.'.signature';
     }
 
-    private function individualInvoicePayload(): array
+    private function promoPackages(): array
     {
         return [
-            'invoice_requested' => true,
-            'billing_customer_type' => 'individual',
-            'billing_address' => 'Via Roma 1',
-            'billing_postal_code' => '20100',
-            'billing_city' => 'Milano',
-            'billing_province' => 'MI',
-            'billing_country' => 'IT',
-            'fiscal_code' => 'rssmra85t10a562s',
+            ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'free' => false],
+            ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'free' => false],
+            ['code' => 'WAITLIST_60D_PASS', 'name' => 'Waitlist', 'price' => '0.00', 'currency' => 'EUR', 'available' => null, 'free' => true],
         ];
-    }
-
-    private function enableLegalEntityInvoices(): void
-    {
-        DB::table('founder_settings')
-            ->where('key', CheckoutFeatures::LEGAL_ENTITY_INVOICE_KEY)
-            ->update(['value' => 1, 'updated_at' => now()]);
     }
 }

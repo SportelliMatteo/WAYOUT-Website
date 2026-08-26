@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\AdminAuthController;
 use App\Support\QontoInvoiceService;
+use App\Support\WayoutApiClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -64,5 +66,25 @@ class SecurityHardeningTest extends TestCase
         $this->assertFalse($method->invoke($service, 'http://files.qonto.com/invoice.pdf'));
         $this->assertFalse($method->invoke($service, 'https://127.0.0.1/internal'));
         $this->assertFalse($method->invoke($service, 'https://qonto.com@127.0.0.1/internal'));
+    }
+
+    public function test_wayout_internal_requests_are_signed_over_timestamp_and_exact_body(): void
+    {
+        Http::fake([
+            'https://staging-app.wayoutapp.test/api/v1/internal/test' => Http::response(['data' => ['ok' => true]]),
+        ]);
+
+        app(WayoutApiClient::class)->internalPost('/api/v1/internal/test', ['promo_package_code' => 'FOUNDER_JOIN_12M_PASS']);
+
+        Http::assertSent(function ($request): bool {
+            $timestamp = $request->header('X-Wayout-Timestamp')[0] ?? '';
+            $signature = $request->header('X-Wayout-Signature')[0] ?? '';
+
+            return $signature !== ''
+                && hash_equals(
+                    hash_hmac('sha256', $timestamp.'.'.$request->body(), str_repeat('s', 48)),
+                    $signature,
+                );
+        });
     }
 }

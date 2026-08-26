@@ -13,7 +13,7 @@ final class EnforceSiteVisibility
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->is('admin', 'admin/*') || $request->routeIs('stripe.webhook')) {
+        if ($request->is('admin', 'admin/*')) {
             return $next($request);
         }
 

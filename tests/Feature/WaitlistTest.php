@@ -6,6 +6,7 @@ use App\Mail\WaitlistVerificationMail;
 use App\Mail\WaitlistWelcomeMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -122,10 +123,29 @@ class WaitlistTest extends TestCase
 
         Mail::assertSent(WaitlistVerificationMail::class, 1);
 
+        $this->fakeFounderCatalog();
+
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('Sei già nella waitlist')
             ->assertSee('returning@example.com');
+    }
+
+    public function test_waitlist_offer_popup_shows_backend_founder_packages(): void
+    {
+        $this->fakeFounderCatalog();
+
+        $this->withSession([
+            'waitlist_offer' => true,
+            'waitlist_status' => 'registered',
+            'waitlist_email' => 'member@example.com',
+        ])->get(route('home'))
+            ->assertOk()
+            ->assertSee('29,90 €')
+            ->assertSee('59,90 €')
+            ->assertSee('37 posti disponibili')
+            ->assertSee('Disponibilità illimitata')
+            ->assertDontSee('WAITLIST_60D_PASS');
     }
 
     public function test_expired_magic_link_does_not_verify_email(): void
@@ -162,6 +182,17 @@ class WaitlistTest extends TestCase
 
         $this->assertSame(1, DB::table('waitlist_entries')->where('email', 'same@example.com')->count());
         Mail::assertSentCount(1);
+    }
+
+    private function fakeFounderCatalog(): void
+    {
+        Http::fake([
+            'https://staging-app.wayoutapp.test/api/v1/internal/promo-packages' => Http::response(['data' => [
+                ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'free' => false],
+                ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'free' => false],
+                ['code' => 'WAITLIST_60D_PASS', 'name' => 'Waitlist', 'price' => '0.00', 'currency' => 'EUR', 'available' => null, 'free' => true],
+            ]]),
+        ]);
     }
 
     public function test_honeypot_blocks_signup(): void

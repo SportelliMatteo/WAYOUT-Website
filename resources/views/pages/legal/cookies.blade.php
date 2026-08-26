@@ -113,7 +113,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="mt-3">Stripe.js e gli strumenti tecnici di pagamento vengono caricati soltanto quando l’utente accede effettivamente al checkout, non alla semplice apertura della pagina di pre-sale. Stripe Link non è abilitato. L’elenco effettivo degli identificativi Stripe viene verificato periodicamente mediante scansione tecnica e strumenti del browser.</p>
+        <p class="mt-3">Gli strumenti tecnici di Stripe vengono caricati nell’ambiente di checkout esterno gestito dal backend WAYOUT, non alla semplice apertura della pagina di pre-sale sul sito. L’elenco effettivo degli identificativi viene verificato periodicamente mediante scansione tecnica e strumenti del browser.</p>
     </section>
 
     <section>
@@ -195,7 +195,7 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">9. Trasferimenti verso Paesi non appartenenti allo SEE</h2>
-        <p class="mt-3">L’hosting principale del sito tramite SiteGround è configurato nell’Unione europea. Google, Meta, Stripe o alcuni loro fornitori e subfornitori possono tuttavia trattare o rendere accessibili dati anche al di fuori dello Spazio Economico Europeo. I trasferimenti avvengono, secondo i rispettivi ruoli, sulla base di decisioni di adeguatezza, Clausole Contrattuali Standard o altri meccanismi previsti dagli articoli 44 e seguenti del GDPR. Ulteriori dettagli sono disponibili nella <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> e nelle informative dei fornitori.</p>
+        <p class="mt-3">L’hosting principale del sito è configurato nell’Unione europea. Google, Meta, Stripe o alcuni loro fornitori e subfornitori possono tuttavia trattare o rendere accessibili dati anche al di fuori dello Spazio Economico Europeo. I trasferimenti avvengono, secondo i rispettivi ruoli, sulla base di decisioni di adeguatezza, Clausole Contrattuali Standard o altri meccanismi previsti dagli articoli 44 e seguenti del GDPR. Ulteriori dettagli sono disponibili nella <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> e nelle informative dei fornitori.</p>
     </section>
 
     <section>

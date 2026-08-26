@@ -12,7 +12,13 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-        config()->set('services.stripe.direct_checkout_enabled_for_tests', true);
+        config()->set('services.wayout.base_url', 'https://staging-app.wayoutapp.test');
+        config()->set('services.wayout.internal_secret', str_repeat('s', 48));
+        config()->set('services.wayout.catalog_cache_seconds', 1);
+        config()->set('services.firebase.project_id', 'wayout-test');
+        config()->set('services.firebase.api_key', 'firebase-test-key');
+        config()->set('services.firebase.auth_domain', 'wayout-test.firebaseapp.com');
+        config()->set('services.firebase.app_id', '1:123:web:test');
         config()->set('benefits.server_auth.key', 'test-benefit-key');
         config()->set('benefits.server_auth.secret', 'test-benefit-secret');
     }

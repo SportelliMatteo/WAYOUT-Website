@@ -71,6 +71,11 @@ body {
         linear-gradient(180deg, #fbfbff 0%, #ffffff 42%, #f6f3ff 100%);
 }
 
+body.site-unavailable-page {
+    background: #020617;
+    color: #f8fafc;
+}
+
 ::selection {
     background: #7c23f5;
     color: white;

@@ -9,6 +9,18 @@
     $waitlistFull = $founderAvailability['waitlist']['is_full'] ?? false;
     $joinFull = $founderAvailability['join']['is_full'] ?? false;
     $creatorFull = $founderAvailability['creator']['is_full'] ?? false;
+    $joinOfferPackage = $founderPackages['join'] ?? null;
+    $creatorOfferPackage = $founderPackages['creator'] ?? null;
+    $founderOfferCatalogError = $founderCatalogError ?? null;
+    $offerPrice = fn (?array $package) => $package ? number_format((float) $package['price'], 2, ',', '.').' €' : '—';
+    $offerAvailability = function (?array $package) {
+        if (!$package || ($package['available'] ?? null) === 0) return __('messages.home.sold_out');
+        if (($package['available'] ?? null) === null) return __('messages.home.unlimited_availability');
+        return __('messages.home.spots_available', ['count' => number_format((int) $package['available'], 0, ',', '.')]);
+    };
+    $joinOfferFull = !$joinOfferPackage || ($joinOfferPackage['available'] ?? null) === 0;
+    $creatorOfferFull = !$creatorOfferPackage || ($creatorOfferPackage['available'] ?? null) === 0;
+    $founderOfferUnavailable = $joinOfferFull && $creatorOfferFull;
 @endphp
 <section class="relative overflow-x-clip">
     <div class="wayout-shell grid items-center gap-8 py-8 sm:py-10 lg:min-h-[calc(100vh-6rem)] lg:grid-cols-[1.02fr_0.98fr] lg:gap-12 lg:py-16">
@@ -298,26 +310,29 @@
                         <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">
                             {{ __('messages.home.founder_presale_subtitle') }}
                         </p>
+                        @if($founderOfferCatalogError)
+                            <p class="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-black text-amber-800">{{ $founderOfferCatalogError }}</p>
+                        @endif
                         <div class="mt-5 grid gap-3 md:grid-cols-2">
-                            <div class="rounded-3xl bg-slate-100 p-4 sm:p-5">
+                            <div class="rounded-3xl bg-slate-100 p-4 sm:p-5 {{ !$joinOfferPackage || ($joinOfferPackage['available'] ?? null) === 0 ? 'opacity-60' : '' }}">
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <p class="font-black">{{ __('messages.home.join_pass') }}</p>
                                         <p class="mt-1 text-sm font-semibold text-slate-500">{{ __('messages.home.join_pass_text') }}</p>
                                     </div>
-                                    <span class="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-slate-950">29€</span>
+                                    <span class="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-slate-950">{{ $offerPrice($joinOfferPackage) }}</span>
                                 </div>
-                                <p class="mt-3 text-sm font-bold text-violet-700">{{ $joinFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('join_capacity')]) }}</p>
+                                <p class="mt-3 text-sm font-bold text-violet-700">{{ $offerAvailability($joinOfferPackage) }}</p>
                             </div>
-                            <div class="rounded-3xl bg-slate-950 p-4 text-white sm:p-5">
+                            <div class="rounded-3xl bg-slate-950 p-4 text-white sm:p-5 {{ !$creatorOfferPackage || ($creatorOfferPackage['available'] ?? null) === 0 ? 'opacity-60' : '' }}">
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <p class="font-black">{{ __('messages.home.creator_pass') }}</p>
                                         <p class="mt-1 text-sm font-semibold text-slate-300">{{ __('messages.home.creator_pass_text') }}</p>
                                     </div>
-                                    <span class="shrink-0 rounded-full wayout-lime px-3 py-1 text-sm font-black text-slate-950">59€</span>
+                                    <span class="shrink-0 rounded-full wayout-lime px-3 py-1 text-sm font-black text-slate-950">{{ $offerPrice($creatorOfferPackage) }}</span>
                                 </div>
-                                <p class="mt-3 text-sm font-bold text-violet-200">{{ $creatorFull ? __('messages.home.sold_out') : __('messages.home.spots_available', ['count' => $capacity('creator_capacity')]) }}</p>
+                                <p class="mt-3 text-sm font-bold text-violet-200">{{ $offerAvailability($creatorOfferPackage) }}</p>
                             </div>
                         </div>
                         <p class="mt-3 text-xs font-semibold leading-5 text-slate-500">
@@ -346,7 +361,7 @@
                         @csrf
                         <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
                         <input type="hidden" name="waitlist_status" value="{{ session('waitlist_status') }}" />
-                        <button id="block-discount" type="submit" class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 sm:text-lg">{{ __('messages.home.discover_passes') }}</button>
+                        <button id="block-discount" type="submit" @disabled($founderOfferUnavailable) class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:text-lg">{{ $founderOfferCatalogError ? __('messages.home.catalog_unavailable_short') : ($founderOfferUnavailable ? __('messages.subscribe.passes_sold_out') : __('messages.home.discover_passes')) }}</button>
                     </form>
                     <button id="keep-waitlist" type="button" class="w-full rounded-full border border-white/15 px-5 py-4 text-base font-black text-white sm:text-lg">{{ __('messages.home.stay_waitlist') }}</button>
                 @endif

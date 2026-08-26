@@ -1,6 +1,6 @@
 # Audit sicurezza e checklist di produzione WAYOUT
 
-Audit tecnico eseguito il 25/08/2026 sul progetto Laravel, includendo rotte web/API, autenticazione amministrativa, waitlist, consensi, Stripe, Qonto, email Brevo, recupero benefici, dipendenze, build e configurazione Aruba.
+Audit tecnico eseguito sul progetto Laravel, includendo rotte web/API, autenticazione amministrativa, waitlist, consensi, collegamento firmato al backend WAYOUT, Firebase Phone Authentication, Qonto, email Brevo, recupero benefici, dipendenze, build e configurazione Aruba.
 
 ## Correzioni applicate
 
@@ -19,7 +19,7 @@ Audit tecnico eseguito il 25/08/2026 sul progetto Laravel, includendo rotte web/
 
 ## Ambienti
 
-`.env` è l'ambiente locale e non viene versionato. In locale mantenere email su `log`, Qonto e analytics disattivati, CSP/HSTS disattivati e chiavi Stripe test.
+`.env` è l'ambiente locale e non viene versionato. In locale mantenere email su `log`, Qonto e analytics disattivati e CSP/HSTS disattivati. Usare un backend WAYOUT di staging e credenziali Firebase di test; non copiare chiavi Stripe nel sito Laravel.
 
 `.env.production` è il file locale riservato da copiare manualmente sul server come `_wayout/.env`. Compilare tutti i campi vuoti e non inserirlo mai nel pacchetto, nella root pubblica o in Git.
 
@@ -31,7 +31,7 @@ Audit tecnico eseguito il 25/08/2026 sul progetto Laravel, includendo rotte web/
 4. Creare credenziali MySQL dedicate, salvare una copia del DB prima di ogni migrazione e provare almeno un ripristino.
 5. Forzare HTTPS dal pannello Aruba e verificarlo prima di lasciare HSTS attivo.
 6. Configurare Brevo e verificare SPF, DKIM e DMARC.
-7. Configurare Stripe live e il webhook live `POST /stripe/webhook`; non riusare il secret della Stripe CLI.
+7. Configurare `WAYOUT_BASE_URL`, un `WAYOUT_INTERNAL_SECRET` casuale di almeno 32 caratteri identico a `INTERNAL_API_SECRET` sul backend, e le variabili client Firebase. Nel backend includere `www.wayoutapp.it` in `CHECKOUT_ALLOWED_HOSTS`; in Firebase autorizzare lo stesso dominio e attivare Phone Authentication. Stripe e i relativi webhook devono essere configurati soltanto sul backend dell’app.
 8. Generare chiavi benefici indipendenti e casuali; condividerle solo con il backend dell'app.
 9. Creare l'admin iniziale con password hashata, completare TOTP e poi rimuovere le credenziali bootstrap dal file `.env`.
 10. Lasciare Qonto disattivato finché credenziali, IBAN, aliquota e flusso reale non sono stati verificati.
@@ -56,7 +56,7 @@ Non eseguire `npm run dev`, `php artisan serve`, Pail o Tinker in produzione.
 
 ## Verifiche post-deploy
 
-- Provare home, iscrizione, verifica email, acquisto controllato, webhook Stripe e admin.
+- Provare home, iscrizione, verifica email, OTP telefonico, acquisto controllato, conferma entitlement dal backend e admin.
 - Verificare cookie `Secure`, `HttpOnly`, `SameSite=Lax` e assenza di violazioni CSP.
 - Verificare che `/.env`, `/_wayout/`, `/storage/`, `/vendor/` e `/database/` restituiscano 403/404.
 - Controllare che `public/hot` e `fonts-manifest.dev.json` non esistano sul server.

@@ -47,7 +47,7 @@ La Sandbox permette di verificare creazione cliente, creazione fattura e marcatu
 ## Modalità produzione
 
 1. Verifica nell’app Qonto che la numerazione automatica delle fatture sia attiva; in caso contrario l’API richiede un numero esplicito.
-2. Verifica IBAN e aliquota IVA con il commercialista. Il prezzo Stripe è trattato come importo lordo e l’imponibile viene ricavato usando `QONTO_INVOICE_VAT_RATE`.
+2. Verifica IBAN e aliquota IVA con il commercialista. Il prezzo restituito dal catalogo WAYOUT è trattato come importo lordo e l’imponibile viene ricavato usando `QONTO_INVOICE_VAT_RATE`.
 3. Sostituisci le credenziali Sandbox con quelle dell’organizzazione Qonto di produzione.
 4. Imposta:
 
