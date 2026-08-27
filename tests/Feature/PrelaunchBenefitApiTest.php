@@ -2,11 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Mail\BenefitEmailCodeMail;
 use App\Support\DatabaseUuid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class PrelaunchBenefitApiTest extends TestCase
@@ -15,94 +13,137 @@ class PrelaunchBenefitApiTest extends TestCase
 
     public function test_unsigned_request_is_rejected(): void
     {
-        $this->postJson('/api/v1/prelaunch/benefits/claim', [
-            'benefit_id' => DatabaseUuid::new(),
-            'account_reference' => 'app-user-1',
-            'idempotency_key' => 'claim-request-1',
-        ])->assertUnauthorized()->assertJsonPath('code', 'INVALID_SERVER_SIGNATURE');
+        $this->getJson('/api/v1/prelaunch/benefits')
+            ->assertUnauthorized()
+            ->assertJsonPath('code', 'INVALID_SERVER_SIGNATURE');
     }
 
-    public function test_backend_can_claim_founder_benefit_idempotently(): void
+    public function test_api_returns_only_verified_waitlist_users_without_successful_founder_purchase(): void
     {
-        $entry = $this->createVerifiedWaitlistEntry();
+        $eligible = $this->createVerifiedWaitlistEntry('eligible@example.com', 2);
+        $buyer = $this->createVerifiedWaitlistEntry('buyer@example.com', 1);
+        $pendingPurchase = $this->createVerifiedWaitlistEntry('pending-order@example.com', 3);
+        $this->createUnverifiedWaitlistEntry('unverified@example.com');
+        $this->createPurchase($buyer, 'succeeded');
+        $this->createPurchase($pendingPurchase, 'pending');
+
+        $response = $this->signedGet('/api/v1/prelaunch/benefits');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('data.0.benefit_id', $eligible->benefit_id)
+            ->assertJsonPath('data.0.email', 'eligible@example.com')
+            ->assertJsonPath('data.0.waitlist_position', 2)
+            ->assertJsonPath('data.0.benefit_type', 'waitlist')
+            ->assertJsonPath('data.0.duration_days', 60)
+            ->assertJsonPath('data.1.email', 'pending-order@example.com')
+            ->assertJsonMissing(['email' => 'buyer@example.com'])
+            ->assertJsonMissing(['email' => 'unverified@example.com']);
+    }
+
+    public function test_results_are_paginated_in_waitlist_order(): void
+    {
+        $this->createVerifiedWaitlistEntry('third@example.com', 3);
+        $this->createVerifiedWaitlistEntry('first@example.com', 1);
+        $this->createVerifiedWaitlistEntry('second@example.com', 2);
+
+        $response = $this->signedGet('/api/v1/prelaunch/benefits?page=2&per_page=1');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.email', 'second@example.com')
+            ->assertJsonPath('meta.page', 2)
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.total', 3)
+            ->assertJsonPath('meta.last_page', 3);
+    }
+
+    public function test_backend_can_check_eligibility_by_email(): void
+    {
+        $entry = $this->createVerifiedWaitlistEntry('eligible@example.com', 12);
+
+        $this->signedPost('/api/v1/prelaunch/benefits/eligibility', [
+            'email' => ' Eligible@Example.com ',
+        ])->assertOk()
+            ->assertJsonPath('data.eligible', true)
+            ->assertJsonPath('data.benefit.benefit_id', $entry->benefit_id)
+            ->assertJsonPath('data.benefit.email', 'eligible@example.com')
+            ->assertJsonPath('data.benefit.waitlist_position', 12)
+            ->assertJsonPath('data.benefit.benefit_type', 'waitlist')
+            ->assertJsonPath('data.benefit.duration_days', 60);
+    }
+
+    public function test_email_lookup_is_negative_for_unknown_unverified_or_founder_buyer(): void
+    {
+        $buyer = $this->createVerifiedWaitlistEntry('buyer@example.com', 1);
+        $this->createPurchase($buyer, 'succeeded');
+        $this->createUnverifiedWaitlistEntry('unverified@example.com');
+
+        foreach (['unknown@example.com', 'unverified@example.com', 'buyer@example.com'] as $email) {
+            $this->signedPost('/api/v1/prelaunch/benefits/eligibility', [
+                'email' => $email,
+            ])->assertOk()
+                ->assertJsonPath('data.eligible', false)
+                ->assertJsonPath('data.benefit', null);
+        }
+    }
+
+    public function test_nonce_cannot_be_replayed(): void
+    {
+        $nonce = 'nonce-replay-1234567890';
+
+        $this->signedGet('/api/v1/prelaunch/benefits', $nonce)->assertOk();
+        $this->signedGet('/api/v1/prelaunch/benefits', $nonce)
+            ->assertConflict()
+            ->assertJsonPath('code', 'REPLAY_DETECTED');
+    }
+
+    private function createUnverifiedWaitlistEntry(string $email): void
+    {
+        DB::table('waitlist_entries')->insert([
+            'id' => DatabaseUuid::new(),
+            'benefit_id' => null,
+            'email' => $email,
+            'waitlist_position' => null,
+            'email_verified_at' => null,
+            'marketing_consent' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function createPurchase(object $entry, string $status): void
+    {
         DB::table('purchases')->insert([
             'id' => DatabaseUuid::new(),
             'waitlist_entry_id' => $entry->id,
             'email' => $entry->email,
-            'plan' => 'creator',
-            'amount' => 5900,
+            'plan' => 'join',
+            'amount' => 2900,
             'currency' => 'eur',
-            'status' => 'succeeded',
+            'status' => $status,
             'invoice_requested' => false,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $payload = [
-            'benefit_id' => $entry->benefit_id,
-            'account_reference' => 'app-user-1',
-            'idempotency_key' => 'claim-request-1',
-        ];
-
-        $response = $this->signedJson('/api/v1/prelaunch/benefits/claim', $payload);
-        $response->assertOk()
-            ->assertJsonPath('data.benefit_type', 'founder_creator')
-            ->assertJsonPath('data.waitlist_position', 1);
-
-        $this->assertDatabaseHas('benefit_claims', [
-            'waitlist_entry_id' => $entry->id,
-            'account_reference' => 'app-user-1',
-            'benefit_type' => 'founder_creator',
-        ]);
-        $this->signedJson('/api/v1/prelaunch/benefits/claim', $payload)->assertOk();
-        $this->assertSame(1, DB::table('benefit_claims')->count());
     }
 
-    public function test_claim_cannot_be_moved_to_another_account(): void
+    private function signedGet(string $path, ?string $nonce = null)
     {
-        $entry = $this->createVerifiedWaitlistEntry();
-        $this->signedJson('/api/v1/prelaunch/benefits/claim', [
-            'benefit_id' => $entry->benefit_id,
-            'account_reference' => 'app-user-1',
-            'idempotency_key' => 'claim-request-1',
-        ])->assertOk();
+        $signedPath = parse_url($path, PHP_URL_PATH);
+        $headers = $this->benefitApiHeaders('GET', $signedPath, '', $nonce);
+        $server = [];
 
-        $this->signedJson('/api/v1/prelaunch/benefits/claim', [
-            'benefit_id' => $entry->benefit_id,
-            'account_reference' => 'app-user-2',
-            'idempotency_key' => 'claim-request-2',
-        ])->assertConflict()->assertJsonPath('code', 'BENEFIT_ALREADY_CLAIMED');
+        foreach ($headers as $name => $value) {
+            $server[$name === 'Content-Type'
+                ? 'CONTENT_TYPE'
+                : 'HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
+        }
+
+        return $this->call('GET', $path, [], [], [], $server, '');
     }
 
-    public function test_email_challenge_is_neutral_and_valid_code_claims_benefit(): void
-    {
-        Mail::fake();
-        $entry = $this->createVerifiedWaitlistEntry('recover@example.com');
-        $challengeResponse = $this->signedJson('/api/v1/prelaunch/benefits/email-challenges', [
-            'email' => 'recover@example.com',
-        ]);
-        $challengeResponse->assertStatus(202);
-        $challengeId = $challengeResponse->json('data.challenge_id');
-        $mail = Mail::sent(BenefitEmailCodeMail::class)->first();
-
-        $this->signedJson('/api/v1/prelaunch/benefits/email-challenges/verify', [
-            'challenge_id' => $challengeId,
-            'code' => $mail->code,
-            'account_reference' => 'app-user-recovery',
-            'idempotency_key' => 'recovery-request-1',
-        ])->assertOk()->assertJsonPath('data.benefit_id', $entry->benefit_id);
-    }
-
-    public function test_unknown_email_returns_same_challenge_shape_without_sending_mail(): void
-    {
-        Mail::fake();
-        $this->signedJson('/api/v1/prelaunch/benefits/email-challenges', [
-            'email' => 'unknown@example.com',
-        ])->assertStatus(202)
-            ->assertJsonStructure(['success', 'data' => ['challenge_id', 'expires_in_seconds']]);
-        Mail::assertNothingSent();
-    }
-
-    private function signedJson(string $path, array $payload)
+    private function signedPost(string $path, array $payload)
     {
         $body = json_encode($payload, JSON_THROW_ON_ERROR);
         $headers = $this->benefitApiHeaders('POST', $path, $body);

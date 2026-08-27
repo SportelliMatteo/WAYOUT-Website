@@ -255,6 +255,25 @@ class AdminDashboardTest extends TestCase
             ->assertDontSee('lead@example.com');
     }
 
+    public function test_admin_dashboard_can_filter_users_eligible_for_free_waitlist_benefit(): void
+    {
+        $this->seedDashboardData();
+
+        $response = $this->withSession($this->adminSession())
+            ->get(route('admin.dashboard', [
+                'tab' => 'users',
+                'status' => 'benefit_eligible',
+            ]));
+
+        $response->assertOk()
+            ->assertSee('eligible@example.com')
+            ->assertSee('60 giorni');
+        $this->assertSame(
+            ['eligible@example.com'],
+            $response->viewData('waitlistEntries')->pluck('email')->all()
+        );
+    }
+
     public function test_admin_dashboard_displays_and_searches_prelaunch_identifiers(): void
     {
         $this->seedDashboardData();
@@ -344,6 +363,16 @@ class AdminDashboardTest extends TestCase
                 'marketing_consent' => true,
                 'created_at' => now()->subDays(2),
                 'updated_at' => now()->subDays(2),
+            ],
+            [
+                'id' => DatabaseUuid::new(),
+                'benefit_id' => DatabaseUuid::new(),
+                'email' => 'eligible@example.com',
+                'waitlist_position' => 2,
+                'email_verified_at' => now()->subHours(12),
+                'marketing_consent' => false,
+                'created_at' => now()->subDay(),
+                'updated_at' => now()->subDay(),
             ],
             [
                 'id' => DatabaseUuid::new(),

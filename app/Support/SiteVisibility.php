@@ -27,7 +27,7 @@ final class SiteVisibility
     {
         try {
             if (! Schema::hasTable('founder_settings')) {
-                return self::ONLINE;
+                return $this->fallbackMode();
             }
 
             $value = (int) DB::table('founder_settings')
@@ -36,7 +36,7 @@ final class SiteVisibility
 
             return array_search($value, self::VALUES, true) ?: self::ONLINE;
         } catch (Throwable) {
-            return self::ONLINE;
+            return $this->fallbackMode();
         }
     }
 
@@ -49,5 +49,10 @@ final class SiteVisibility
     public function modes(): array
     {
         return array_keys(self::VALUES);
+    }
+
+    private function fallbackMode(): string
+    {
+        return app()->environment('production') ? self::MAINTENANCE : self::ONLINE;
     }
 }

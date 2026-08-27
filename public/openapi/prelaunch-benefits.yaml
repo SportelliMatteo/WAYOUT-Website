@@ -1,14 +1,15 @@
 openapi: 3.0.3
 info:
-  title: WAYOUT Pre-launch Benefits API
-  version: 1.0.0
+  title: WAYOUT Waitlist Benefits API
+  version: 2.1.0
   description: |
-    API server-to-server esposta dal sito Laravel per riscattare Waitlist e Founder Pass.
-    Non deve essere chiamata direttamente dall'app mobile. Tutte le richieste sono firmate HMAC.
+    API server-to-server di sola lettura che restituisce gli iscritti idonei al benefit
+    di 60 giorni gratuiti. Sono inclusi soltanto gli indirizzi verificati in waitlist
+    che non hanno un acquisto Founder riuscito.
 
-    Stringa canonica, separata da newline:
+    Tutte le richieste sono firmate HMAC. La stringa canonica, separata da newline, è:
     `timestamp`, `nonce`, `METHOD`, `/api/path`, `sha256(raw_body)`.
-    La firma è `hex(hmac_sha256(canonical_string, secret))`.
+    Per questa GET il body è vuoto e i parametri query non fanno parte del path firmato.
 servers:
   - url: /api/v1/prelaunch
 security:
@@ -17,43 +18,35 @@ security:
     WayoutNonce: []
     WayoutSignature: []
 paths:
-  /benefits/claim:
-    post:
-      summary: Riscatta un vantaggio tramite benefit_id
-      description: Percorso A, dopo la verifica telefonica effettuata dall'app.
-      operationId: claimBenefit
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ClaimRequest'
+  /benefits:
+    get:
+      summary: Elenca gli utenti idonei al benefit waitlist
+      operationId: listWaitlistBenefits
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: per_page
+          in: query
+          description: Numero di risultati per pagina; il massimo predefinito è 200.
+          schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
       responses:
         '200':
-          description: Vantaggio assegnato o richiesta idempotente.
+          description: Elenco paginato degli utenti idonei.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BenefitResponse'
+                $ref: '#/components/schemas/WaitlistBenefitListResponse'
         '401': { $ref: '#/components/responses/Unauthorized' }
-        '404':
-          description: benefit_id inesistente o email pre-lancio non verificata.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '409':
-          description: Vantaggio già collegato a un altro account.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+        '409': { $ref: '#/components/responses/ReplayDetected' }
         '422': { $ref: '#/components/responses/ValidationError' }
-  /benefits/email-challenges:
+  /benefits/eligibility:
     post:
-      summary: Invia un OTP all'email pre-lancio
+      summary: Verifica l'idoneità tramite email
       description: |
-        Primo passaggio del Percorso B. La risposta è neutra anche quando l'indirizzo non esiste,
-        per impedire l'enumerazione degli iscritti.
-      operationId: createBenefitEmailChallenge
+        Endpoint usato dal backend dell'app dopo che l'utente inserisce l'email nel popup.
+        Una risposta positiva indica che il benefit waitlist può essere attivato.
+      operationId: checkWaitlistBenefitEligibility
       requestBody:
         required: true
         content:
@@ -62,57 +55,17 @@ paths:
               type: object
               required: [email]
               properties:
-                email: { type: string, format: email, example: mario@example.com }
+                email: { type: string, format: email, maxLength: 255, example: mario@example.com }
       responses:
-        '202':
-          description: Richiesta accettata.
+        '200':
+          description: Esito della verifica. `benefit` è nullo quando l'utente non è idoneo.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success: { type: boolean, example: true }
-                  data:
-                    type: object
-                    properties:
-                      challenge_id: { type: string, format: uuid }
-                      expires_in_seconds: { type: integer, example: 600 }
+                $ref: '#/components/schemas/WaitlistBenefitEligibilityResponse'
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/ReplayDetected' }
         '422': { $ref: '#/components/responses/ValidationError' }
-  /benefits/email-challenges/verify:
-    post:
-      summary: Verifica l'OTP email e riscatta il vantaggio
-      description: Secondo passaggio del Percorso B.
-      operationId: verifyBenefitEmailChallenge
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [challenge_id, code, account_reference, idempotency_key]
-              properties:
-                challenge_id: { type: string, format: uuid }
-                code: { type: string, pattern: '^[0-9]{6}$', example: '123456' }
-                account_reference: { type: string, maxLength: 255, example: user_01HXYZ }
-                idempotency_key: { type: string, minLength: 8, maxLength: 255, example: recovery-user_01HXYZ-1 }
-      responses:
-        '200':
-          description: Email verificata e vantaggio assegnato.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/BenefitResponse' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409':
-          description: Vantaggio già collegato a un altro account.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
-        '422':
-          description: Payload non valido oppure codice errato, scaduto o bloccato.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
 components:
   securitySchemes:
     WayoutKey:
@@ -132,33 +85,52 @@ components:
       in: header
       name: X-Wayout-Signature
   schemas:
-    ClaimRequest:
+    WaitlistBenefit:
       type: object
-      required: [benefit_id, account_reference, idempotency_key]
+      required: [benefit_id, email, waitlist_position, benefit_type, duration_days, email_verified_at]
       properties:
         benefit_id: { type: string, format: uuid }
-        account_reference: { type: string, maxLength: 255, example: user_01HXYZ }
-        idempotency_key: { type: string, minLength: 8, maxLength: 255, example: claim-user_01HXYZ-1 }
-    Benefit:
-      type: object
-      required: [benefit_id, waitlist_position, benefit_type, claimed_at]
-      properties:
-        benefit_id: { type: string, format: uuid }
+        email: { type: string, format: email, example: mario@example.com }
         waitlist_position: { type: integer, minimum: 1, example: 184 }
-        benefit_type:
-          type: string
-          enum: [waitlist, founder_join, founder_creator]
-        claimed_at: { type: string, format: date-time }
-    BenefitResponse:
+        benefit_type: { type: string, enum: [waitlist] }
+        duration_days: { type: integer, enum: [60] }
+        email_verified_at: { type: string, format: date-time }
+    PaginationMeta:
       type: object
+      required: [page, per_page, total, last_page]
       properties:
-        success: { type: boolean, example: true }
-        data: { $ref: '#/components/schemas/Benefit' }
+        page: { type: integer, minimum: 1 }
+        per_page: { type: integer, minimum: 1 }
+        total: { type: integer, minimum: 0 }
+        last_page: { type: integer, minimum: 1 }
+    WaitlistBenefitListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WaitlistBenefit' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+    WaitlistBenefitEligibilityResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [eligible, benefit]
+          properties:
+            eligible: { type: boolean }
+            benefit:
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/WaitlistBenefit'
     Error:
       type: object
       properties:
-        success: { type: boolean, example: false }
-        code: { type: string, example: BENEFIT_NOT_FOUND }
+        success: { type: boolean, enum: [false] }
+        code: { type: string }
         message: { type: string }
   responses:
     Unauthorized:
@@ -166,8 +138,13 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    ReplayDetected:
+      description: Nonce già utilizzato.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     ValidationError:
-      description: Payload non valido.
+      description: Parametri o payload non validi.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

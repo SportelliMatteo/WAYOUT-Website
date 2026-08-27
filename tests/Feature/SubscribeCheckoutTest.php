@@ -133,7 +133,7 @@ class SubscribeCheckoutTest extends TestCase
         $profile = $profileRequest->data();
         $this->assertSame('FEMALE', $profile['gender']);
         $this->assertSame('+393331234567', $profile['mobile_number']);
-        $this->assertNotEmpty($profile['nickname']);
+        $this->assertMatchesRegularExpression('/^@matteo_sportelli_[a-z0-9]{4}$/', $profile['nickname']);
         $this->assertSame('temporary-profile-token', $profileRequest->header('X-Temp-Token')[0]);
     }
 

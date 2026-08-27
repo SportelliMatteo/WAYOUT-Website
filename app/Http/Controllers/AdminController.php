@@ -8,7 +8,9 @@ use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use App\Support\LegalDocumentService;
 use App\Support\QontoInvoiceService;
+use App\Support\SitePreviewAccess;
 use App\Support\SiteVisibility;
+use App\Support\WaitlistBenefitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -21,6 +23,8 @@ class AdminController extends Controller
         LegalDocumentService $legalDocuments,
         SiteVisibility $siteVisibility,
         CheckoutFeatures $checkoutFeatures,
+        WaitlistBenefitService $waitlistBenefits,
+        SitePreviewAccess $sitePreview,
     ) {
         if (! $this->isAuthenticated($request)) {
             return redirect()->route('admin.login');
@@ -45,7 +49,7 @@ class AdminController extends Controller
         $stats = [
             'waitlist_total' => DB::table('waitlist_entries')->whereNotNull('email_verified_at')->count(),
             'waitlist_pending' => DB::table('waitlist_entries')->whereNull('email_verified_at')->count(),
-            'benefits_claimed' => DB::table('benefit_claims')->count(),
+            'waitlist_benefits_eligible' => $waitlistBenefits->count(),
             'buyers_total' => DB::table('purchases')->where('status', 'succeeded')->distinct('email')->count('email'),
             'orders_total' => (int) ($purchaseSummary->total_orders ?? 0),
             'orders_succeeded' => (int) ($purchaseSummary->succeeded_orders ?? 0),
@@ -74,7 +78,6 @@ class AdminController extends Controller
             ->leftJoinSub($purchaseAggregate, 'purchase_totals', function ($join) {
                 $join->on('waitlist_entries.id', '=', 'purchase_totals.waitlist_entry_id');
             })
-            ->leftJoin('benefit_claims', 'waitlist_entries.id', '=', 'benefit_claims.waitlist_entry_id')
             ->select([
                 'waitlist_entries.id',
                 'waitlist_entries.benefit_id',
@@ -84,9 +87,6 @@ class AdminController extends Controller
                 'waitlist_entries.marketing_consent',
                 'waitlist_entries.created_at',
                 'waitlist_entries.updated_at',
-                'benefit_claims.account_reference',
-                'benefit_claims.benefit_type as claimed_benefit_type',
-                'benefit_claims.claimed_at',
                 DB::raw('COALESCE(purchase_totals.orders_total, 0) as orders_total'),
                 DB::raw('COALESCE(purchase_totals.orders_succeeded, 0) as orders_succeeded'),
                 DB::raw('COALESCE(purchase_totals.revenue_total, 0) as revenue_total'),
@@ -112,8 +112,11 @@ class AdminController extends Controller
                 ->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) = 0');
         } elseif ($filters['status'] === 'pending') {
             $waitlistQuery->whereNull('waitlist_entries.email_verified_at');
-        } elseif ($filters['status'] === 'claimed') {
-            $waitlistQuery->whereNotNull('benefit_claims.claimed_at');
+        } elseif ($filters['status'] === 'benefit_eligible') {
+            $waitlistQuery->whereNotNull('waitlist_entries.email_verified_at')
+                ->whereNotNull('waitlist_entries.benefit_id')
+                ->whereNotNull('waitlist_entries.waitlist_position')
+                ->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) = 0');
         }
 
         if (in_array($filters['plan'], ['join', 'creator'], true)) {
@@ -160,6 +163,7 @@ class AdminController extends Controller
                 ->limit(30)
                 ->get()
             : collect();
+        $sitePreviewExpiresAt = $sitePreview->expiresAt($request);
 
         return view('admin.dashboard', [
             'filters' => $filters,
@@ -178,8 +182,43 @@ class AdminController extends Controller
             'currentAdmin' => $request->attributes->get('admin_user'),
             'recentAdminAuditEvents' => $recentAdminAuditEvents,
             'siteVisibilityMode' => $siteVisibility->mode(),
+            'sitePreviewExpiresAt' => $sitePreviewExpiresAt,
             'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
         ]);
+    }
+
+    public function enableSitePreview(
+        Request $request,
+        SitePreviewAccess $sitePreview,
+        AdminAuditService $audit,
+    ) {
+        $expiresAt = $sitePreview->enable($request);
+        $audit->record(
+            $request,
+            'site_preview.enabled',
+            'site_settings',
+            targetLabel: 'protected website preview',
+            newValues: ['expires_at' => $expiresAt->toISOString()],
+        );
+
+        return redirect()->route('home');
+    }
+
+    public function disableSitePreview(
+        Request $request,
+        SitePreviewAccess $sitePreview,
+        AdminAuditService $audit,
+    ) {
+        $sitePreview->disable($request);
+        $audit->record(
+            $request,
+            'site_preview.disabled',
+            'site_settings',
+            targetLabel: 'protected website preview',
+        );
+
+        return redirect()->route('admin.dashboard', ['tab' => 'settings'])
+            ->with('admin_success', __('messages.admin.site_preview_disabled'));
     }
 
     public function publishLegalDocument(
@@ -294,6 +333,7 @@ class AdminController extends Controller
     public function updateSiteVisibility(
         Request $request,
         SiteVisibility $siteVisibility,
+        SitePreviewAccess $sitePreview,
         AdminAuditService $audit,
     ) {
         if (! $this->isAuthenticated($request)) {
@@ -328,6 +368,7 @@ class AdminController extends Controller
                 newValues: ['mode' => $validated['mode']],
             );
         });
+        $sitePreview->disable($request);
 
         return redirect()->route('admin.dashboard', ['tab' => 'settings'])
             ->with('admin_success', __('messages.admin.site_visibility_updated'));

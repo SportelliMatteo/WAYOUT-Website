@@ -1,77 +1,112 @@
-# Pre-launch benefits API
+# Waitlist benefits API
 
-Il sito Laravel è l'unica fonte dati per waitlist e Founder Pass. Il backend dell'app mobile non viene chiamato da Laravel: è il backend dell'app a invocare questi endpoint server-to-server quando deve recuperare un vantaggio.
+Il sito Laravel espone due endpoint Benefits destinati esclusivamente al backend dell'app:
 
-La specifica OpenAPI è disponibile in `public/openapi/prelaunch-benefits.yaml`; Swagger UI è pubblicata su `/api/docs`.
+```http
+GET /api/v1/prelaunch/benefits?page=1&per_page=100
+POST /api/v1/prelaunch/benefits/eligibility
+```
+
+La specifica OpenAPI è in `public/openapi/prelaunch-benefits.yaml`; Swagger UI è pubblicata su `/api/docs`.
+
+## Regola di idoneità
+
+La risposta include soltanto gli utenti che:
+
+- hanno verificato l'email e ottenuto una posizione in waitlist;
+- hanno un `benefit_id` assegnato;
+- non hanno alcun acquisto Founder con stato `succeeded`.
+
+Il benefit restituito è sempre `waitlist`, dura 60 giorni ed è non cumulabile con un Founder Pass. Ordini falliti o ancora pendenti non eliminano il diritto.
+
+## Elenco paginato
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "benefit_id": "11111111-1111-4111-8111-111111111111",
+      "email": "mario@example.com",
+      "waitlist_position": 184,
+      "benefit_type": "waitlist",
+      "duration_days": 60,
+      "email_verified_at": "2026-08-27T10:30:00.000000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "last_page": 1
+  }
+}
+```
+
+Il backend dell'app deve scorrere tutte le pagine e usare `benefit_id` come identificativo stabile. Laravel non gestisce più claim, associazione a un account dell'app o OTP email per i Benefits.
+
+## Verifica tramite email
+
+Quando l'utente inserisce l'email nel popup, l'app deve inviarla al proprio backend. È il backend dell'app, che conserva il segreto HMAC, a chiamare Laravel:
+
+```http
+POST /api/v1/prelaunch/benefits/eligibility
+Content-Type: application/json
+
+{"email":"mario@example.com"}
+```
+
+Risposta positiva:
+
+```json
+{
+  "success": true,
+  "data": {
+    "eligible": true,
+    "benefit": {
+      "benefit_id": "11111111-1111-4111-8111-111111111111",
+      "email": "mario@example.com",
+      "waitlist_position": 184,
+      "benefit_type": "waitlist",
+      "duration_days": 60,
+      "email_verified_at": "2026-08-27T10:30:00.000000Z"
+    }
+  }
+}
+```
+
+Per email sconosciute, non verificate o associate a un acquisto Founder riuscito, la risposta resta HTTP 200 con `eligible: false` e `benefit: null`.
 
 ## Configurazione
 
-Impostare in produzione:
-
 ```dotenv
-EMAIL_SENDING_ENABLED=true
-MAIL_MAILER=smtp
-MAIL_HOST=smtp-relay.brevo.com
-MAIL_PORT=587
-MAIL_USERNAME=<credenziale SMTP Brevo>
-MAIL_PASSWORD=<chiave SMTP Brevo>
-MAIL_FROM_ADDRESS=<mittente verificato in Brevo>
-MAIL_FROM_NAME=WAYOUT
-
-WAITLIST_MAGIC_LINK_MINUTES=30
-WAITLIST_VERIFICATION_RESEND_SECONDS=60
-BENEFIT_EMAIL_CHALLENGE_MINUTES=10
-BENEFIT_EMAIL_CHALLENGE_RESEND_SECONDS=60
-BENEFIT_EMAIL_CHALLENGE_MAX_ATTEMPTS=5
-
+BENEFIT_API_DEFAULT_PER_PAGE=100
+BENEFIT_API_MAX_PER_PAGE=200
 BENEFIT_API_KEY=<identificativo condiviso col backend app>
 BENEFIT_API_SECRET=<segreto casuale di almeno 32 byte>
 BENEFIT_API_MAX_CLOCK_SKEW_SECONDS=300
 ```
 
-Il segreto HMAC deve essere conservato esclusivamente nei secret manager dei due backend. Non va incluso nell'app mobile, nel link email o nel repository.
+La chiave e il segreto devono essere impostati nel `.env` effettivo di entrambi i backend, non nell'app mobile e non nel repository.
 
 ## Firma HMAC
 
 Ogni richiesta usa gli header `X-Wayout-Key`, `X-Wayout-Timestamp`, `X-Wayout-Nonce` e `X-Wayout-Signature`.
 
-La stringa canonica contiene, separati da `\n`:
+Per la GET, la stringa canonica contiene, separati da `\n`:
 
 ```text
 <timestamp Unix>
 <nonce casuale univoco di almeno 16 caratteri>
-<metodo HTTP maiuscolo>
-<path completo che inizia con /api>
-<sha256 esadecimale del body JSON esatto>
+GET
+/api/v1/prelaunch/benefits
+<sha256 esadecimale del body vuoto>
 ```
 
-`X-Wayout-Signature` è l'HMAC-SHA256 esadecimale della stringa canonica. Il server accetta al massimo lo scarto temporale configurato e registra ogni nonce in cache per bloccare i replay. Il body firmato deve essere trasmesso senza ricodificarlo dopo il calcolo della firma.
+I parametri query non sono inclusi nel path firmato. La firma è l'HMAC-SHA256 esadecimale della stringa canonica. Il server verifica lo scarto temporale e registra il nonce in cache per impedire replay.
 
-## Flussi
+Per la POST si firmano invece metodo `POST`, path `/api/v1/prelaunch/benefits/eligibility` e SHA-256 del body JSON esatto. Il body non deve essere ricodificato dopo il calcolo della firma.
 
-Percorso dall'email:
+## Dati e minimizzazione
 
-1. La comunicazione di lancio contiene un deep/universal link con il solo `benefit_id` pubblico e opaco.
-2. L'app verifica il numero di telefono e crea o riconosce il proprio account.
-3. Il backend dell'app chiama `POST /api/v1/prelaunch/benefits/claim` con `benefit_id`, il proprio identificativo `account_reference` e una chiave d'idempotenza.
-4. Laravel restituisce posizione e tipo di vantaggio e registra il collegamento definitivo.
-
-Percorso dall'app:
-
-1. Dopo la verifica telefonica, l'utente inserisce l'email usata nel pre-lancio.
-2. Il backend dell'app chiama `POST /api/v1/prelaunch/benefits/email-challenges`.
-3. Laravel invia tramite Brevo un OTP di sei cifre. La risposta HTTP ha forma neutra anche per email inesistenti.
-4. Il backend dell'app chiama `POST /api/v1/prelaunch/benefits/email-challenges/verify` con OTP, `account_reference` e chiave d'idempotenza.
-5. Laravel verifica l'email e registra lo stesso collegamento definitivo.
-
-La priorità del vantaggio restituito è `founder_creator`, poi `founder_join`, infine `waitlist`. Un record può essere associato a un solo account dell'app; una ripetizione verso lo stesso account è idempotente, mentre un tentativo di trasferimento restituisce HTTP 409.
-
-## Identificativi
-
-- `waitlist_entries.id`: UUID interno e chiave relazionale del database Laravel.
-- `benefit_id`: UUID pubblico, stabile e non sequenziale da inserire nel link email.
-- `waitlist_position`: posizione assegnata soltanto dopo la verifica dell'email.
-- `account_reference`: identificativo opaco creato e gestito dal backend dell'app; Laravel lo memorizza soltanto al riscatto.
-- `waitlist_entry_id` sugli ordini: collega in modo certo waitlist, Founder Pass e successivo riscatto.
-
-Non vengono scambiati database dump né dati telefonici. Il numero e il relativo OTP restano interamente nel backend dell'app.
+La risposta contiene soltanto email, identificativo opaco del benefit, posizione e data di verifica. Non espone nome, telefono, profilo, consenso marketing, ordini o dati di pagamento. La dashboard amministrativa usa la stessa regola di idoneità mostrata dall'API.

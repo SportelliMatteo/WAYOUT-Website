@@ -69,6 +69,8 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::post('/admin/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
     Route::post('/admin/site-visibility', [AdminController::class, 'updateSiteVisibility'])->name('admin.site-visibility.update');
+    Route::post('/admin/site-preview', [AdminController::class, 'enableSitePreview'])->middleware('throttle:admin')->name('admin.site-preview.enable');
+    Route::delete('/admin/site-preview', [AdminController::class, 'disableSitePreview'])->middleware('throttle:admin')->name('admin.site-preview.disable');
     Route::post('/admin/checkout-settings', [AdminController::class, 'updateCheckoutSettings'])->name('admin.checkout-settings.update');
     Route::post('/admin/purchases/{purchase}/invoice/retry', [AdminController::class, 'retryInvoice'])->name('admin.purchases.invoice.retry');
     Route::post('/admin/purchases/{purchase}/invoice/sync', [AdminController::class, 'syncInvoice'])->name('admin.purchases.invoice.sync');

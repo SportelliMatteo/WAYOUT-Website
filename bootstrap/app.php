@@ -28,10 +28,6 @@ return Application::configure(basePath: dirname(__DIR__))
             subdomains: false,
         );
 
-        $middleware->validateCsrfTokens(except: [
-            'stripe/webhook',
-        ]);
-
         $middleware->alias([
             'admin.auth' => RequireAdminAuthentication::class,
             'benefit.api' => VerifyBenefitApiSignature::class,

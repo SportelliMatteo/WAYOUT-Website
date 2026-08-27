@@ -7,10 +7,9 @@ use Illuminate\Support\Str;
 
 class ProfileNicknameGenerator
 {
-    public function generate(): string
+    public function generate(string $firstName, string $lastName): string
     {
-        $username = Factory::create('it_IT')->userName();
-        $normalized = Str::of($username)
+        $normalized = Str::of($firstName.'_'.$lastName)
             ->ascii()
             ->lower()
             ->replaceMatches('/[^a-z0-9_]+/', '_')
@@ -18,6 +17,16 @@ class ProfileNicknameGenerator
             ->limit(22, '')
             ->toString();
 
-        return ($normalized !== '' ? $normalized : 'wayout').'_'.Str::lower(Str::random(6));
+        if ($normalized === '') {
+            $normalized = Str::of(Factory::create('it_IT')->userName())
+                ->ascii()
+                ->lower()
+                ->replaceMatches('/[^a-z0-9_]+/', '_')
+                ->trim('_')
+                ->limit(22, '')
+                ->toString();
+        }
+
+        return '@'.($normalized !== '' ? $normalized : 'wayout').'_'.Str::lower(Str::random(4));
     }
 }

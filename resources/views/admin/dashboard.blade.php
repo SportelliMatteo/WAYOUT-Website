@@ -106,7 +106,7 @@
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Waitlist</p>
                 <p class="mt-3 text-3xl font-black">{{ $number($stats['waitlist_total']) }}</p>
                 <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.of_spots', ['count' => $number($capacities['waitlist_capacity'])]) }}</p>
-                <p class="mt-1 text-xs font-bold text-amber-700">{{ __('messages.admin.pending_count', ['count' => $number($stats['waitlist_pending'])]) }} · {{ __('messages.admin.claimed_count', ['count' => $number($stats['benefits_claimed'])]) }}</p>
+                <p class="mt-1 text-xs font-bold text-amber-700">{{ __('messages.admin.pending_count', ['count' => $number($stats['waitlist_pending'])]) }} · {{ __('messages.admin.waitlist_benefit_eligible_count', ['count' => $number($stats['waitlist_benefits_eligible'])]) }}</p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{{ __('messages.admin.buyers') }}</p>
@@ -171,6 +171,37 @@
                     {{ __('messages.admin.apply') }}
                 </button>
             </form>
+            @if($siteVisibilityMode !== 'online')
+                <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h3 class="font-black text-violet-950">{{ __('messages.admin.site_preview_title') }}</h3>
+                            @if($sitePreviewExpiresAt)
+                                <p class="mt-1 text-sm font-bold text-violet-800">{{ __('messages.admin.site_preview_active_until', ['date' => $date($sitePreviewExpiresAt)]) }}</p>
+                            @else
+                                <p class="mt-1 text-sm font-bold text-violet-800">{{ __('messages.admin.site_preview_text') }}</p>
+                            @endif
+                            <p class="mt-2 text-xs font-bold text-amber-800">{{ __('messages.admin.site_preview_live_warning') }}</p>
+                        </div>
+                        @if($sitePreviewExpiresAt)
+                            <form method="POST" action="{{ route('admin.site-preview.disable') }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="whitespace-nowrap rounded-lg border border-violet-300 bg-white px-5 py-3 font-black text-violet-800 transition hover:bg-violet-100">
+                                    {{ __('messages.admin.site_preview_disable') }}
+                                </button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('admin.site-preview.enable') }}" target="_blank">
+                                @csrf
+                                <button type="submit" class="whitespace-nowrap rounded-lg bg-slate-950 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-800">
+                                    {{ __('messages.admin.site_preview_open') }}
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            @endif
         </section>
 
         <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -448,7 +479,7 @@
                         <option value="buyers" @selected($filters['status'] === 'buyers')>{{ __('messages.admin.bought') }}</option>
                         <option value="no_purchase" @selected($filters['status'] === 'no_purchase')>{{ __('messages.admin.no_purchase') }}</option>
                         <option value="pending" @selected($filters['status'] === 'pending')>{{ __('messages.admin.pending_verification') }}</option>
-                        <option value="claimed" @selected($filters['status'] === 'claimed')>{{ __('messages.admin.benefit_claimed') }}</option>
+                        <option value="benefit_eligible" @selected($filters['status'] === 'benefit_eligible')>{{ __('messages.admin.waitlist_benefit_eligible') }}</option>
                     </select>
                 </div>
                 <div>
@@ -484,7 +515,7 @@
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.marketing_consent') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.status') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.pass') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.benefit_claim') }}</th>
+                            <th class="px-4 py-3">{{ __('messages.admin.waitlist_benefit') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.orders') }}</th>
                             <th class="px-4 py-3">{{ __('messages.admin.total') }}</th>
                             <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.signup') }}</th>
@@ -527,11 +558,10 @@
                                 </td>
                                 <td class="px-4 py-3 font-bold text-slate-700">{{ $plans ?: __('messages.admin.no_pass') }}</td>
                                 <td class="px-4 py-3">
-                                    @if($entry->claimed_at)
-                                        <span class="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">{{ $entry->claimed_benefit_type }}</span>
-                                        <span class="mt-1 block text-xs font-bold text-slate-500">{{ $entry->account_reference }} · {{ $date($entry->claimed_at) }}</span>
+                                    @if($entry->email_verified_at && (int) $entry->orders_succeeded === 0)
+                                        <span class="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">{{ __('messages.admin.waitlist_benefit_duration') }}</span>
                                     @else
-                                        <span class="font-bold text-slate-400">{{ __('messages.admin.not_claimed') }}</span>
+                                        <span class="font-bold text-slate-400">{{ __('messages.admin.waitlist_benefit_not_eligible') }}</span>
                                     @endif
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold">{{ __('messages.admin.successful_over_total', ['successful' => (int) $entry->orders_succeeded, 'total' => (int) $entry->orders_total]) }}</td>

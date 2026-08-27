@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SitePreviewAccess;
 use App\Support\SiteVisibility;
 use Closure;
 use Illuminate\Http\Request;
@@ -9,7 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class EnforceSiteVisibility
 {
-    public function __construct(private readonly SiteVisibility $visibility) {}
+    public function __construct(
+        private readonly SiteVisibility $visibility,
+        private readonly SitePreviewAccess $preview,
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -21,6 +25,16 @@ final class EnforceSiteVisibility
 
         if ($mode === SiteVisibility::ONLINE) {
             return $next($request);
+        }
+
+        if ($this->preview->isActive($request)) {
+            $response = $next($request);
+            $response->headers->set('Cache-Control', 'no-store, private');
+            $response->headers->set('Pragma', 'no-cache');
+            $response->setVary('Cookie', false);
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+
+            return $response;
         }
 
         $status = $mode === SiteVisibility::MAINTENANCE || ! $request->isMethodSafe()

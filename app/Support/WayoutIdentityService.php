@@ -45,7 +45,10 @@ class WayoutIdentityService
                 $created = $this->client->post('/api/auth/create-profile', [
                     ...$profile,
                     'mobile_number' => $mobileNumber,
-                    'nickname' => $this->nicknames->generate(),
+                    'nickname' => $this->nicknames->generate(
+                        $profile['first_name'],
+                        $profile['last_name'],
+                    ),
                 ], [
                     'X-Temp-Token' => $tempToken,
                 ]);

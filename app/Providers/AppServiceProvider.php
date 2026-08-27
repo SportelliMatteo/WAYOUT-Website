@@ -39,10 +39,8 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
-        RateLimiter::for('benefit-api', fn (Request $request) => [
-            Limit::perMinute(120)->by((string) $request->header('X-Wayout-Key', $request->ip())),
-            Limit::perMinute(12)->by('benefit-email|'.Str::lower((string) $request->input('email', ''))),
-        ]);
+        RateLimiter::for('benefit-api', fn (Request $request) => Limit::perMinute(120)
+            ->by((string) $request->header('X-Wayout-Key', $request->ip())));
 
         RateLimiter::for('contact', function (Request $request) {
             return Limit::perMinute(3)->by($request->ip());
