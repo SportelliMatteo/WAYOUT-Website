@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\WayoutApiException;
 use App\Models\AdminUser;
 use App\Support\AdminAuditService;
 use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
+use App\Support\DataRetentionService;
+use App\Support\FounderPromoCatalog;
 use App\Support\LegalDocumentService;
 use App\Support\QontoInvoiceService;
 use App\Support\SitePreviewAccess;
@@ -13,6 +16,7 @@ use App\Support\SiteVisibility;
 use App\Support\WaitlistBenefitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -23,8 +27,10 @@ class AdminController extends Controller
         LegalDocumentService $legalDocuments,
         SiteVisibility $siteVisibility,
         CheckoutFeatures $checkoutFeatures,
+        FounderPromoCatalog $founderCatalog,
         WaitlistBenefitService $waitlistBenefits,
         SitePreviewAccess $sitePreview,
+        DataRetentionService $dataRetention,
     ) {
         if (! $this->isAuthenticated($request)) {
             return redirect()->route('admin.login');
@@ -62,7 +68,14 @@ class AdminController extends Controller
             'cookie_consent_all' => Schema::hasTable('cookie_consent_events') ? DB::table('cookie_consent_events')->where('analytics', true)->where('marketing', true)->count() : 0,
         ];
 
-        $capacities = $this->founderCapacities();
+        try {
+            $founderPackages = $founderCatalog->founderPackages();
+        } catch (WayoutApiException $exception) {
+            Log::warning('Founder promo catalog unavailable in admin dashboard.', [
+                ...$exception->logContext(),
+            ]);
+            $founderPackages = ['join' => null, 'creator' => null];
+        }
 
         $purchaseAggregate = DB::table('purchases')
             ->select('waitlist_entry_id')
@@ -164,11 +177,16 @@ class AdminController extends Controller
                 ->get()
             : collect();
         $sitePreviewExpiresAt = $sitePreview->expiresAt($request);
+        $retentionPreview = $dataRetention->preview();
+        $retentionRuns = DB::table('data_retention_runs')
+            ->orderByDesc('started_at')
+            ->limit(10)
+            ->get();
 
         return view('admin.dashboard', [
             'filters' => $filters,
             'stats' => $stats,
-            'capacities' => $capacities,
+            'founderPackages' => $founderPackages,
             'waitlistEntries' => $waitlistEntries,
             'recentPurchases' => $recentPurchases,
             'recentConsentEvents' => $recentConsentEvents,
@@ -184,6 +202,9 @@ class AdminController extends Controller
             'siteVisibilityMode' => $siteVisibility->mode(),
             'sitePreviewExpiresAt' => $sitePreviewExpiresAt,
             'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
+            'retentionPreview' => $retentionPreview,
+            'retentionRuns' => $retentionRuns,
+            'nextRetentionRunAt' => $dataRetention->nextRunAt(),
         ]);
     }
 
@@ -283,51 +304,6 @@ class AdminController extends Controller
                 'document' => $validated['title'],
                 'version' => $published->version,
             ]));
-    }
-
-    public function updateSettings(Request $request, AdminAuditService $audit)
-    {
-        if (! $this->isAuthenticated($request)) {
-            return redirect()->route('admin.login');
-        }
-
-        $validated = $request->validate([
-            'waitlist_capacity' => ['required', 'integer', 'min:0', 'max:1000000'],
-            'join_capacity' => ['required', 'integer', 'min:0', 'max:1000000'],
-            'creator_capacity' => ['required', 'integer', 'min:0', 'max:1000000'],
-        ]);
-
-        $previous = DB::table('founder_settings')
-            ->whereIn('key', array_keys($validated))
-            ->pluck('value', 'key')
-            ->map(fn ($value) => (int) $value)
-            ->all();
-
-        DB::transaction(function () use ($request, $validated, $previous, $audit) {
-            foreach ($validated as $key => $value) {
-                $existing = DB::table('founder_settings')->where('key', $key)->exists();
-
-                DB::table('founder_settings')->updateOrInsert(
-                    ['key' => $key],
-                    [
-                        'value' => $value,
-                        'updated_at' => now(),
-                        ...($existing ? [] : ['id' => DatabaseUuid::new(), 'created_at' => now()]),
-                    ]
-                );
-            }
-
-            $audit->record(
-                $request,
-                'founder_capacities.updated',
-                'founder_settings',
-                targetLabel: 'waitlist / join / creator',
-                oldValues: $previous,
-                newValues: $validated,
-            );
-        });
-
-        return back()->with('admin_success', __('messages.admin.admin_success'));
     }
 
     public function updateSiteVisibility(
@@ -540,20 +516,4 @@ class AdminController extends Controller
         return "STRING_AGG(DISTINCT CASE WHEN status = 'succeeded' THEN plan END, ',') as plans";
     }
 
-    private function founderCapacities(): array
-    {
-        $defaults = config('founder.default_capacities');
-
-        if (! Schema::hasTable('founder_settings')) {
-            return $defaults;
-        }
-
-        return array_replace(
-            $defaults,
-            DB::table('founder_settings')
-                ->pluck('value', 'key')
-                ->map(fn ($value) => (int) $value)
-                ->all()
-        );
-    }
 }

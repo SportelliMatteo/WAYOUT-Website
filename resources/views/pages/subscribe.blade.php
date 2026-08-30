@@ -17,8 +17,10 @@
     $price = fn (?array $package) => $package ? number_format((float) $package['price'], 2, ',', '.').' €' : '—';
     $availability = function (?array $package) {
         if (!$package || ($package['available'] ?? null) === 0) return __('messages.subscribe.sold_out');
-        if (($package['available'] ?? null) === null) return __('messages.subscribe.unlimited_availability');
-        return __('messages.subscribe.spots_available', ['count' => number_format((int) $package['available'], 0, ',', '.')]);
+        $maximum = $package['max_available_quantity'] ?? null;
+        if (!is_numeric($maximum)) return '—';
+        if ((int) $maximum === -1) return __('messages.subscribe.unlimited_availability');
+        return __('messages.subscribe.total_passes', ['count' => number_format((int) $maximum, 0, ',', '.')]);
     };
     $phonePrefixes = [
         '+39' => 'IT +39',
@@ -39,6 +41,8 @@
         'invalidPhone' => __('messages.subscribe.phone_invalid'),
         'sending' => __('messages.subscribe.phone_sending'),
         'codeSent' => __('messages.subscribe.phone_code_sent'),
+        'resendCode' => __('messages.subscribe.phone_resend_code'),
+        'resendCountdown' => __('messages.subscribe.phone_resend_countdown'),
         'sendError' => __('messages.subscribe.phone_send_error'),
         'verifying' => __('messages.subscribe.phone_verifying'),
         'verified' => __('messages.subscribe.phone_verified'),
@@ -306,7 +310,7 @@
                         @endforeach
                     </select>
                     <input id="payment-phone-number" type="tel" name="phone_number" value="" required minlength="5" maxlength="32" autocomplete="tel-national" inputmode="tel" placeholder="333 1234567" class="min-h-12 min-w-0 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-                    <button id="payment-phone-send" type="button" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-violet-800 disabled:cursor-wait disabled:opacity-60">{{ __('messages.subscribe.phone_send_code') }}</button>
+                    <button id="payment-phone-send" type="button" data-resend-seconds="{{ max(1, (int) config('services.firebase.sms_resend_cooldown_seconds', 60)) }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-violet-800 disabled:cursor-wait disabled:opacity-60">{{ __('messages.subscribe.phone_send_code') }}</button>
                 </div>
                 <div id="payment-phone-code-panel" class="hidden grid gap-3 sm:grid-cols-[1fr_auto]">
                     <input id="payment-phone-code" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" placeholder="000000" class="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-center text-lg font-black tracking-[0.35em] text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />

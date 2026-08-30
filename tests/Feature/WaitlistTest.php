@@ -143,7 +143,7 @@ class WaitlistTest extends TestCase
             ->assertOk()
             ->assertSee('29,90 €')
             ->assertSee('59,90 €')
-            ->assertSee('37 posti disponibili')
+            ->assertSee('500 pass totali')
             ->assertSee('Disponibilità illimitata')
             ->assertDontSee('WAITLIST_60D_PASS');
     }
@@ -188,9 +188,9 @@ class WaitlistTest extends TestCase
     {
         Http::fake([
             'https://staging-app.wayoutapp.test/api/v1/internal/promo-packages' => Http::response(['data' => [
-                ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'free' => false],
-                ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'free' => false],
-                ['code' => 'WAITLIST_60D_PASS', 'name' => 'Waitlist', 'price' => '0.00', 'currency' => 'EUR', 'available' => null, 'free' => true],
+                ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'max_available_quantity' => 500, 'free' => false],
+                ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'max_available_quantity' => -1, 'free' => false],
+                ['code' => 'WAITLIST_60D_PASS', 'name' => 'Waitlist', 'price' => '0.00', 'currency' => 'EUR', 'available' => null, 'max_available_quantity' => -1, 'free' => true],
             ]]),
         ]);
     }

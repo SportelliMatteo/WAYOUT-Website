@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="it">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
-    <title>Riepilogo ordine {{ $purchase->order_reference }}</title>
+    <title>{{ __('messages.order_summary.document_title', ['reference' => $purchase->order_reference]) }}</title>
     <style>
         @page { margin: 34px; }
         body { color: #0f172a; font-family: DejaVu Sans, sans-serif; font-size: 12px; line-height: 1.55; }
@@ -22,26 +22,25 @@
 <body>
     <div class="header">
         <div class="brand">WAYOUT</div>
-        <h1>Riepilogo ordine</h1>
+        <h1>{{ __('messages.order_summary.title') }}</h1>
     </div>
 
-    <div class="warning">DOCUMENTO NON FISCALE — NON È UNA FATTURA</div>
+    <div class="warning">{{ __('messages.order_summary.non_fiscal_warning') }}</div>
 
     <div class="card">
         <table>
-            <tr><th>Riferimento ordine</th><td>{{ $purchase->order_reference }}</td></tr>
-            <tr><th>Data pagamento</th><td>{{ \Illuminate\Support\Carbon::parse($purchase->created_at)->timezone('Europe/Rome')->format('d/m/Y H:i') }}</td></tr>
-            <tr><th>Cliente</th><td>{{ trim(($purchase->first_name ?? '').' '.($purchase->last_name ?? '')) }}</td></tr>
+            <tr><th>{{ __('messages.order_summary.order_reference') }}</th><td>{{ $purchase->order_reference }}</td></tr>
+            <tr><th>{{ __('messages.order_summary.payment_date') }}</th><td>{{ \Illuminate\Support\Carbon::parse($purchase->created_at)->timezone('Europe/Rome')->format('d/m/Y H:i') }}</td></tr>
+            <tr><th>{{ __('messages.order_summary.customer') }}</th><td>{{ trim(($purchase->first_name ?? '').' '.($purchase->last_name ?? '')) }}</td></tr>
             <tr><th>Email</th><td>{{ $purchase->email }}</td></tr>
-            <tr><th>Prodotto</th><td>{{ $planName }}</td></tr>
-            <tr><th>Stato pagamento</th><td>Confermato</td></tr>
-            <tr><th>Importo pagato</th><td class="total">{{ number_format($purchase->amount / 100, 2, ',', '.') }} {{ strtoupper($purchase->currency) }}</td></tr>
+            <tr><th>{{ __('messages.order_summary.product') }}</th><td>{{ $planName }}</td></tr>
+            <tr><th>{{ __('messages.order_summary.payment_status') }}</th><td>{{ __('messages.order_summary.confirmed') }}</td></tr>
+            <tr><th>{{ __('messages.order_summary.amount_paid') }}</th><td class="total">{{ number_format($purchase->amount / 100, 2, ',', '.') }} {{ strtoupper($purchase->currency) }}</td></tr>
         </table>
     </div>
 
     <p class="note">
-        Questo PDF è esclusivamente un riepilogo dell’ordine e del pagamento. Non costituisce fattura,
-        fattura elettronica, documento commerciale o altro documento fiscale e non utilizza una numerazione da fattura.
+        {{ __('messages.order_summary.disclaimer') }}
     </p>
 
     <div class="footer">

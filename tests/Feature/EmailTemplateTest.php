@@ -78,4 +78,23 @@ class EmailTemplateTest extends TestCase
         $this->assertStringContainsString('Qonto non ha accettato', $html);
         $this->assertStringNotContainsString('elaborazione elettronica è in corso', $html);
     }
+
+    public function test_purchase_confirmation_can_render_in_english(): void
+    {
+        $mail = (new PurchaseConfirmationMail([
+            'order_reference' => 'WYO-ENGLISH',
+            'email' => 'ada@example.com',
+            'plan_name' => 'Founder Join 12M Pass',
+            'amount' => 2900,
+            'currency' => 'eur',
+            'attachment_kind' => 'order_summary',
+        ]))->locale('en');
+
+        $html = $mail->render();
+
+        $this->assertStringContainsString('Founder Pass purchase confirmation', $html);
+        $this->assertStringContainsString('Order number', $html);
+        $this->assertStringContainsString('?lang=en', $html);
+        $this->assertStringNotContainsString('Numero d’ordine', $html);
+    }
 }

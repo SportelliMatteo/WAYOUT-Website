@@ -28,7 +28,10 @@ class AnalyticsConsentTest extends TestCase
             ->assertSee('id="cookie-consent-banner"', false)
             ->assertSee('id="cookie-consent-accept"', false)
             ->assertSee('id="cookie-consent-reject"', false)
+            ->assertSee('id="cookie-consent-close"', false)
             ->assertSee('id="cookie-consent-customize"', false)
+            ->assertSee('id="cookie-preferences-reject"', false)
+            ->assertSee('id="cookie-preferences-accept"', false)
             ->assertSee('id="cookie-preferences-open"', false)
             ->assertDontSee('<script src="https://www.googletagmanager.com', false)
             ->assertDontSee('<script src="https://connect.facebook.net', false);

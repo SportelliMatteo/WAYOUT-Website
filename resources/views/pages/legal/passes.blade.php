@@ -1,10 +1,14 @@
 @extends('pages.legal.layout', [
     'title' => 'Come funzionano i Pass',
-    'description' => 'Condizioni, decorrenza e limitazioni dei Waitlist Pass e Founder Pass WAYOUT.',
+    'description' => 'Waitlist Pass, Founder Join 12M e Founder Creator 12M: cosa includono, quando si attivano e quali condizioni si applicano.',
 ])
 
 @section('legal-content')
 <div class="space-y-8">
+    <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
+        <p class="font-black text-slate-950"><strong>In breve.</strong></p>
+        <p class="text-slate-700">L’iscrizione alla waitlist è gratuita e non comporta obblighi di acquisto. Il Waitlist Pass è un possibile beneficio gratuito di 60 giorni con sole funzioni Join. I Founder Pass sono invece subscription digitali acquistate in pre-sale, valide per 12 mesi dalla corretta attivazione individuale, possibile dal go-live pubblico dell’app e senza rinnovo automatico.</p>
+    </div>
     <section>
         <h2 class="text-2xl font-black text-slate-950">1. I tre Pass a confronto</h2>
         <div class="mt-4 grid overflow-hidden rounded-lg border border-slate-200 bg-white md:grid-cols-[0.38fr_0.62fr]">
@@ -23,7 +27,7 @@
             <div class="space-y-2 bg-slate-950 p-5 text-white">
                 <p><strong>FOUNDER JOIN 12M</strong></p>
                 <p><strong>€29 IVA inclusa</strong></p>
-                <p>12 mesi dal go-live</p>
+                <p>12 mesi dalla corretta attivazione individuale, possibile dal go-live</p>
             </div>
             <div class="space-y-2 p-5 text-slate-700">
                 <p>Subscription pre-lancio per usare le funzionalità Join.</p>
@@ -35,7 +39,7 @@
             <div class="space-y-2 bg-slate-950 p-5 text-white">
                 <p><strong>FOUNDER CREATOR 12M</strong></p>
                 <p><strong>€59 IVA inclusa</strong></p>
-                <p>12 mesi dal go-live</p>
+                <p>12 mesi dalla corretta attivazione individuale, possibile dal go-live</p>
             </div>
             <div class="space-y-2 p-5 text-slate-700">
                 <p>Subscription pre-lancio con funzioni Join e Creator.</p>
@@ -70,8 +74,8 @@
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Durata</strong></em></td>
                         <td class="px-4 py-3 align-top">60 giorni dall’attivazione individuale</td>
-                        <td class="px-4 py-3 align-top">12 mesi dal go-live</td>
-                        <td class="px-4 py-3 align-top">12 mesi dal go-live</td>
+                        <td class="px-4 py-3 align-top">12 mesi dalla corretta attivazione individuale, possibile dal go-live</td>
+                        <td class="px-4 py-3 align-top">12 mesi dalla corretta attivazione individuale, possibile dal go-live</td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Funzioni Join</strong></em></td>
@@ -155,11 +159,11 @@
         <p class="mt-3">I Founder Pass permettono di acquistare prima del lancio una subscription digitale WAYOUT a prezzo founder. Il pagamento è unico e anticipato, ma l’utilizzo delle funzionalità inizia soltanto dal go-live pubblico dell’app.</p>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950"><em><strong>La pre-sale non è accesso anticipato. </strong></em></p>
-            <p class="text-slate-700">L’acquisto non dà accesso all’app prima del lancio, a una beta pubblica, a eventi, ingressi o servizi fisici. Blocca esclusivamente il Founder Pass che si attiverà dal go-live.</p>
+            <p class="text-slate-700">L’acquisto non dà accesso all’app prima del lancio, a una beta pubblica, a eventi, ingressi o servizi fisici. Blocca esclusivamente il Founder Pass che sarà attivabile dal go-live e inizierà a decorrere dalla corretta attivazione individuale.</p>
         </div>
         <h3 class="mt-6 text-xl font-black text-slate-900">Founder Join 12M</h3>
         <p class="mt-3"><em><strong>Prezzo totale: </strong></em>€29, IVA e oneri fiscali applicabili inclusi. <em><strong>Disponibilità massima: </strong></em>600 pass.</p>
-        <p class="mt-3">Founder Join 12M abilita per 12 mesi dal go-live le funzionalità Join rese disponibili nell’app, tra cui la scoperta di tavoli o occasioni sociali, l’invio di richieste di partecipazione e l’accesso alle chat dei tavoli per i quali la richiesta viene accettata.</p>
+        <p class="mt-3">Founder Join 12M abilita per 12 mesi dalla corretta attivazione individuale, possibile dal go-live le funzionalità Join rese disponibili nell’app, tra cui la scoperta di tavoli o occasioni sociali, l’invio di richieste di partecipazione e l’accesso alle chat dei tavoli per i quali la richiesta viene accettata.</p>
         <p class="mt-3"><em><strong>Non garantisce </strong></em>l’accettazione in uno specifico tavolo, la presenza di tavoli in ogni data o luogo, l’ingresso in una determinata serata o locale, né un numero minimo di utenti o occasioni sociali. Non include funzioni Creator.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">Founder Creator 12M</h3>
         <p class="mt-3"><em><strong>Prezzo totale: </strong></em>€59, IVA e oneri fiscali applicabili inclusi. <em><strong>Disponibilità massima: </strong></em>200 pass.</p>
@@ -175,11 +179,11 @@
         <h2 class="text-2xl font-black text-slate-950">4. Quando partono e quanto durano</h2>
         <h3 class="mt-6 text-xl font-black text-slate-900">Founder Pass</h3>
         <ul class="mt-3 list-disc space-y-2 pl-6">
-            <li>Decorrono dal go-live pubblico dell’app nella città pilota di Milano, non dalla data di acquisto.</li>
+            <li>Sono attivabili dal go-live pubblico dell’app nella città pilota di Milano; i 12 mesi decorrono dalla corretta attivazione individuale del singolo utente, non dalla data di acquisto e non automaticamente dal go-live.</li>
             <li>Durano 12 mesi.</li>
             <li>Terminano senza rinnovo automatico e senza ulteriori addebiti.</li>
             <li>Alla scadenza, l’utente potrà scegliere liberamente se acquistare un eventuale piano ordinario disponibile.</li>
-            <li>Se l’utente completa la registrazione o inizia a usare l’app in ritardo per propria scelta, la scadenza resta calcolata dal go-live.</li>
+            <li>Se l’utente completa la registrazione o inizia a usare l’app in ritardo per propria scelta, la durata decorre solo dalla corretta attivazione individuale.</li>
         </ul>
         <h3 class="mt-6 text-xl font-black text-slate-900">Waitlist Pass</h3>
         <ul class="mt-3 list-disc space-y-2 pl-6">
@@ -232,7 +236,7 @@
         <h3 class="mt-6 text-xl font-black text-slate-900">Diritto di recesso</h3>
         <p class="mt-3">Il consumatore può esercitare il diritto di recesso entro 14 giorni di calendario dalla conclusione dell’acquisto, senza indicarne il motivo, secondo le modalità descritte nella pagina <a class="font-black text-violet-700" href="/recedere-dal-contratto">Recesso e rimborsi</a> e nei documenti contrattuali.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">Se il lancio slitta</h3>
-        <p class="mt-3">La data ordinaria comunicata per il lancio è indicativa. Se il go-live viene posticipato ma avviene entro il 31 dicembre 2026, il Founder Pass partirà dal go-live effettivo e durerà comunque 12 mesi. Il semplice rinvio entro tale data non comporta, di per sé, un rimborso automatico, fermo restando il recesso tempestivo e le altre tutele applicabili.</p>
+        <p class="mt-3">La data ordinaria comunicata per il lancio è indicativa. Se il go-live viene posticipato ma avviene entro il 31 dicembre 2026, il Founder Pass sarà attivabile dal go-live effettivo e durerà comunque 12 mesi dalla successiva corretta attivazione individuale. Il semplice rinvio entro tale data non comporta, di per sé, un rimborso automatico, fermo restando il recesso tempestivo e le altre tutele applicabili.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">Se l’app non va live entro il 31 dicembre 2026</h3>
         <p class="mt-3">WAYOUT informerà gli acquirenti e consentirà di scegliere, entro una finestra non inferiore a 30 giorni dalla comunicazione, se mantenere il Founder Pass per il successivo go-live oppure richiedere il rimborso integrale. In assenza di richiesta entro la finestra comunicata, il Pass resterà valido per il successivo lancio, fatti salvi i diritti inderogabili.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">Se il lancio viene annullato definitivamente</h3>
@@ -265,7 +269,7 @@
         </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950">Il Founder Pass parte il giorno dell’acquisto?</p>
-            <p class="text-slate-700">No. Parte dal go-live pubblico dell’app a Milano e dura 12 mesi da quella data.</p>
+            <p class="text-slate-700">No. È attivabile dal go-live pubblico dell’app a Milano e dura 12 mesi dalla tua corretta attivazione individuale; il periodo tra go-live e attivazione non viene perso.</p>
         </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950">Il Founder Pass si rinnova automaticamente?</p>
@@ -303,7 +307,7 @@
             <p class="font-black text-slate-950"><em><strong>Prima di acquistare. </strong></em></p>
             <p class="text-slate-700">Consulta sempre il riepilogo del piano, il prezzo totale, la decorrenza, la durata, l’assenza di rinnovo automatico e i documenti contrattuali disponibili nel checkout.</p>
         </div>
-        <p class="mt-3">ultimo aggiornamento: 22 luglio 2026</p>
+        <p class="mt-3">ultimo aggiornamento: 27 agosto 2026</p>
     </section>
 </div>
 @endsection

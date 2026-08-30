@@ -40,7 +40,7 @@ Il file ZIP non contiene `.env`, password o chiavi API. Contiene già `vendor/` 
 6. Nel pannello **Processi Cron**, crea temporaneamente un processo di tipo **PHP** verso `/web/htdocs/www.wayoutapp.it/home/_wayout/run-deploy.php`.
 7. Impostalo alla prima esecuzione utile, attendi l'esito e controlla `_wayout/storage/logs/`.
 8. Elimina il Cron di deploy dopo il successo. Il runner è idempotente: la stessa release non viene installata due volte.
-9. Crea il Cron ricorrente, ogni 10 minuti e in UTC, verso `/web/htdocs/www.wayoutapp.it/home/_wayout/run-schedule.php`.
+9. Crea il Cron ricorrente, ogni 10 minuti e in UTC, verso `/web/htdocs/www.wayoutapp.it/home/_wayout/run-schedule.php`. Questo singolo runner avvia sia la sincronizzazione Qonto sia la retention del database prevista ogni ora al minuto 20 di `Europe/Rome`.
 
 Il runner di deploy esegue migrazioni, pulizia cache, cache configurazione/rotte/view e `app:production-check`. Entrambi i runner rifiutano l'esecuzione HTTP.
 

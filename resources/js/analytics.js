@@ -233,11 +233,14 @@ if (configElement) {
 
     document.getElementById('cookie-consent-accept')?.addEventListener('click', () => save(true, true));
     document.getElementById('cookie-consent-reject')?.addEventListener('click', () => save(false, false));
+    document.getElementById('cookie-consent-close')?.addEventListener('click', () => save(false, false));
     document.getElementById('cookie-consent-customize')?.addEventListener('click', openPreferences);
     document.getElementById('cookie-preferences-open')?.addEventListener('click', openPreferences);
     document.getElementById('cookie-preferences-close')?.addEventListener('click', closePreferences);
     document.getElementById('cookie-preferences-backdrop')?.addEventListener('click', closePreferences);
+    document.getElementById('cookie-preferences-reject')?.addEventListener('click', () => save(false, false));
     document.getElementById('cookie-preferences-save')?.addEventListener('click', () => save(analyticsInput.checked, marketingInput.checked));
+    document.getElementById('cookie-preferences-accept')?.addEventListener('click', () => save(true, true));
     document.addEventListener('keydown', (event) => event.key === 'Escape' && closePreferences());
 
     consent = readConsent();

@@ -7,16 +7,16 @@
 @php
     $capacity = fn (string $key) => number_format(($founderCapacities[$key] ?? config('founder.default_capacities')[$key]), 0, ',', '.');
     $waitlistFull = $founderAvailability['waitlist']['is_full'] ?? false;
-    $joinFull = $founderAvailability['join']['is_full'] ?? false;
-    $creatorFull = $founderAvailability['creator']['is_full'] ?? false;
     $joinOfferPackage = $founderPackages['join'] ?? null;
     $creatorOfferPackage = $founderPackages['creator'] ?? null;
     $founderOfferCatalogError = $founderCatalogError ?? null;
     $offerPrice = fn (?array $package) => $package ? number_format((float) $package['price'], 2, ',', '.').' €' : '—';
     $offerAvailability = function (?array $package) {
         if (!$package || ($package['available'] ?? null) === 0) return __('messages.home.sold_out');
-        if (($package['available'] ?? null) === null) return __('messages.home.unlimited_availability');
-        return __('messages.home.spots_available', ['count' => number_format((int) $package['available'], 0, ',', '.')]);
+        $maximum = $package['max_available_quantity'] ?? null;
+        if (!is_numeric($maximum)) return '—';
+        if ((int) $maximum === -1) return __('messages.home.unlimited_availability');
+        return __('messages.home.total_passes', ['count' => number_format((int) $maximum, 0, ',', '.')]);
     };
     $joinOfferFull = !$joinOfferPackage || ($joinOfferPackage['available'] ?? null) === 0;
     $creatorOfferFull = !$creatorOfferPackage || ($creatorOfferPackage['available'] ?? null) === 0;

@@ -69,11 +69,16 @@ if (! is_resource($logHandle)) {
 }
 
 $output = new StreamOutput($logHandle);
-$releaseId = trim((string) config('aruba.release_id'));
 $releaseFile = __DIR__.'/RELEASE_ID';
+$releaseId = is_file($releaseFile)
+    ? trim((string) file_get_contents($releaseFile))
+    : '';
 
-if ($releaseId === '' && is_file($releaseFile)) {
-    $releaseId = trim((string) file_get_contents($releaseFile));
+// The cached Laravel configuration can still contain the previous release ID
+// when a new package has just been extracted. The release file is therefore
+// authoritative; the configured value is only a fallback for legacy installs.
+if ($releaseId === '') {
+    $releaseId = trim((string) config('aruba.release_id'));
 }
 
 // The production check runs in the same process and must see the resolved value.

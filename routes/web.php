@@ -67,7 +67,6 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/admin/security/reset-otp', [AdminAuthController::class, 'resetOwnOtp'])->middleware('throttle:admin')->name('admin.otp.reset-own');
     Route::post('/admin/security/password', [AdminAuthController::class, 'changePassword'])->middleware('throttle:admin')->name('admin.password.change');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
-    Route::post('/admin/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
     Route::post('/admin/site-visibility', [AdminController::class, 'updateSiteVisibility'])->name('admin.site-visibility.update');
     Route::post('/admin/site-preview', [AdminController::class, 'enableSitePreview'])->middleware('throttle:admin')->name('admin.site-preview.enable');
     Route::delete('/admin/site-preview', [AdminController::class, 'disableSitePreview'])->middleware('throttle:admin')->name('admin.site-preview.disable');

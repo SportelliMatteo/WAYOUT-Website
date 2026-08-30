@@ -12,12 +12,18 @@
 ></div>
 
 <section id="cookie-consent-banner" class="fixed inset-x-3 bottom-3 z-[70] hidden sm:inset-x-5 sm:bottom-5" role="dialog" aria-modal="false" aria-labelledby="cookie-consent-title">
-    <div class="mx-auto max-w-5xl rounded-[2rem] border border-white/15 bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.48)] sm:p-6">
+    <div class="relative mx-auto max-w-5xl rounded-[2rem] border border-white/15 bg-slate-950 p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.48)] sm:p-6">
+        <button id="cookie-consent-close" type="button" class="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/15 hover:text-white" aria-label="{{ __('messages.cookie_consent.continue_necessary') }}" title="{{ __('messages.cookie_consent.continue_necessary') }}">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
         <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
+            <div class="pr-10">
                 <p class="text-xs font-black uppercase tracking-[0.24em] text-violet-200">WAYOUT</p>
                 <h2 id="cookie-consent-title" class="mt-2 text-xl font-black sm:text-2xl">{{ __('messages.cookie_consent.title') }}</h2>
-                <p class="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-300">{!! __('messages.cookie_consent.text', ['policy' => '<a class="font-black text-white underline underline-offset-4" href="'.route('legal.cookies').'">'.__('messages.legal.cookies').'</a>']) !!}</p>
+                <p class="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-300">
+                    {{ __('messages.cookie_consent.text') }}
+                    <a class="font-black text-white underline underline-offset-4" href="{{ route('legal.cookies') }}">{{ __('messages.legal.cookies') }}</a>
+                </p>
             </div>
             <div class="grid gap-2 sm:grid-cols-3 lg:min-w-[31rem]">
                 <button id="cookie-consent-reject" type="button" class="min-h-12 rounded-full border border-white/20 px-5 text-sm font-black text-white transition hover:bg-white/10">{{ __('messages.cookie_consent.reject') }}</button>
@@ -57,7 +63,11 @@
                 <input id="cookie-consent-marketing" type="checkbox" class="mt-1 h-6 w-6 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500">
             </label>
         </div>
-        <button id="cookie-preferences-save" type="button" class="mt-6 min-h-14 w-full rounded-full bg-slate-950 px-6 font-black text-white transition hover:bg-violet-700">{{ __('messages.cookie_consent.save') }}</button>
+        <div class="mt-6 grid gap-2 sm:grid-cols-3">
+            <button id="cookie-preferences-reject" type="button" class="min-h-14 rounded-full border border-slate-300 px-5 text-sm font-black text-slate-700 transition hover:bg-slate-100">{{ __('messages.cookie_consent.reject') }}</button>
+            <button id="cookie-preferences-save" type="button" class="min-h-14 rounded-full bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-violet-700">{{ __('messages.cookie_consent.save') }}</button>
+            <button id="cookie-preferences-accept" type="button" class="min-h-14 rounded-full bg-violet-700 px-5 text-sm font-black text-white transition hover:bg-violet-800">{{ __('messages.cookie_consent.accept') }}</button>
+        </div>
         <p class="mt-4 text-center text-xs font-medium leading-5 text-slate-500">{{ __('messages.cookie_consent.revocation_note') }}</p>
     </section>
 </div>

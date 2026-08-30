@@ -6,6 +6,11 @@
 @section('legal-content')
 <div class="space-y-8">
     <section>
+        <h2 class="text-2xl font-black text-slate-950">Ambito del documento</h2>
+        <p class="mt-3">Questa Cookie Policy riguarda il sito wayoutapp.it, incluse landing page, waitlist, pagina di pre-sale, checkout, form di contatto e pagine legali. Va letta insieme alla <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> del sito, versione vigente.</p>
+    </section>
+
+    <section>
         <h2 class="text-2xl font-black text-slate-950">1. Titolare del trattamento e contatti</h2>
         <ul class="mt-3 list-disc space-y-2 pl-6">
             <li>WAYOUT S.r.l.;</li>
@@ -27,7 +32,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">3. Categorie di strumenti utilizzati</h2>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.1 Strumenti strettamente necessari</h3>
-        <p class="mt-3">Consentono la navigazione, la protezione dei form, la gestione della sessione, la registrazione delle preferenze cookie, il checkout e la prevenzione delle frodi. Il loro utilizzo non richiede consenso quando è limitato a quanto strettamente necessario per il servizio richiesto, fermo restando l’obbligo di informazione.</p>
+        <p class="mt-3">Consentono la navigazione, la protezione dei form, la gestione della sessione, la registrazione delle preferenze cookie, la verifica email, il checkout, la verifica telefonica Firebase/reCAPTCHA, il pagamento e la prevenzione delle frodi. Il loro utilizzo non richiede consenso quando è limitato a quanto strettamente necessario per il servizio richiesto e non è impiegato per finalità ulteriori, fermo restando l’obbligo di informazione.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.2 Analytics</h3>
         <p class="mt-3">Google Tag Manager e Google Analytics 4 vengono caricati soltanto dopo il consenso dell’utente alla categoria Analytics. La configurazione utilizza Google Consent Mode in modalità Basic: prima dell’interazione con il banner i tag Google restano bloccati e non vengono trasmessi dati a Google.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.3 Marketing e profilazione</h3>
@@ -44,7 +49,7 @@
             <li>chiudere il banner mantenendo le impostazioni predefinite, senza tracciamento non necessario.</li>
         </ul>
         <p class="mt-3">Lo scrolling, la prosecuzione della navigazione, il silenzio o caselle preselezionate non costituiscono consenso. L’utente può modificare o revocare in qualsiasi momento le proprie scelte mediante il collegamento “Gestisci preferenze cookie” disponibile nel footer o tramite un comando equivalente sempre accessibile.</p>
-        <p class="mt-3">La scelta viene memorizzata mediante il cookie tecnico wayout_cookie_consent per 6 mesi e registrata nei log necessari a documentare le preferenze e la versione dell’informativa. Il banner può essere riproposto prima della scadenza in caso di cancellazione del cookie, modifica richiesta dall’utente o cambiamenti significativi delle finalità, categorie o terze parti.</p>
+        <p class="mt-3">La scelta viene memorizzata mediante il cookie tecnico wayout_cookie_consent per 6 mesi e registrata in un log server-side pseudonimo con data/ora, versione della CMP, preferenze e hash di IP/user agent. Il log è conservato per 6 mesi, salvo contestazioni concrete. Il banner può essere riproposto prima della scadenza in caso di cancellazione del cookie, modifica richiesta dall’utente o cambiamenti significativi delle finalità, categorie o terze parti.</p>
     </section>
 
     <section>
@@ -110,10 +115,24 @@
                         <td class="px-4 py-3 align-top">Sessione o durata variabile secondo Stripe</td>
                         <td class="px-4 py-3 align-top">Pagamento/antifrode - nessun consenso</td>
                     </tr>
+                    <tr>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">Firebase Phone Authentication / reCAPTCHA</td>
+                        <td class="px-4 py-3 align-top">Google / Firebase</td>
+                        <td class="px-4 py-3 align-top">Verifica del numero di telefono e prevenzione di abusi nel checkout; può usare richieste di rete, token e storage tecnico.</td>
+                        <td class="px-4 py-3 align-top">Sessione o durata tecnica necessaria alla verifica; dettagli variabili secondo configurazione Google</td>
+                        <td class="px-4 py-3 align-top">Necessario per verifica/autenticazione - nessun consenso, se limitato alla funzione richiesta</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">wayout_event_* (localStorage/sessionStorage)</td>
+                        <td class="px-4 py-3 align-top">WAYOUT / browser</td>
+                        <td class="px-4 py-3 align-top">Deduplicazione tecnica degli eventi analytics/conversione per evitare invii multipli; non contiene email, telefono o dati dei form.</td>
+                        <td class="px-4 py-3 align-top">Sessione o durata tecnica del flag; cancellato/aggiornato secondo la logica evento</td>
+                        <td class="px-4 py-3 align-top">Tecnico di supporto alla misurazione; gli eventi Google/Meta partono solo dopo il relativo consenso</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
-        <p class="mt-3">Gli strumenti tecnici di Stripe vengono caricati nell’ambiente di checkout esterno gestito dal backend WAYOUT, non alla semplice apertura della pagina di pre-sale sul sito. L’elenco effettivo degli identificativi viene verificato periodicamente mediante scansione tecnica e strumenti del browser.</p>
+        <p class="mt-3">Stripe.js e gli strumenti tecnici di pagamento vengono caricati soltanto quando l’utente accede effettivamente al checkout, non alla semplice apertura della pagina di pre-sale. Stripe Link non è abilitato. L’elenco effettivo degli identificativi Stripe viene verificato periodicamente mediante scansione tecnica e strumenti del browser.</p>
     </section>
 
     <section>
@@ -195,7 +214,7 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">9. Trasferimenti verso Paesi non appartenenti allo SEE</h2>
-        <p class="mt-3">L’hosting principale del sito è configurato nell’Unione europea. Google, Meta, Stripe o alcuni loro fornitori e subfornitori possono tuttavia trattare o rendere accessibili dati anche al di fuori dello Spazio Economico Europeo. I trasferimenti avvengono, secondo i rispettivi ruoli, sulla base di decisioni di adeguatezza, Clausole Contrattuali Standard o altri meccanismi previsti dagli articoli 44 e seguenti del GDPR. Ulteriori dettagli sono disponibili nella <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> e nelle informative dei fornitori.</p>
+        <p class="mt-3">L’hosting principale del sito tramite Aruba è configurato nell’Unione europea. Google, Meta, Stripe o alcuni loro fornitori e subfornitori possono tuttavia trattare o rendere accessibili dati anche al di fuori dello Spazio Economico Europeo. I trasferimenti avvengono, secondo i rispettivi ruoli, sulla base di decisioni di adeguatezza, Clausole Contrattuali Standard o altri meccanismi previsti dagli articoli 44 e seguenti del GDPR. Ulteriori dettagli sono disponibili nella <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> e nelle informative dei fornitori.</p>
     </section>
 
     <section>

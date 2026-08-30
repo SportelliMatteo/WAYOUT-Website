@@ -1,13 +1,13 @@
-WAYOUT — Ricevuta della dichiarazione di recesso
+WAYOUT — {{ __('messages.withdrawal.email_heading') }}
 
-Codice ricevuta: {{ $withdrawal->receipt_number }}
-Data e ora: {{ $withdrawal->submitted_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i:s') }} (Europe/Rome)
-Intestatario: {{ $withdrawal->first_name }} {{ $withdrawal->last_name }}
-Contratto/ordine: {{ $withdrawal->order_reference }}
+{{ __('messages.withdrawal.receipt_code') }}: {{ $withdrawal->receipt_number }}
+{{ __('messages.withdrawal.date_time') }}: {{ $withdrawal->submitted_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i:s') }} (Europe/Rome)
+{{ __('messages.withdrawal.holder') }}: {{ $withdrawal->first_name }} {{ $withdrawal->last_name }}
+{{ __('messages.withdrawal.contract_order') }}: {{ $withdrawal->order_reference }}
 
-Dichiarazione inviata:
+{{ __('messages.withdrawal.submitted_declaration') }}:
 {{ $withdrawal->declaration }}
 
-Ricevuta online: {{ route('withdrawal.receipt', ['token' => $publicToken]) }}
+{{ __('messages.withdrawal.online_receipt') }}: {{ route('withdrawal.receipt', ['token' => $publicToken]) }}
 
 WAYOUT S.R.L. - C.F./P.IVA 14805930964 - {{ config('email.support_address') }}

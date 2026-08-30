@@ -19,7 +19,7 @@ class WithdrawalReceiptMail extends Mailable
 
     public function build(): static
     {
-        return $this->subject('Ricevuta recesso '.$this->withdrawal->receipt_number)
+        return $this->subject(__('messages.withdrawal.email_subject', ['receipt' => $this->withdrawal->receipt_number]))
             ->replyTo(config('email.support_address'), config('email.support_name'))
             ->view('emails.withdrawal-receipt')
             ->text('emails.text.withdrawal-receipt');

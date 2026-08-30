@@ -1,10 +1,14 @@
 @extends('pages.legal.layout', [
     'title' => 'Informativa sul diritto di recesso',
-    'description' => 'Informativa sul diritto di recesso per gli acquisti WAYOUT.',
+    'description' => 'Documento pubblico da rendere disponibile prima dell’acquisto, nel checkout, nella conferma d’ordine e nella pagina Recesso e rimborsi del sito wayoutapp.it.',
 ])
 
 @section('legal-content')
 <div class="space-y-8">
+        <div class="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p class="font-black text-slate-950"><strong>FINALITÀ</strong></p>
+            <p class="text-slate-700">Questa informativa spiega in modo autonomo e completo come il consumatore può recedere dall’acquisto online di un Founder Pass WAYOUT entro 14 giorni, quali effetti produce il recesso e come viene eseguito il rimborso.</p>
+        </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950"><strong>IN BREVE</strong></p>
             <p class="text-slate-700">Puoi annullare l’acquisto del Founder Pass senza indicare il motivo entro 14 giorni di calendario dalla conclusione del contratto. Per rispettare il termine è sufficiente inviare la dichiarazione prima della scadenza. WAYOUT rimborserà integralmente il prezzo, senza commissioni.</p>
@@ -50,7 +54,7 @@
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Modulo tipo</strong></td>
-                        <td class="px-4 py-3 align-top"><strong><a class="font-black text-violet-700" href="/documenti/modulo-tipo-recesso">Scaricare il modello dell’Allegato A</a>, compilarlo e inviarlo tramite email o PEC; il suo utilizzo è facoltativo.</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>Compilare il modello contenuto nell’Allegato A e inviarlo tramite email o PEC; il suo utilizzo è facoltativo.</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -77,7 +81,7 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">6. Regola più favorevole applicata da WAYOUT</h2>
-        <p class="mt-3"><strong>6.1 </strong>Il Founder Pass è acquistato in pre-sale e, in via ordinaria, l’utilizzo delle funzionalità decorre dal go-live pubblico dell’app.</p>
+        <p class="mt-3"><strong>6.1 </strong>Il Founder Pass è acquistato in pre-sale, è attivabile a partire dal go-live pubblico dell’app e la durata di 12 mesi decorre dalla corretta attivazione individuale dell’account.</p>
         <p class="mt-3"><strong>6.2 </strong>WAYOUT riconosce il rimborso integrale in caso di recesso tempestivo anche se il go-live o l’attivazione del pass intervengono durante il periodo di 14 giorni. Nel flusso di pre-sale non è richiesta una rinuncia al diritto di recesso e non viene trattenuto un importo proporzionale per l’eventuale periodo di utilizzo intervenuto prima del recesso.</p>
     </section>
 
@@ -101,12 +105,26 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">Allegato A - Modulo tipo di recesso</h2>
-        <div class="mt-4 rounded-[1.25rem] border-2 border-violet-200 bg-violet-50 p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
-            <div>
-                <p class="font-black text-slate-950">Modulo Word modificabile</p>
-                <p class="mt-2 text-slate-700">Scarica il documento, compilalo e invialo a <a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a> oppure via PEC a <a class="font-black text-violet-700" href="mailto:wayout@pec.wayoutapp.it">wayout@pec.wayoutapp.it</a>.</p>
+        <div class="mt-4 space-y-3 rounded-[1.25rem] border-2 border-violet-200 bg-violet-50 p-5">
+            <p>Compilare e restituire il presente modulo solo se si desidera recedere dal contratto. È possibile utilizzare anche qualsiasi altra dichiarazione esplicita.</p>
+            <p class="font-black text-slate-950">DESTINATARIO</p>
+            <p>WAYOUT S.r.l. - Via Guglielmo Marconi 24/B, 20082 Binasco (MI), Italia<br>Email: <a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a> - PEC: <a class="font-black text-violet-700" href="mailto:wayout@pec.wayoutapp.it">wayout@pec.wayoutapp.it</a></p>
+            <p>Con la presente comunico il recesso dal contratto di acquisto del seguente Founder Pass WAYOUT:<br>☐ Founder Join 12M<br>☐ Founder Creator 12M<br>☐ Altro / da specificare</p>
+            <div class="grid gap-4 pt-2">
+                <p><span class="font-bold">Numero ordine:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Data dell’acquisto:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Nome e cognome del consumatore:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Email utilizzata per l’acquisto:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Email alla quale inviare la conferma:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Indirizzo del consumatore (facoltativo per l’invio elettronico):</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <p><span class="font-bold">Data:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                    <p><span class="font-bold">Firma (solo per modulo cartaceo):</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                </div>
             </div>
-            <a class="mt-4 inline-flex shrink-0 rounded-xl bg-violet-700 px-5 py-3 font-black text-white hover:bg-violet-800 sm:mt-0" href="/documenti/modulo-tipo-recesso">Scarica il modulo (.docx)</a>
+            <p class="font-black text-slate-950">INVIO ONLINE</p>
+            <p>In alternativa, il recesso può essere esercitato tramite la funzione “Recedere dal contratto qui” disponibile su <a class="font-black text-violet-700" href="https://wayoutapp.it/recedere-dal-contratto">https://wayoutapp.it/recedere-dal-contratto</a>. Dopo l’invio, WAYOUT trasmette senza indebito ritardo una ricevuta su supporto durevole con il contenuto, la data e l’ora della dichiarazione.</p>
+            <a class="inline-flex rounded-xl bg-violet-700 px-5 py-3 font-black text-white hover:bg-violet-800" href="/documenti/modulo-tipo-recesso?lang=it">Scarica il modulo (.docx)</a>
         </div>
     </section>
 </div>

@@ -36,8 +36,7 @@ class SubscribeController extends Controller
             $catalogError = null;
         } catch (WayoutApiException $exception) {
             Log::warning('Founder promo catalog unavailable.', [
-                'status' => $exception->status,
-                'code' => $exception->apiCode,
+                ...$exception->logContext(),
             ]);
             $founderPackages = ['join' => null, 'creator' => null];
             $catalogError = __('messages.subscribe.catalog_unavailable');
@@ -294,8 +293,7 @@ class SubscribeController extends Controller
         } catch (WayoutApiException $exception) {
             Log::warning('Wayout purchase confirmation unavailable.', [
                 'purchase_id' => $purchase->id,
-                'status' => $exception->status,
-                'code' => $exception->apiCode,
+                ...$exception->logContext(),
             ]);
 
             return 'pending';
@@ -390,7 +388,7 @@ class SubscribeController extends Controller
             'purchase_legal',
             'granted',
             $source,
-            ['sales', 'refunds', 'purchase_acceptance'],
+            ['sales', 'presale', 'passes', 'refunds', 'purchase_acceptance'],
             [
                 'waitlist_entry_id' => $waitlistEntryId
                     ?? DB::table('waitlist_entries')->where('email', $email)->value('id'),
@@ -487,6 +485,7 @@ class SubscribeController extends Controller
     private function purchaseConfirmationMailable(object $purchase): PurchaseConfirmationMail
     {
         $purchase->order_reference = $purchase->order_reference ?? $this->orderReference($purchase->id);
+        $locale = in_array($purchase->locale ?? null, ['it', 'en'], true) ? $purchase->locale : 'it';
         $attachment = null;
         $attachmentKind = null;
 
@@ -495,13 +494,13 @@ class SubscribeController extends Controller
             $attachmentKind = $attachment ? 'courtesy_invoice' : null;
         } else {
             $attachment = [
-                'data' => app(PurchasePdfService::class)->orderSummary($purchase),
-                'filename' => 'riepilogo-ordine-'.$purchase->order_reference.'.pdf',
+                'data' => app(PurchasePdfService::class)->orderSummary($purchase, $locale),
+                'filename' => __('messages.order_summary.filename', ['reference' => $purchase->order_reference], $locale),
             ];
             $attachmentKind = 'order_summary';
         }
 
-        return new PurchaseConfirmationMail([
+        return (new PurchaseConfirmationMail([
             'order_reference' => $purchase->order_reference,
             'email' => $purchase->email,
             'plan_name' => $this->planName($purchase->plan),
@@ -510,6 +509,6 @@ class SubscribeController extends Controller
             'invoice_requested' => (bool) $purchase->invoice_requested,
             'invoice_status' => $purchase->electronic_invoice_status ?? 'not_requested',
             'attachment_kind' => $attachmentKind,
-        ], $attachment);
+        ], $attachment))->locale($locale);
     }
 }

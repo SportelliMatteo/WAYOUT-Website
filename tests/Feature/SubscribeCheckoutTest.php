@@ -36,12 +36,30 @@ class SubscribeCheckoutTest extends TestCase
         $response->assertOk()
             ->assertSee('29,90 €')
             ->assertSee('59,90 €')
-            ->assertSee('37 posti disponibili')
+            ->assertSee('500 pass totali')
             ->assertSee('name="gender"', false)
             ->assertSee('id="payment-phone-send"', false)
+            ->assertSee('data-resend-seconds="60"', false)
+            ->assertSee('Reinvia tra :seconds s')
             ->assertSee('id="payment-phone-verify"', false)
             ->assertDontSee('WAITLIST_60D_PASS')
             ->assertDontSee('js.stripe.com', false);
+    }
+
+    public function test_subscribe_page_shows_the_updated_legal_faqs(): void
+    {
+        $this->fakeCatalog();
+
+        $response = $this->withSession(['subscribe_entry_allowed' => true])->get(route('subscribe'));
+
+        $response->assertOk()
+            ->assertSee('26. Dove trovo le condizioni complete e chi posso contattare?')
+            ->assertSee('sarà utilizzabile per 12 mesi dalla corretta attivazione individuale')
+            ->assertSee('l’utente non perde giorni tra go-live e propria attivazione')
+            ->assertSee('La fattura è gestita tramite Qonto')
+            ->assertDontSee('la scadenza resta calcolata dal go-live');
+
+        $this->assertSame(26, substr_count($response->getContent(), 'data-legal-faq'));
     }
 
     public function test_catalog_failure_is_not_reported_as_sold_out(): void
@@ -133,7 +151,7 @@ class SubscribeCheckoutTest extends TestCase
         $profile = $profileRequest->data();
         $this->assertSame('FEMALE', $profile['gender']);
         $this->assertSame('+393331234567', $profile['mobile_number']);
-        $this->assertMatchesRegularExpression('/^@matteo_sportelli_[a-z0-9]{4}$/', $profile['nickname']);
+        $this->assertMatchesRegularExpression('/^@matteo_sportel_[a-z0-9]{4}$/', $profile['nickname']);
         $this->assertSame('temporary-profile-token', $profileRequest->header('X-Temp-Token')[0]);
     }
 
@@ -208,6 +226,27 @@ class SubscribeCheckoutTest extends TestCase
             'status' => 'succeeded',
             'wayout_subscription_id' => 'sub_123',
         ]);
+
+        $legalEvent = DB::table('consent_events')
+            ->where('purchase_id', $purchaseId)
+            ->where('consent_type', 'purchase_legal')
+            ->first();
+
+        $this->assertNotNull($legalEvent);
+
+        $versions = json_decode($legalEvent->document_versions, true, flags: JSON_THROW_ON_ERROR);
+        $hashes = json_decode($legalEvent->document_hashes, true, flags: JSON_THROW_ON_ERROR);
+        $urls = json_decode($legalEvent->document_urls, true, flags: JSON_THROW_ON_ERROR);
+
+        foreach (['sales', 'presale', 'passes', 'refunds', 'purchase_acceptance'] as $document) {
+            $this->assertSame(
+                app(\App\Support\LegalDocumentService::class)->current($document, $legalEvent->locale)->version,
+                $versions[$document],
+            );
+            $this->assertSame(64, strlen($hashes[$document]));
+            $this->assertNotEmpty($urls[$document]);
+        }
+
         Mail::assertSent(PurchaseConfirmationMail::class);
     }
 
@@ -271,9 +310,9 @@ class SubscribeCheckoutTest extends TestCase
     private function promoPackages(): array
     {
         return [
-            ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'free' => false],
-            ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'free' => false],
-            ['code' => 'WAITLIST_60D_PASS', 'name' => 'Waitlist', 'price' => '0.00', 'currency' => 'EUR', 'available' => null, 'free' => true],
+            ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'max_available_quantity' => 500, 'free' => false],
+            ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'max_available_quantity' => -1, 'free' => false],
+            ['code' => 'WAITLIST_60D_PASS', 'name' => 'Waitlist', 'price' => '0.00', 'currency' => 'EUR', 'available' => null, 'max_available_quantity' => -1, 'free' => true],
         ];
     }
 }

@@ -179,7 +179,13 @@ class LegalDocumentService
             return $this->sanitizeHtml((string) ($config['initial_content'][$locale] ?? $config['initial_content']['it']));
         }
 
-        $path = resource_path('views/'.$config['view']);
+        $view = $config['views'][$locale] ?? $config['view'] ?? null;
+
+        if (! is_string($view) || $view === '') {
+            throw new LogicException('No '.$locale.' source is configured for legal document: '.$document);
+        }
+
+        $path = resource_path('views/'.$view);
         $source = is_file($path) ? file_get_contents($path) : false;
 
         if (! is_string($source)

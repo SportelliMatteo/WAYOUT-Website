@@ -138,6 +138,7 @@ class WayoutCheckoutController extends Controller
                 (string) $waitlistEntry->id,
                 $customer,
                 $catalog,
+                app()->getLocale(),
             );
             $purchase = DB::table('purchases')->where('id', $purchaseId)->first();
             $successUrl = URL::temporarySignedRoute('checkout.success', now()->addDay(), ['purchase' => $purchaseId]);
@@ -179,8 +180,7 @@ class WayoutCheckoutController extends Controller
             ]);
         } catch (WayoutApiException $exception) {
             Log::warning('Wayout checkout request rejected.', [
-                'status' => $exception->status,
-                'code' => $exception->apiCode,
+                ...$exception->logContext(),
             ]);
 
             return response()->json([
@@ -246,8 +246,9 @@ class WayoutCheckoutController extends Controller
         string $waitlistEntryId,
         array $customer,
         FounderPromoCatalog $catalog,
+        string $locale,
     ): string {
-        return DB::transaction(function () use ($email, $plan, $package, $wayoutUserId, $waitlistEntryId, $customer, $catalog): string {
+        return DB::transaction(function () use ($email, $plan, $package, $wayoutUserId, $waitlistEntryId, $customer, $catalog, $locale): string {
             DB::table('purchases')
                 ->where('status', 'pending')
                 ->where('created_at', '<', now()->subDay())
@@ -266,6 +267,7 @@ class WayoutCheckoutController extends Controller
                 'wayout_user_id' => $wayoutUserId,
                 'promo_package_code' => $package['code'],
                 'email' => $email,
+                'locale' => in_array($locale, ['it', 'en'], true) ? $locale : 'it',
                 'first_name' => $customer['first_name'],
                 'last_name' => $customer['last_name'],
                 'birth_date' => $customer['birth_date'],

@@ -5,6 +5,7 @@ use App\Http\Middleware\RequireAdminAuthentication;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\VerifyBenefitApiSignature;
+use App\Support\DataRetentionService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('qonto:sync-invoices')
             ->everyTenMinutes()
+            ->withoutOverlapping();
+
+        $schedule->command('privacy:enforce-retention --trigger=scheduled')
+            ->hourlyAt(DataRetentionService::SCHEDULE_MINUTE)
+            ->timezone(config('app.display_timezone'))
             ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {

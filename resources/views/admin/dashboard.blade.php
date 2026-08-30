@@ -1,6 +1,14 @@
 @php
     $money = fn (?int $amount) => number_format(($amount ?? 0) / 100, 2, ',', '.') . '€';
     $number = fn (?int $value) => number_format($value ?? 0, 0, ',', '.');
+    $packageMaximum = function (?array $package) use ($number) {
+        $maximum = $package['max_available_quantity'] ?? null;
+
+        if (!is_numeric($maximum)) return null;
+        if ((int) $maximum === -1) return __('messages.admin.unlimited_quantity');
+
+        return $number((int) $maximum);
+    };
     $date = fn ($value) => $value
         ? \Illuminate\Support\Carbon::parse($value, 'UTC')->setTimezone(config('app.display_timezone'))->format('d/m/Y H:i')
         : 'Mai';
@@ -29,6 +37,7 @@
         $event->purchase_id ? __('messages.admin.order_reference', ['id' => $event->purchase_id]) : null,
         $event->contact_message_id ? __('messages.admin.contact_reference', ['id' => $event->contact_message_id]) : null,
     ])->filter()->join(', ') ?: '-';
+    $retentionResult = fn ($run) => json_decode((string) $run->results, true) ?: [];
     $adminTabs = ['overview', 'users', 'orders', 'withdrawals', 'consents', 'legal', 'settings'];
     $requestedAdminTab = request()->query('tab');
     $activeAdminTab = in_array($requestedAdminTab, $adminTabs, true)
@@ -105,7 +114,6 @@
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Waitlist</p>
                 <p class="mt-3 text-3xl font-black">{{ $number($stats['waitlist_total']) }}</p>
-                <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.of_spots', ['count' => $number($capacities['waitlist_capacity'])]) }}</p>
                 <p class="mt-1 text-xs font-bold text-amber-700">{{ __('messages.admin.pending_count', ['count' => $number($stats['waitlist_pending'])]) }} · {{ __('messages.admin.waitlist_benefit_eligible_count', ['count' => $number($stats['waitlist_benefits_eligible'])]) }}</p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -121,12 +129,16 @@
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Join Pass</p>
                 <p class="mt-3 text-3xl font-black">{{ $money($stats['join_revenue']) }}</p>
-                <p class="mt-1 text-sm font-bold text-slate-500">{{ $number($stats['join_orders']) }} / {{ $number($capacities['join_capacity']) }} pass</p>
+                <p class="mt-1 text-sm font-bold text-slate-500">
+                    {{ $number($stats['join_orders']) }}{{ ($maximum = $packageMaximum($founderPackages['join'] ?? null)) !== null ? ' / '.$maximum : '' }} pass
+                </p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Creator Pass</p>
                 <p class="mt-3 text-3xl font-black">{{ $money($stats['creator_revenue']) }}</p>
-                <p class="mt-1 text-sm font-bold text-slate-500">{{ $number($stats['creator_orders']) }} / {{ $number($capacities['creator_capacity']) }} pass</p>
+                <p class="mt-1 text-sm font-bold text-slate-500">
+                    {{ $number($stats['creator_orders']) }}{{ ($maximum = $packageMaximum($founderPackages['creator'] ?? null)) !== null ? ' / '.$maximum : '' }} pass
+                </p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{{ __('messages.admin.cookie_consents') }}</p>
@@ -204,6 +216,81 @@
             @endif
         </section>
 
+        <section id="data-retention" class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 p-4">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h2 class="text-xl font-black">{{ __('messages.admin.retention_title') }}</h2>
+                        <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.retention_text') }}</p>
+                    </div>
+                    <div class="rounded-xl bg-violet-50 px-4 py-3 text-sm">
+                        <span class="block text-xs font-black uppercase tracking-[0.14em] text-violet-600">{{ __('messages.admin.retention_next_run') }}</span>
+                        <span class="mt-1 block font-black text-violet-950">{{ $date($nextRetentionRunAt) }}</span>
+                        <span class="mt-1 block text-xs font-bold text-violet-700">{{ __('messages.admin.retention_schedule') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid gap-4 p-4 lg:grid-cols-3">
+                @foreach(['email_verifications', 'unverified_waitlist', 'admin_audit_events'] as $policy)
+                    <article class="rounded-xl border border-slate-200 p-4">
+                        <p class="text-xs font-black uppercase tracking-[0.14em] text-violet-700">{{ __('messages.admin.retention_policy_'.$policy) }}</p>
+                        <p class="mt-3 text-3xl font-black">{{ $number($retentionPreview[$policy]['count']) }}</p>
+                        <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.retention_candidates') }}</p>
+                        <p class="mt-3 text-xs font-bold leading-relaxed text-slate-600">{{ __('messages.admin.retention_action_'.$policy) }}</p>
+                    </article>
+                @endforeach
+            </div>
+
+            <div class="border-t border-slate-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+                {{ __('messages.admin.retention_deferred') }}
+            </div>
+
+            <div class="border-t border-slate-200">
+                <div class="px-4 py-3">
+                    <h3 class="font-black">{{ __('messages.admin.retention_history') }}</h3>
+                    <p class="mt-1 text-xs font-bold text-slate-500">{{ __('messages.admin.retention_history_text') }}</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                        <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                            <tr>
+                                <th class="px-4 py-3">{{ __('messages.admin.date') }}</th>
+                                <th class="px-4 py-3">{{ __('messages.admin.retention_trigger') }}</th>
+                                <th class="px-4 py-3">{{ __('messages.admin.status') }}</th>
+                                <th class="px-4 py-3">{{ __('messages.admin.retention_result') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse($retentionRuns as $run)
+                                @php
+                                    $runResults = $retentionResult($run);
+                                @endphp
+                                <tr>
+                                    <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $date($run->started_at) }}</td>
+                                    <td class="whitespace-nowrap px-4 py-3 font-bold">{{ __('messages.admin.retention_trigger_'.$run->trigger) }}{{ $run->dry_run ? ' · '.__('messages.admin.retention_dry_run') : '' }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-black {{ $run->status === 'completed' ? 'bg-emerald-100 text-emerald-800' : ($run->status === 'failed' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800') }}">
+                                            {{ __('messages.admin.retention_status_'.$run->status) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs font-bold text-slate-600">
+                                        @if($run->status === 'failed')
+                                            {{ $run->error_message }}
+                                        @else
+                                            {{ collect($runResults)->map(fn ($result, $policy) => __('messages.admin.retention_policy_'.$policy).': '.($run->dry_run ? $result['matched'] : $result['affected']))->join(' · ') }}
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" class="px-4 py-8 text-center font-bold text-slate-500">{{ __('messages.admin.retention_no_runs') }}</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div class="flex flex-col gap-1 border-b border-slate-200 pb-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -225,31 +312,6 @@
                 </div>
                 <button type="submit" class="rounded-lg bg-slate-950 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
                     {{ __('messages.admin.apply') }}
-                </button>
-            </form>
-        </section>
-
-        <section class="mt-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div class="flex flex-col gap-1 border-b border-slate-200 pb-4">
-                    <h2 class="text-xl font-black">{{ __('messages.admin.settings_title') }}</h2>
-                <p class="text-sm font-bold text-slate-500">{{ __('messages.admin.settings_text') }}</p>
-            </div>
-            <form method="POST" action="{{ route('admin.settings.update') }}" class="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto] lg:items-end">
-                @csrf
-                <div>
-                    <label for="waitlist_capacity" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Waitlist</label>
-                    <input id="waitlist_capacity" name="waitlist_capacity" type="number" min="0" max="1000000" value="{{ $capacities['waitlist_capacity'] }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
-                </div>
-                <div>
-                    <label for="join_capacity" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Join Pass</label>
-                    <input id="join_capacity" name="join_capacity" type="number" min="0" max="1000000" value="{{ $capacities['join_capacity'] }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
-                </div>
-                <div>
-                    <label for="creator_capacity" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Creator Pass</label>
-                    <input id="creator_capacity" name="creator_capacity" type="number" min="0" max="1000000" value="{{ $capacities['creator_capacity'] }}" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
-                </div>
-                <button type="submit" class="rounded-lg bg-slate-950 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
-                    {{ __('messages.admin.save') }}
                 </button>
             </form>
         </section>
@@ -387,7 +449,15 @@
                     <h2 class="text-xl font-black">{{ __('messages.admin.legal_documents_title') }}</h2>
                     <p class="mt-1 max-w-4xl text-sm font-bold text-slate-500">{{ __('messages.admin.legal_documents_text') }}</p>
                 </div>
-                <span class="rounded-full bg-violet-100 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-violet-800">{{ strtoupper(app()->getLocale()) }}</span>
+                <div class="flex flex-col gap-2 sm:items-end">
+                    <span class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">{{ __('messages.admin.legal_document_language') }}</span>
+                    <div class="flex rounded-lg bg-slate-100 p-1 text-xs font-black">
+                        @foreach(['it' => 'language_italian', 'en' => 'language_english'] as $documentLocale => $languageKey)
+                            <a href="{{ route('admin.dashboard', ['lang' => $documentLocale, 'tab' => 'legal', 'legal_group' => $activeLegalGroup]).'#legal-documents' }}" class="rounded-md px-3 py-2 {{ app()->getLocale() === $documentLocale ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">{{ strtoupper($documentLocale) }}</a>
+                        @endforeach
+                    </div>
+                    <span class="text-xs font-bold text-slate-500">{{ __('messages.admin.legal_editing_language', ['language' => __('messages.admin.language_'.(app()->getLocale() === 'en' ? 'english' : 'italian'))]) }}</span>
+                </div>
             </div>
 
             <div class="mt-4 overflow-x-auto" role="tablist" aria-label="{{ __('messages.admin.legal_categories') }}">

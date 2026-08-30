@@ -8,8 +8,9 @@ return [
     'documents' => [
         'privacy' => [
             'group' => 'policies',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/privacy.blade.php',
+            'views' => ['en' => 'pages/legal/en/privacy.blade.php'],
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Privacy policy', 'en' => 'Privacy policy'],
             'descriptions' => [
@@ -19,8 +20,9 @@ return [
         ],
         'cookies' => [
             'group' => 'policies',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/cookies.blade.php',
+            'views' => ['en' => 'pages/legal/en/cookies.blade.php'],
             'route' => 'legal.cookies',
             'titles' => ['it' => 'Cookie policy', 'en' => 'Cookie policy'],
             'descriptions' => [
@@ -30,8 +32,9 @@ return [
         ],
         'terms' => [
             'group' => 'policies',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/terms.blade.php',
+            'views' => ['en' => 'pages/legal/en/terms.blade.php'],
             'route' => 'legal.terms',
             'titles' => ['it' => 'Termini sito e waitlist', 'en' => 'Website and waitlist terms'],
             'descriptions' => [
@@ -41,73 +44,79 @@ return [
         ],
         'passes' => [
             'group' => 'commerce',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/passes.blade.php',
+            'views' => ['en' => 'pages/legal/en/passes.blade.php'],
             'route' => 'legal.passes',
             'titles' => ['it' => 'Come funzionano i Pass', 'en' => 'How Passes work'],
             'descriptions' => [
-                'it' => 'Condizioni, decorrenza e limitazioni dei Waitlist Pass e Founder Pass WAYOUT.',
+                'it' => 'Waitlist Pass, Founder Join 12M e Founder Creator 12M: cosa includono, quando si attivano e quali condizioni si applicano.',
                 'en' => 'Conditions, start date and limitations of WAYOUT Waitlist and Founder Passes.',
             ],
         ],
         'sales' => [
             'group' => 'commerce',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/sales.blade.php',
+            'views' => ['en' => 'pages/legal/en/sales.blade.php'],
             'route' => 'legal.sales',
             'titles' => ['it' => 'Termini di vendita', 'en' => 'Terms of sale'],
             'descriptions' => [
-                'it' => 'Termini per l’acquisto online dei Founder Pass WAYOUT.',
+                'it' => 'Condizioni generali applicabili alla formazione dell’ordine, al pagamento e alla gestione dell’acquisto online dei Founder Pass WAYOUT.',
                 'en' => 'Terms for purchasing WAYOUT Founder Passes online.',
             ],
         ],
         'presale' => [
             'group' => 'commerce',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/presale.blade.php',
+            'views' => ['en' => 'pages/legal/en/presale.blade.php'],
             'route' => 'legal.presale',
             'titles' => ['it' => 'Condizioni di pre-sale', 'en' => 'Pre-sale terms'],
             'descriptions' => [
-                'it' => 'Condizioni specifiche della pre-sale dei Founder Pass WAYOUT.',
+                'it' => 'Condizioni applicabili agli acquisti effettuati durante la fase di pre-sale dei Founder Pass WAYOUT.',
                 'en' => 'Specific terms for the pre-sale of WAYOUT Founder Passes.',
             ],
         ],
         'refunds' => [
             'group' => 'commerce',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/refunds.blade.php',
+            'views' => ['en' => 'pages/legal/en/refunds.blade.php'],
             'route' => 'legal.refunds',
             'titles' => ['it' => 'Refund Policy', 'en' => 'Refund Policy'],
             'descriptions' => [
-                'it' => 'Regole sui rimborsi legali e contrattuali degli acquisti WAYOUT.',
+                'it' => 'Documento pubblico destinato al sito wayoutapp.it e al flusso di acquisto dei Founder Pass WAYOUT.',
                 'en' => 'Rules on legal and contractual refunds for WAYOUT purchases.',
             ],
         ],
         'withdrawal_info' => [
             'group' => 'commerce',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/withdrawal-info.blade.php',
+            'views' => ['en' => 'pages/legal/en/withdrawal-info.blade.php'],
             'route' => 'legal.refunds',
             'titles' => ['it' => 'Informativa sul diritto di recesso', 'en' => 'Withdrawal right information'],
             'descriptions' => [
-                'it' => 'Informativa sul diritto di recesso per gli acquisti WAYOUT.',
+                'it' => 'Documento pubblico da rendere disponibile prima dell’acquisto, nel checkout, nella conferma d’ordine e nella pagina Recesso e rimborsi del sito wayoutapp.it.',
                 'en' => 'Information about withdrawal rights for WAYOUT purchases.',
             ],
         ],
         'notice' => [
             'group' => 'policies',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'view' => 'pages/legal/notice.blade.php',
+            'views' => ['en' => 'pages/legal/en/notice.blade.php'],
             'route' => 'legal.notice',
             'titles' => ['it' => 'Note legali', 'en' => 'Legal notice'],
             'descriptions' => [
-                'it' => 'Informazioni societarie, responsabilità e riferimenti legali di Wayout.',
+                'it' => 'Informazioni societarie e contatti ufficiali di WAYOUT.',
                 'en' => 'Company information, liability and legal references for Wayout.',
             ],
         ],
         'marketing' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Consenso marketing', 'en' => 'Marketing consent'],
             'descriptions' => [
@@ -121,7 +130,7 @@ return [
         ],
         'waitlist_acceptance' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Informativa iscrizione waitlist', 'en' => 'Waitlist registration notice'],
             'descriptions' => [
@@ -135,7 +144,7 @@ return [
         ],
         'contact_acceptance' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'route' => 'legal.privacy',
             'titles' => ['it' => 'Dichiarazione form contatti', 'en' => 'Contact form acknowledgement'],
             'descriptions' => [
@@ -149,7 +158,7 @@ return [
         ],
         'purchase_acceptance' => [
             'group' => 'consent_texts',
-            'initial_version' => '2026-08-18',
+            'initial_version' => '1.0',
             'route' => 'legal.sales',
             'titles' => ['it' => 'Dichiarazione acquisto', 'en' => 'Purchase acknowledgement'],
             'descriptions' => [

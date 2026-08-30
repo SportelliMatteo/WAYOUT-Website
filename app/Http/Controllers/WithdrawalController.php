@@ -25,11 +25,14 @@ class WithdrawalController extends Controller
 
     public function downloadTemplate()
     {
-        $path = resource_path('documents/modulo-tipo-recesso.docx');
+        $english = app()->getLocale() === 'en';
+        $path = resource_path($english
+            ? 'documents/withdrawal-form-template-en.docx'
+            : 'documents/modulo-tipo-recesso.docx');
 
         abort_unless(is_file($path), 404);
 
-        return response()->download($path, 'Modulo-tipo-di-recesso-WAYOUT.docx', [
+        return response()->download($path, __('messages.withdrawal.template_filename'), [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'X-Content-Type-Options' => 'nosniff',
         ]);
@@ -54,6 +57,7 @@ class WithdrawalController extends Controller
         $validated['purchase_email'] = Str::lower(trim($validated['purchase_email']));
         $validated['receipt_email'] = Str::lower(trim($validated['receipt_email']));
         $validated['order_reference'] = trim($validated['order_reference']);
+        $validated['locale'] = app()->getLocale();
 
         $purchase = $this->matchPurchase($validated);
         if (! $purchase) {
@@ -61,7 +65,7 @@ class WithdrawalController extends Controller
 
             return back()
                 ->withInput()
-                ->withErrors(['order_reference' => "Ordine non esistente, controlla attentamente nell'email di acquisto"])
+                ->withErrors(['order_reference' => __('messages.withdrawal.order_not_found_text')])
                 ->with('order_not_found', true);
         }
 
@@ -83,8 +87,10 @@ class WithdrawalController extends Controller
 
         if (! $review) {
             return redirect()->route('legal.refunds')
-                ->withErrors(['withdrawal' => 'La verifica è scaduta. Compila nuovamente il modulo.']);
+                ->withErrors(['withdrawal' => __('messages.withdrawal.review_expired')]);
         }
+
+        app()->setLocale($review['locale'] ?? 'it');
 
         return response()->view('pages.withdrawal.review', [
             'review' => $review,
@@ -101,17 +107,20 @@ class WithdrawalController extends Controller
 
         if (! $review || ! hash_equals((string) $review['nonce'], (string) $request->input('nonce'))) {
             return redirect()->route('legal.refunds')
-                ->withErrors(['withdrawal' => 'La verifica è scaduta. Compila nuovamente il modulo.']);
+                ->withErrors(['withdrawal' => __('messages.withdrawal.review_expired')]);
         }
+
+        $locale = in_array($review['locale'] ?? null, ['it', 'en'], true) ? $review['locale'] : 'it';
+        app()->setLocale($locale);
 
         $submittedAt = now();
         $publicToken = $review['public_token'];
         $documents = collect(['withdrawal_info', 'refunds', 'privacy'])
-            ->mapWithKeys(fn (string $key) => [$key => $legalDocuments->current($key, 'it')]);
+            ->mapWithKeys(fn (string $key) => [$key => $legalDocuments->current($key, $locale)]);
         $purchase = $this->matchPurchase($review);
         $deadline = $purchase ? Carbon::parse($purchase->created_at)->addDays(14) : null;
 
-        $withdrawal = DB::transaction(function () use ($request, $review, $documents, $purchase, $deadline, $submittedAt, $publicToken) {
+        $withdrawal = DB::transaction(function () use ($request, $review, $documents, $purchase, $deadline, $submittedAt, $publicToken, $locale) {
             $existing = WithdrawalRequest::query()
                 ->where('idempotency_key', $review['idempotency_key'])
                 ->first();
@@ -125,6 +134,7 @@ class WithdrawalController extends Controller
                 'receipt_number' => 'WR-'.$submittedAt->format('Ymd').'-'.Str::upper(Str::random(8)),
                 'public_token_hash' => hash('sha256', $publicToken),
                 'idempotency_key' => $review['idempotency_key'],
+                'locale' => $locale,
                 'first_name' => $review['first_name'],
                 'last_name' => $review['last_name'],
                 'purchase_email' => $review['purchase_email'],
@@ -156,7 +166,7 @@ class WithdrawalController extends Controller
         });
 
         try {
-            $sent = $emailSender->send($withdrawal->receipt_email, new WithdrawalReceiptMail($withdrawal, $publicToken));
+            $sent = $emailSender->send($withdrawal->receipt_email, (new WithdrawalReceiptMail($withdrawal, $publicToken))->locale($locale));
             $withdrawal->forceFill($sent
                 ? ['receipt_email_sent_at' => now()]
                 : ['receipt_email_failed_at' => now()])->save();
@@ -173,8 +183,11 @@ class WithdrawalController extends Controller
 
     public function receipt(string $token)
     {
+        $withdrawal = $this->withdrawalFromToken($token);
+        app()->setLocale($withdrawal->locale ?: 'it');
+
         return response()->view('pages.withdrawal.receipt', [
-            'withdrawal' => $this->withdrawalFromToken($token),
+            'withdrawal' => $withdrawal,
             'token' => $token,
         ])->header('Cache-Control', 'no-store, private');
     }
@@ -182,10 +195,11 @@ class WithdrawalController extends Controller
     public function download(string $token)
     {
         $withdrawal = $this->withdrawalFromToken($token);
+        app()->setLocale($withdrawal->locale ?: 'it');
 
         return response(view('pages.withdrawal.receipt-text', compact('withdrawal'))->render(), 200, [
             'Content-Type' => 'text/plain; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="ricevuta-'.$withdrawal->receipt_number.'.txt"',
+            'Content-Disposition' => 'attachment; filename="'.__('messages.withdrawal.receipt_filename').'-'.$withdrawal->receipt_number.'.txt"',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'no-store, private',
         ]);
@@ -193,15 +207,22 @@ class WithdrawalController extends Controller
 
     private function legalView(string $view, LegalDocumentService $legalDocuments)
     {
-        $withdrawalInfo = $legalDocuments->current('withdrawal_info', 'it');
-        $refundPolicy = $legalDocuments->current('refunds', 'it');
+        $locale = app()->getLocale();
+        $withdrawalInfo = $legalDocuments->current('withdrawal_info', $locale);
+        $refundPolicy = $legalDocuments->current('refunds', $locale);
+        $version = $withdrawalInfo->version === $refundPolicy->version
+            ? $withdrawalInfo->version
+            : __('messages.withdrawal.version_summary', [
+                'withdrawal' => $withdrawalInfo->version,
+                'refund' => $refundPolicy->version,
+            ]);
 
         return view($view, [
-            'title' => 'Recesso e rimborsi',
-            'description' => 'Funzione online, informativa sul diritto di recesso e Refund Policy WAYOUT.',
-            'version' => 'Informativa '.$withdrawalInfo->version.' · Refund '.$refundPolicy->version,
+            'title' => __('messages.legal.refunds'),
+            'description' => __('messages.withdrawal.page_description'),
+            'version' => $version,
             'updated' => max(Carbon::parse($withdrawalInfo->published_at), Carbon::parse($refundPolicy->published_at))
-                ->setTimezone(config('app.display_timezone'))->format('d/m/Y'),
+                ->setTimezone(config('app.display_timezone'))->translatedFormat('d F Y'),
             'withdrawalInfo' => $withdrawalInfo,
             'refundPolicy' => $refundPolicy,
         ]);
@@ -216,14 +237,13 @@ class WithdrawalController extends Controller
 
     private function declaration(array $review): string
     {
-        return sprintf(
-            'Io sottoscritto/a %s %s comunico la mia decisione di recedere dal contratto identificato da %s, relativo al pass %s, acquistato con l’indirizzo %s.',
-            $review['first_name'],
-            $review['last_name'],
-            $review['order_reference'],
-            $review['plan'],
-            $review['purchase_email'],
-        );
+        return __('messages.withdrawal.declaration', [
+            'first_name' => $review['first_name'],
+            'last_name' => $review['last_name'],
+            'order' => $review['order_reference'],
+            'plan' => $review['plan'],
+            'email' => $review['purchase_email'],
+        ], $review['locale'] ?? 'it');
     }
 
     private function matchPurchase(array $review): ?object

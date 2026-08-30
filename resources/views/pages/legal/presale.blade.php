@@ -1,13 +1,17 @@
 @extends('pages.legal.layout', [
     'title' => 'Condizioni di pre-sale',
-    'description' => 'Condizioni specifiche della pre-sale dei Founder Pass WAYOUT.',
+    'description' => 'Condizioni applicabili agli acquisti effettuati durante la fase di pre-sale dei Founder Pass WAYOUT.',
 ])
 
 @section('legal-content')
 <div class="space-y-8">
+        <div class="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p class="font-black text-slate-950"><strong>AMBITO</strong></p>
+            <p class="text-slate-700">Il presente documento disciplina esclusivamente le caratteristiche specifiche, i limiti, la decorrenza e gli scenari della pre-sale dei Founder Pass 12M. Le regole generali sulla conclusione dell’ordine, sul pagamento e sulla fatturazione saranno coordinate con i separati <a class="font-black text-violet-700" href="/termini-di-vendita">Termini di vendita online</a>; il diritto di recesso e gli ulteriori rimborsi saranno descritti anche nella separata informativa <a class="font-black text-violet-700" href="/recedere-dal-contratto">Recesso e rimborsi</a>.</p>
+        </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950"><strong>LEGGERE PRIMA DELL’ACQUISTO</strong></p>
-            <p class="text-slate-700">La pre-sale consente di acquistare in anticipo una subscription digitale WAYOUT che sarà attivata dal go-live pubblico dell’app. Non attribuisce accesso anticipato all’app e non include ingressi, prenotazioni, tavoli fisici, drink, consumazioni o servizi erogati da locali o altri soggetti terzi.</p>
+            <p class="text-slate-700">La pre-sale consente di acquistare in anticipo una subscription digitale WAYOUT che sarà attivabile dal go-live pubblico dell’app e la cui durata decorrerà dalla corretta attivazione individuale. Non attribuisce accesso anticipato all’app e non include ingressi, prenotazioni, tavoli fisici, drink, consumazioni o servizi erogati da locali o altri soggetti terzi.</p>
         </div>
     <section>
         <h2 class="text-2xl font-black text-slate-950">1. Definizioni</h2>
@@ -15,8 +19,8 @@
             <li><strong>“WAYOUT” o “Società”: </strong>WAYOUT S.r.l., venditore dei Founder Pass e gestore del sito wayoutapp.it.</li>
             <li><strong>“Utente” o “Acquirente”: </strong>la persona fisica maggiorenne che, agendo per scopi estranei alla propria attività imprenditoriale, commerciale, artigianale o professionale, acquista un Founder Pass.</li>
             <li><strong>“Pre-sale”: </strong>la fase di vendita online precedente al lancio pubblico dell’app WAYOUT.</li>
-            <li><strong>“Founder Join 12M”: </strong>la subscription pre-lancio che abilita, per 12 mesi dal go-live, le funzionalità Join previste dal piano e dalle regole del servizio.</li>
-            <li>“Founder Creator 12M”: la subscription pre-lancio che comprende le funzionalità Join e le funzionalità Creator previste dal piano e dalle regole del servizio, una volta completati i requisiti standard di registrazione e attivazione dell’account.</li>
+            <li><strong>“Founder Join 12M”: </strong>la subscription pre-lancio che abilita, per 12 mesi dalla corretta attivazione individuale, possibile dal go-live, le funzionalità Join previste dal piano e dalle regole del servizio.</li>
+            <li>“Founder Creator 12M”: la subscription pre-lancio che comprende per 12 mesi dalla corretta attivazione individuale, possibile a partire dal go-live, le funzionalità Join e Creator previste dal piano e dalle regole del servizio, una volta completati i requisiti standard di registrazione e attivazione dell’account.</li>
             <li><strong>“Founder Pass”: </strong>congiuntamente, Founder Join 12M e Founder Creator 12M.</li>
             <li><strong>“Go-live”: </strong>la data in cui l’app WAYOUT viene resa pubblicamente disponibile per l’operatività iniziale nella città pilota di Milano.</li>
             <li><strong>“Data massima di lancio”: </strong>il 31 dicembre 2026.</li>
@@ -70,7 +74,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">4. Requisiti per l’acquisto</h2>
         <p class="mt-3"><strong>4.1 </strong>La Pre-sale è riservata a persone fisiche maggiorenni iscritte alla waitlist WAYOUT e abilitate ad accedere alla pagina di acquisto.</p>
-        <p class="mt-3"><strong>4.2 </strong>L’Acquirente deve fornire dati completi, corretti, aggiornati e riferibili alla propria persona. La data di nascita è utilizzata anche per verificare il requisito di maggiore età.</p>
+        <p class="mt-3"><strong>4.2 </strong>L’Acquirente deve fornire nel checkout dati completi, corretti, aggiornati e riferibili alla propria persona. La data di nascita è utilizzata per verificare il requisito di maggiore età; il numero di telefono è verificato tramite Firebase prima della creazione o del riconoscimento dell’account WAYOUT.</p>
         <p class="mt-3"><strong>4.3 </strong>Il Founder Pass è personale, non cedibile, non trasferibile e destinato a essere associato all’account creato con l’indirizzo email utilizzato per la waitlist e per l’acquisto, salvo diversa procedura autorizzata da WAYOUT per correggere errori materiali o sostituire un recapito non più accessibile.</p>
         <p class="mt-3"><strong>4.4 </strong>WAYOUT può rifiutare o annullare acquisti effettuati mediante dati falsi, strumenti automatizzati, frodi, duplicazioni abusive, mezzi di pagamento non autorizzati o da soggetti che non possiedono i requisiti, fermo restando il rimborso delle somme eventualmente dovuto secondo legge e le condizioni applicabili.</p>
     </section>
@@ -92,14 +96,14 @@
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Founder Join 12M</strong></td>
                         <td class="px-4 py-3 align-top"><strong>€29</strong></td>
-                        <td class="px-4 py-3 align-top"><strong>12 mesi dal go-live</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>12 mesi dalla corretta attivazione individuale, possibile dal go-live</strong></td>
                         <td class="px-4 py-3 align-top"><strong>600 pass</strong></td>
                         <td class="px-4 py-3 align-top"><strong>Funzionalità Join</strong></td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Founder Creator 12M</strong></td>
                         <td class="px-4 py-3 align-top"><strong>€59</strong></td>
-                        <td class="px-4 py-3 align-top"><strong>12 mesi dal go-live</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>12 mesi dalla corretta attivazione individuale, possibile dal go-live</strong></td>
                         <td class="px-4 py-3 align-top"><strong>200 pass</strong></td>
                         <td class="px-4 py-3 align-top">Funzionalità Join + Creator</td>
                     </tr>
@@ -114,8 +118,8 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">6. Oggetto della Pre-sale e natura del Founder Pass</h2>
-        <p class="mt-3"><strong>6.1 </strong>Con la Pre-sale l’Acquirente compra anticipatamente il diritto di attivare e utilizzare, dal go-live e per 12 mesi, la subscription digitale corrispondente al Founder Pass selezionato.</p>
-        <p class="mt-3"><strong>6.2 </strong>Il pagamento effettuato durante la Pre-sale non attribuisce accesso anticipato all’app, a versioni beta, a eventi o a servizi fisici. L’accesso effettivo alle funzionalità decorre dal go-live.</p>
+        <p class="mt-3"><strong>6.1 </strong>Con la Pre-sale l’Acquirente compra anticipatamente il diritto di attivare, a partire dal go-live, la subscription digitale corrispondente al Founder Pass selezionato e di utilizzarla per 12 mesi dalla propria corretta attivazione individuale.</p>
+        <p class="mt-3"><strong>6.2 </strong>Il pagamento effettuato durante la Pre-sale non attribuisce accesso anticipato all’app, a versioni beta, a eventi o a servizi fisici. L’attivazione può avvenire dal go-live e l’accesso effettivo alle funzionalità decorre dalla corretta attivazione individuale dell’account.</p>
         <p class="mt-3"><strong>6.3 </strong>Il Founder Pass non è un credito a consumo, un titolo di ingresso, una prenotazione presso locali, un biglietto, un pacchetto di eventi o una garanzia di ottenere specifici risultati sociali.</p>
         <p class="mt-3"><strong>6.4 </strong>Le funzionalità saranno fornite tramite l’app WAYOUT e potranno essere soggette a limiti ragionevoli di fair use, sicurezza, qualità e capacità tecnica, purché non venga svuotato il contenuto essenziale del piano acquistato.</p>
     </section>
@@ -139,9 +143,9 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">9. Decorrenza, attivazione e durata</h2>
-        <p class="mt-3"><strong>9.1 </strong>La durata di 12 mesi decorre dal go-live pubblico dell’app nella città pilota di Milano, non dalla data di acquisto.</p>
+        <p class="mt-3"><strong>9.1 </strong>Il Founder Pass è attivabile a partire dal go-live pubblico dell’app nella città pilota di Milano. La durata di 12 mesi decorre dalla corretta attivazione individuale del Founder Pass sull’account dell’Acquirente, non dalla data di acquisto e non automaticamente dal go-live.</p>
         <p class="mt-3"><strong>9.2 </strong>WAYOUT comunicherà all’Acquirente la disponibilità dell’app e le istruzioni per creare o collegare l’account. Il pass sarà associato, di regola, all’indirizzo email usato per la waitlist e per l’ordine. L’attivazione richiede il completamento della registrazione, la verifica del numero di telefono, la conferma della maggiore età, l’inserimento di informazioni veritiere, il caricamento di una fotografia personale reale e conforme e l’accettazione dei termini e delle regole applicabili.</p>
-        <p class="mt-3"><strong>9.3 </strong>La durata decorre dal go-live anche se l’Acquirente completa la registrazione o inizia a utilizzare l’app in un momento successivo per propria scelta, inerzia o causa a lui imputabile. In tali casi il pass resta attivabile durante il relativo periodo di validità, ma il tempo già trascorso non viene recuperato e il mancato utilizzo non dà diritto al rimborso, fatti salvi il diritto di recesso e gli altri diritti inderogabili.</p>
+        <p class="mt-3"><strong>9.3 </strong>Se l’Acquirente completa l’attivazione in un momento successivo al go-live, i 12 mesi iniziano comunque dalla sua corretta attivazione individuale: il periodo compreso tra il go-live e tale attivazione non viene conteggiato e l’Acquirente non perde giorni di validità.</p>
         <p class="mt-3"><strong>9.4 </strong>Se ritardi, errori o malfunzionamenti imputabili a WAYOUT impediscono l’attivazione dopo il go-live, WAYOUT fornirà assistenza e il periodo interessato sarà recuperato mediante riattivazione, estensione o altro rimedio equivalente. Se l’attivazione resta definitivamente impossibile per cause non imputabili all’Acquirente, il prezzo pagato sarà rimborsato integralmente, fatti salvi gli ulteriori rimedi inderogabili previsti dalla legge.</p>
         <p class="mt-3"><strong>9.5 </strong>Alla scadenza dei 12 mesi il Founder Pass termina senza rinnovo automatico. L’Acquirente potrà scegliere liberamente se acquistare un piano ordinario disponibile nell’app.</p>
     </section>
@@ -186,8 +190,8 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">14. Data indicativa, ritardi e Data massima di lancio</h2>
         <p class="mt-3"><strong>14.1 </strong>Le date o finestre di lancio comunicate prima del go-live sono stime e non costituiscono un termine essenziale, salvo la Data massima di lancio del 31 dicembre 2026 prevista dalle presenti Condizioni.</p>
-        <p class="mt-3"><strong>14.2 </strong>Se il lancio viene posticipato ma avviene entro il 31 dicembre 2026, il Founder Pass decorrerà comunque dal go-live effettivo e manterrà integralmente la durata di 12 mesi. Il semplice ritardo entro tale data non determina un rimborso automatico, fatto salvo il diritto di recesso nei termini applicabili e gli altri diritti inderogabili.</p>
-        <p class="mt-3"><strong>14.3 </strong>WAYOUT informerà gli Acquirenti di ritardi rilevanti, indicando per quanto possibile una nuova finestra stimata e confermando che la durata del pass decorrerà dal go-live effettivo.</p>
+        <p class="mt-3"><strong>14.2 </strong>Se il lancio viene posticipato ma avviene entro il 31 dicembre 2026, il Founder Pass diventa attivabile dal go-live effettivo e mantiene integralmente la durata di 12 mesi dalla successiva corretta attivazione individuale. Il semplice ritardo entro tale data non determina un rimborso automatico, fatto salvo il diritto di recesso nei termini applicabili e gli altri diritti inderogabili.</p>
+        <p class="mt-3"><strong>14.3 </strong>WAYOUT informerà gli Acquirenti di ritardi rilevanti, indicando per quanto possibile una nuova finestra stimata e confermando che il Pass sarà attivabile dal go-live effettivo e che i 12 mesi decorreranno dalla corretta attivazione individuale.</p>
         <p class="mt-3"><strong>14.4 </strong>Se l’app non viene resa pubblicamente disponibile nella città pilota di Milano entro il 31 dicembre 2026, WAYOUT comunicherà il superamento della Data massima di lancio. L’Acquirente potrà scegliere se mantenere il Founder Pass per il successivo go-live oppure richiedere il rimborso integrale secondo i termini e le modalità indicati nella <a class="font-black text-violet-700" href="/recedere-dal-contratto">Refund Policy</a> e nella comunicazione ricevuta. In assenza di richiesta di rimborso, il Founder Pass resterà valido per il successivo go-live, senza rinnovo automatico e con durata di 12 mesi decorrente dall’effettiva attivazione del servizio.</p>
         <p class="mt-3"><strong>14.5 </strong>La disciplina del presente articolo si applica anche quando il ritardo dipende da forza maggiore, fornitori, autorizzazioni, esigenze di sicurezza o altre circostanze non imputabili a WAYOUT, senza pregiudizio per eventuali diritti inderogabili ulteriori.</p>
     </section>
@@ -227,7 +231,7 @@
         <h2 class="text-2xl font-black text-slate-950">19. Pagamento, fattura e conferma</h2>
         <p class="mt-3"><strong>19.1 </strong>Il pagamento è gestito tramite Stripe Checkout. I dati completi della carta sono trattati dal prestatore di pagamento e non sono conservati direttamente da WAYOUT.</p>
         <p class="mt-3"><strong>19.2 </strong>L’ordine si considera concluso quando il pagamento risulta completato e WAYOUT registra e conferma l’acquisto, fermo restando l’annullamento e il rimborso in caso di indisponibilità sopravvenuta, frode, errore manifesto o overbooking.</p>
-        <p class="mt-3"><strong>19.3 </strong>La conferma d’ordine sarà inviata all’email associata alla waitlist e conterrà almeno il pass acquistato, il prezzo, la data, l’identificativo dell’ordine, la durata, la decorrenza dal go-live, l’assenza di rinnovo automatico, i contatti e i link ai documenti applicabili.</p>
+        <p class="mt-3"><strong>19.3 </strong>La conferma d’ordine sarà inviata all’email associata alla waitlist e conterrà almeno il pass acquistato, il prezzo, la data, l’identificativo dell’ordine, la durata, la regola di attivazione individuale a partire dal go-live, l’assenza di rinnovo automatico, i contatti e copie immutabili o allegati dei documenti applicabili nella versione accettata.</p>
         <p class="mt-3"><strong>19.4 </strong>L’Acquirente può richiedere la fattura selezionando l’apposita opzione nel checkout e indicando il codice fiscale richiesto. In assenza di richiesta, il codice fiscale non viene raccolto per tale finalità, fatti salvi gli obblighi fiscali applicabili.</p>
     </section>
 

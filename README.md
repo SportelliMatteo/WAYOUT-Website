@@ -91,11 +91,19 @@ La retention dei log applicativi deve essere proporzionata e documentata in base
 
 Il database conserva i timestamp in UTC. Dashboard e nuovi log li presentano in `Europe/Rome`, configurabile con `APP_DISPLAY_TIMEZONE` e `LOG_TIMEZONE`; `APP_TIMEZONE` deve restare `UTC` per evitare timestamp incoerenti e gestire correttamente l’ora legale.
 
+## Retention automatica del database
+
+Il comando `php artisan privacy:enforce-retention` elimina direttamente dal database i link di verifica email scaduti o utilizzati, le iscrizioni waitlist mai verificate da oltre 30 giorni e gli eventi di audit amministrativo più vecchi di 12 mesi. L'esecuzione pianificata avviene ogni ora al minuto 20 nel fuso `Europe/Rome`, tramite il normale runner `schedule:run`.
+
+Ogni esecuzione viene registrata in `data_retention_runs` con orari, esito e soli conteggi per regola. La dashboard mostra la prossima esecuzione, i record attualmente candidati e gli ultimi dieci risultati. Per controllare da console senza cancellare dati usare `php artisan privacy:enforce-retention --dry-run`.
+
 ## Pagamenti tramite backend WAYOUT
 
 Il sito Laravel non conserva credenziali Stripe e non riceve webhook Stripe. Recupera i Founder Pass dal backend WAYOUT, verifica l’utente tramite Firebase Phone Authentication e chiama gli endpoint interni firmando ogni richiesta con HMAC-SHA256. Il backend crea la Checkout Session Stripe e resta l’autorità sul pagamento e sull’entitlement.
 
 Configurare `WAYOUT_BASE_URL` e un `WAYOUT_INTERNAL_SECRET` casuale di almeno 32 caratteri. Il medesimo valore deve essere impostato come `INTERNAL_API_SECRET` sul backend dell’app. Dopo il ritorno dal checkout, Laravel interroga l’entitlement, registra l’acquisto locale, invia l’email di conferma ed emette l’eventuale fattura tramite Qonto.
+
+Gli errori del backend WAYOUT vengono registrati con metodo, endpoint, stato HTTP, codice applicativo, messaggio, motivo e dettagli di validazione per campo. Il logger non salva i payload completi e oscura automaticamente email, numeri di telefono, URL, token e valori tecnici lunghi.
 
 ## Audit dei consensi
 

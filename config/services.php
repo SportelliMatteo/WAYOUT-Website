@@ -37,6 +37,7 @@ return [
 
     'firebase' => [
         'project_id' => env('FIREBASE_PROJECT_ID'),
+        'sms_resend_cooldown_seconds' => (int) env('FIREBASE_SMS_RESEND_COOLDOWN_SECONDS', 60),
         'client' => [
             'api_key' => env('FIREBASE_API_KEY'),
             'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),

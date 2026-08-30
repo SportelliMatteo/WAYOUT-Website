@@ -17,8 +17,14 @@ const setupCheckoutPhoneVerification = () => {
 
     const config = window.wayoutFirebaseConfig || {};
     const messages = window.wayoutPhoneVerificationMessages || {};
+    const initialSendLabel = send.textContent.trim();
+    const resendSeconds = Math.max(1, Number.parseInt(send.dataset.resendSeconds || '60', 10) || 60);
     let confirmation = null;
     let recaptcha = null;
+    let codeWasSent = false;
+    let sendInProgress = false;
+    let resendAvailableAt = 0;
+    let countdownTimer = null;
 
     const phoneNumber = () => `${prefix.value}${number.value.replace(/\D/g, '')}`;
     const validPhone = (value) => /^\+[1-9]\d{6,14}$/.test(value);
@@ -38,6 +44,35 @@ const setupCheckoutPhoneVerification = () => {
         codePanel.classList.add('hidden');
         status.classList.add('hidden');
     };
+    const updateSendButton = () => {
+        const secondsRemaining = Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000));
+
+        if (token.value || sendInProgress) {
+            send.disabled = true;
+            return;
+        }
+
+        if (secondsRemaining > 0) {
+            send.disabled = true;
+            send.textContent = (messages.resendCountdown || 'Resend in :seconds s')
+                .replace(':seconds', secondsRemaining.toString());
+            return;
+        }
+
+        send.disabled = false;
+        send.textContent = codeWasSent ? (messages.resendCode || initialSendLabel) : initialSendLabel;
+
+        if (countdownTimer) {
+            window.clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+    };
+    const startResendCooldown = () => {
+        codeWasSent = true;
+        resendAvailableAt = Date.now() + (resendSeconds * 1000);
+        updateSendButton();
+        countdownTimer = window.setInterval(updateSendButton, 250);
+    };
     const resetRecaptcha = () => {
         recaptcha?.clear();
         recaptcha = null;
@@ -53,7 +88,10 @@ const setupCheckoutPhoneVerification = () => {
     const auth = getAuth(firebaseApp);
     auth.languageCode = document.documentElement.lang || 'it';
 
-    [prefix, number].forEach((field) => field.addEventListener('input', reset));
+    [prefix, number].forEach((field) => field.addEventListener('input', () => {
+        reset();
+        updateSendButton();
+    }));
 
     send.addEventListener('click', async () => {
         const targetPhone = phoneNumber();
@@ -64,7 +102,8 @@ const setupCheckoutPhoneVerification = () => {
             return;
         }
 
-        send.disabled = true;
+        sendInProgress = true;
+        updateSendButton();
         showStatus(messages.sending);
 
         try {
@@ -73,13 +112,15 @@ const setupCheckoutPhoneVerification = () => {
             confirmation = await signInWithPhoneNumber(auth, targetPhone, recaptcha);
             codePanel.classList.remove('hidden');
             showStatus(messages.codeSent);
+            startResendCooldown();
             code.focus();
         } catch (error) {
             console.error('Firebase checkout phone verification failed.', error);
             resetRecaptcha();
             showStatus(messages.sendError, 'error');
         } finally {
-            send.disabled = false;
+            sendInProgress = false;
+            updateSendButton();
         }
     });
 
@@ -98,7 +139,7 @@ const setupCheckoutPhoneVerification = () => {
             submit.disabled = false;
             prefix.disabled = true;
             number.readOnly = true;
-            send.disabled = true;
+            updateSendButton();
             codePanel.classList.add('hidden');
             showStatus(messages.verified, 'success');
         } catch (error) {

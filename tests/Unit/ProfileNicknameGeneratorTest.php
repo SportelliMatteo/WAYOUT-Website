@@ -11,8 +11,8 @@ class ProfileNicknameGeneratorTest extends TestCase
     {
         $nickname = (new ProfileNicknameGenerator)->generate('Matteo', 'Sportelli');
 
-        $this->assertMatchesRegularExpression('/^@matteo_sportelli_[a-z0-9]{4}$/', $nickname);
-        $this->assertLessThanOrEqual(29, strlen($nickname));
+        $this->assertMatchesRegularExpression('/^@matteo_sportel_[a-z0-9]{4}$/', $nickname);
+        $this->assertLessThanOrEqual(20, strlen($nickname));
     }
 
     public function test_it_normalizes_accents_and_punctuation(): void
@@ -20,5 +20,17 @@ class ProfileNicknameGeneratorTest extends TestCase
         $nickname = (new ProfileNicknameGenerator)->generate('Mattéo', "D'Amico");
 
         $this->assertMatchesRegularExpression('/^@matteo_d_amico_[a-z0-9]{4}$/', $nickname);
+        $this->assertLessThanOrEqual(20, strlen($nickname));
+    }
+
+    public function test_it_respects_the_backend_limit_for_long_names(): void
+    {
+        $nickname = (new ProfileNicknameGenerator)->generate(
+            'Massimiliano Alessandro',
+            'De Santis Monteverde',
+        );
+
+        $this->assertMatchesRegularExpression('/^@[a-z0-9_]+_[a-z0-9]{4}$/', $nickname);
+        $this->assertSame(20, strlen($nickname));
     }
 }

@@ -1,6 +1,6 @@
 @extends('pages.legal.layout', [
     'title' => 'Note legali',
-    'description' => 'Informazioni societarie, responsabilità e riferimenti legali di Wayout.',
+    'description' => 'Informazioni societarie e contatti ufficiali di WAYOUT.',
 ])
 
 @section('legal-content')
@@ -11,7 +11,7 @@
     </section>
 
     <section>
-        <h2 class="text-2xl font-black text-slate-950">2. Dati Societari</h2>
+        <h2 class="text-2xl font-black text-slate-950">2. Dati societari</h2>
         <dl class="mt-4 grid gap-3 sm:grid-cols-2">
             <div class="rounded-lg bg-white p-4">
                 <dt class="font-black text-slate-500">Denominazione:</dt>

@@ -6,6 +6,12 @@
 @section('legal-content')
 <div class="space-y-8">
     <section>
+        <h2 class="text-2xl font-black uppercase text-slate-950">Ambito del documento</h2>
+        <p class="mt-3">Questi Termini regolano esclusivamente la navigazione sul sito wayoutapp.it e l’iscrizione alla waitlist pre-lancio. Non regolano l’acquisto dei Founder Pass, disciplinato dalle separate <a class="font-black text-violet-700" href="/termini-di-vendita">Condizioni di Pre-sale e vendita</a>, né l’utilizzo dell’app WAYOUT dopo il go-live, che sarà disciplinato da termini e policy dedicati.</p>
+        <p class="mt-3">Ti invitiamo a leggere attentamente questi Termini prima di utilizzare il Sito o completare l’iscrizione alla Waitlist. I Termini non sono richiesti per la semplice consultazione delle pagine pubbliche; completando e inviando il form di iscrizione, l’Utente richiede l’inserimento nella Waitlist e accetta i presenti Termini.</p>
+    </section>
+
+    <section>
         <h2 class="text-2xl font-black text-slate-950">1. Definizioni</h2>
         <p class="mt-3">Ai fini dei presenti Termini:</p>
         <ul class="mt-3 list-disc space-y-2 pl-6">
@@ -13,7 +19,7 @@
             <li>“Sito”: il sito web accessibile dal dominio wayoutapp.it e dalle relative pagine e sottopagine;</li>
             <li>“Utente”: la persona fisica che visita il Sito o utilizza una delle relative funzionalità;</li>
             <li>“Waitlist”: la lista pre-lancio mediante la quale un Utente maggiorenne manifesta interesse per il futuro servizio WAYOUT;</li>
-            <li>“Utente valido”: l’Utente maggiorenne che ha fornito dati completi, veritieri e utilizzabili, ha accettato i presenti Termini e non presenta iscrizioni duplicate, abusive, fraudolente o effettuate mediante strumenti automatizzati;</li>
+            <li>“Utente valido”: l’Utente che ha fornito un indirizzo email valido, ha accettato i presenti Termini, ha confermato l’indirizzo tramite il link di verifica inviato da WAYOUT e non presenta iscrizioni duplicate, abusive, fraudolente o effettuate mediante strumenti automatizzati;</li>
             <li>“Waitlist Pass”: l’eventuale beneficio gratuito di durata limitata, con sole funzionalità Join, riservato agli Utenti validi che soddisfano le condizioni indicate all’articolo 7;</li>
             <li>“Go-live”: la data in cui l’app WAYOUT viene resa pubblicamente disponibile nella città pilota indicata dalla Società.</li>
         </ul>
@@ -62,7 +68,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">3. Ambito, accettazione e prova dei Termini</h2>
         <p class="mt-3">3.1 I presenti Termini disciplinano l’accesso al Sito, l’uso dei form pubblici, l’iscrizione e la permanenza nella Waitlist, nonché l’eventuale attribuzione del Waitlist Pass.</p>
-        <p class="mt-3">3.2 L’iscrizione alla Waitlist è completata quando l’Utente: (i) inserisce l’indirizzo email; (ii) completa i campi richiesti, inclusa la data di nascita e il numero di telefono; (iii) ha la possibilità di consultare, prima dell’invio, i presenti Termini e la <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> tramite i collegamenti resi disponibili nel form; e (iv) invia il form. Con l’invio, l’Utente richiede l’iscrizione alla Waitlist e accetta i presenti Termini. La <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> ha funzione informativa e non costituisce oggetto di consenso.</p>
+        <p class="mt-3">3.2 La richiesta di iscrizione alla Waitlist avviene quando l’Utente: (i) inserisce l’indirizzo email; (ii) ha la possibilità di consultare, prima dell’invio, i presenti Termini, la <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> e l’informativa sintetica del form; (iii) accetta i presenti Termini; e (iv) invia il form. Il consenso marketing, se presente, è facoltativo e separato. L’iscrizione e la relativa posizione diventano effettive solo dopo la conferma dell’indirizzo email tramite il link di verifica inviato da WAYOUT. La <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> ha funzione informativa e non costituisce oggetto di consenso.</p>
         <p class="mt-3">3.3 WAYOUT può conservare, nel rispetto della <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a>, gli elementi necessari a documentare l’iscrizione e l’accettazione, tra cui data e ora, versione dei Termini, provenienza dell’evento, identificativo tecnico e, quando necessario e proporzionato, indirizzo IP e user agent.</p>
         <p class="mt-3">3.4 L’Utente può consultare, salvare o stampare i Termini in qualsiasi momento. La versione applicabile è quella accettata al momento dell’iscrizione, salvo successivi aggiornamenti validamente comunicati ai sensi dell’articolo 18.</p>
         <p class="mt-3">3.5 In caso di contrasto, le <a class="font-black text-violet-700" href="/termini-di-vendita">Condizioni di Pre-sale e vendita</a> prevalgono per gli acquisti dei Founder Pass; i futuri Termini dell’app prevalgono per l’uso dell’app e delle funzionalità sociali dopo il go-live.</p>
@@ -70,8 +76,8 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">4. Requisiti di età e capacità</h2>
-        <p class="mt-3">4.1 La Waitlist è riservata esclusivamente a persone fisiche che abbiano compiuto 18 anni e dispongano della capacità necessaria per assumere gli impegni previsti dai presenti Termini.</p>
-        <p class="mt-3">4.2 L’Utente deve indicare la propria data di nascita e garantisce che i dati forniti sono corretti. WAYOUT può richiedere verifiche ragionevoli prima di confermare benefici o accessi collegati al lancio.</p>
+        <p class="mt-3">4.1 Il futuro servizio WAYOUT, la pre-sale dei Founder Pass e l’attivazione dei benefici sono riservati a persone che abbiano compiuto 18 anni. Con l’iscrizione alla Waitlist l’Utente dichiara di essere maggiorenne; la data di nascita non viene raccolta nel form waitlist e il requisito 18+ viene verificato nei successivi flussi di acquisto o attivazione.</p>
+        <p class="mt-3">4.2 WAYOUT può richiedere la data di nascita e ulteriori verifiche ragionevoli nei flussi successivi di acquisto, creazione/riconoscimento dell’account o attivazione del beneficio, prima di confermare l’accesso a servizi riservati ai maggiorenni.</p>
         <p class="mt-3">4.3 I minorenni non possono iscriversi alla Waitlist. Se WAYOUT rileva o ha ragionevoli motivi per ritenere che un’iscrizione riguardi un minorenne, può rifiutarla o rimuoverla e trattare i relativi dati secondo la <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> e la normativa applicabile.</p>
     </section>
 
@@ -86,11 +92,11 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">6. Iscrizione, posizione e gestione della Waitlist</h2>
         <p class="mt-3">6.1 L’iscrizione alla Waitlist è gratuita e non comporta alcun obbligo di acquistare un Founder Pass o altri servizi.</p>
-        <p class="mt-3">6.2 L’Utente deve fornire almeno email, nome, cognome, data di nascita, prefisso e numero di telefono, nonché gli ulteriori dati indicati come obbligatori nel form. I dati devono essere completi, aggiornati, veritieri e riferibili all’Utente.</p>
+        <p class="mt-3">6.2 Nel form Waitlist è richiesto soltanto un indirizzo email valido, oltre all’accettazione dei presenti Termini; l’eventuale consenso marketing è facoltativo. I dati anagrafici, la data di nascita e il numero di telefono sono richiesti, se necessari, soltanto nei successivi flussi di acquisto o attivazione.</p>
         <p class="mt-3">6.3 È consentita una sola iscrizione per persona. Non sono ammesse iscrizioni duplicate mediante indirizzi email o recapiti differenti, iscrizioni per conto di terzi senza autorizzazione, iscrizioni automatizzate, account fittizi o tentativi di alterare la disponibilità dei posti.</p>
-        <p class="mt-3">6.4 La priorità provvisoria nella Waitlist è determinata, di regola, dalla data e dall’ora della prima registrazione dell’email ricevuta correttamente dal sistema. La priorità diventa rilevante ai fini degli eventuali benefici solo dopo il completamento del profilo e la verifica dei requisiti di Utente valido.</p>
+        <p class="mt-3">6.4 La posizione nella Waitlist viene assegnata, di regola, in base alla data e all’ora in cui l’indirizzo email viene confermato tramite il link di verifica. Il semplice invio del form, senza verifica dell’email, non attribuisce una posizione definitiva né un beneficio.</p>
         <p class="mt-3">6.5 Se un’iscrizione risulta incompleta, duplicata, riferita a un minorenne, manifestamente falsa, fraudolenta o abusiva, WAYOUT può escluderla dal conteggio e rendere nuovamente disponibile il relativo posto.</p>
-        <p class="mt-3">6.6 La Waitlist resta disponibile fino al raggiungimento della capienza prevista, salvo temporanee indisponibilità dovute a manutenzione, sicurezza, prevenzione degli abusi, adeguamenti normativi o problemi tecnici. La sola ricezione dell’email da parte del sistema non attribuisce un posto quando la capienza è già esaurita o il profilo non è stato completato correttamente.</p>
+        <p class="mt-3">6.6 La Waitlist resta disponibile fino al raggiungimento della capienza prevista, salvo temporanee indisponibilità dovute a manutenzione, sicurezza, prevenzione degli abusi, adeguamenti normativi o problemi tecnici. La sola ricezione del form non attribuisce un posto quando la capienza è già esaurita o l’indirizzo email non è stato verificato correttamente.</p>
         <p class="mt-3">6.7 L’Utente può chiedere in qualsiasi momento la cancellazione dalla Waitlist scrivendo a <a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a>. La cancellazione comporta la perdita della posizione e degli eventuali benefici non ancora attivati, fatto salvo quanto previsto dalla normativa applicabile e dalla <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a>.</p>
     </section>
 

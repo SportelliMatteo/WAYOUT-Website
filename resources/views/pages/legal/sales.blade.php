@@ -1,13 +1,18 @@
 @extends('pages.legal.layout', [
     'title' => 'Termini di vendita',
-    'description' => 'Termini per l’acquisto online dei Founder Pass WAYOUT.',
+    'description' => 'Condizioni generali applicabili alla formazione dell’ordine, al pagamento e alla gestione dell’acquisto online dei Founder Pass WAYOUT.',
 ])
 
 @section('legal-content')
 <div class="space-y-8">
+    <section>
+        <h2 class="text-2xl font-black uppercase text-slate-950">AMBITO</h2>
+        <p class="mt-3">Il presente documento disciplina il processo di vendita online dei Founder Pass: informazioni precontrattuali, inoltro dell’ordine, pagamento tramite Stripe, conclusione del contratto, conferma su supporto durevole, fatturazione, assistenza, recesso e rimedi. Le caratteristiche specifiche dei pass e gli scenari della pre-sale restano disciplinati anche dalle separate <a class="font-black text-violet-700" href="/condizioni-di-pre-sale">Condizioni specifiche di pre-sale</a>.</p>
+    </section>
+
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950"><strong>LEGGERE PRIMA DELL’ACQUISTO</strong></p>
-            <p class="text-slate-700">L’acquisto riguarda una subscription digitale in pre-sale, con pagamento unico, attivazione dal go-live pubblico dell’app e durata di 12 mesi. Non è previsto rinnovo automatico. Il Founder Pass non include ingressi, prenotazioni, tavoli fisici, drink, consumazioni o servizi forniti da locali o altri soggetti terzi.</p>
+            <p class="text-slate-700">L’acquisto riguarda una subscription digitale in pre-sale, con pagamento unico, attivabile dal go-live pubblico dell’app e della durata di 12 mesi dalla corretta attivazione individuale. Non è previsto rinnovo automatico. Il Founder Pass non include ingressi, prenotazioni, tavoli fisici, drink, consumazioni o servizi forniti da locali o altri soggetti terzi.</p>
         </div>
     <section>
         <h2 class="text-2xl font-black text-slate-950">1. Definizioni</h2>
@@ -106,13 +111,13 @@
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900">Founder Join 12M</td>
                         <td class="px-4 py-3 align-top">€29, IVA e oneri applicabili inclusi</td>
-                        <td class="px-4 py-3 align-top">12 mesi dal go-live; pagamento unico; nessun rinnovo automatico</td>
+                        <td class="px-4 py-3 align-top">12 mesi dalla corretta attivazione individuale, possibile dal go-live; pagamento unico; nessun rinnovo automatico</td>
                         <td class="px-4 py-3 align-top">Fino a 600 pass</td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900">Founder Creator 12M</td>
                         <td class="px-4 py-3 align-top">€59, IVA e oneri applicabili inclusi</td>
-                        <td class="px-4 py-3 align-top">12 mesi dal go-live; pagamento unico; nessun rinnovo automatico</td>
+                        <td class="px-4 py-3 align-top">12 mesi dalla corretta attivazione individuale, possibile dal go-live; pagamento unico; nessun rinnovo automatico</td>
                         <td class="px-4 py-3 align-top">Fino a 200 pass</td>
                     </tr>
                 </tbody>
@@ -127,7 +132,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">6. Informazioni prima dell’ordine</h2>
         <p class="mt-3"><strong>6.1 </strong>Prima di essere vincolato, l’Acquirente può consultare e salvare le informazioni relative a identità e contatti del Venditore, caratteristiche del Founder Pass, prezzo totale, durata, decorrenza, modalità di pagamento, assenza di rinnovo automatico, diritto di recesso, rimborsi, assistenza, conformità del servizio digitale e principali esclusioni.</p>
-        <p class="mt-3"><strong>6.2 </strong>Immediatamente prima dell’inoltro dell’Ordine, il checkout presenta in modo chiaro almeno il piano selezionato, il prezzo totale, la durata di 12 mesi dal go-live, l’assenza di rinnovo automatico, la natura di pre-sale e i link ai documenti contrattuali applicabili.</p>
+        <p class="mt-3"><strong>6.2 </strong>Immediatamente prima del passaggio al pagamento, il checkout presenta in modo chiaro almeno il piano selezionato, il prezzo totale, la durata di 12 mesi dalla corretta attivazione individuale dell’account nell’app (attivabile a partire dal go-live), l’assenza di rinnovo automatico, la natura di pre-sale e i link ai documenti contrattuali applicabili.</p>
         <p class="mt-3"><strong>6.3 </strong>L’Acquirente è tenuto a leggere il riepilogo e i documenti collegati prima di procedere. La <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> costituisce informativa sul trattamento dei dati e non sostituisce l’accettazione dei documenti contrattuali.</p>
     </section>
 
@@ -180,15 +185,15 @@
     </section>
 
     <section>
-        <h2 class="text-2xl font-black text-slate-950">8. Inoltro dell’ordine e obbligo di pagamento</h2>
-        <p class="mt-3"><strong>8.1 </strong>L’Ordine viene inoltrato esclusivamente mediante un pulsante o una funzione che indica in modo facilmente leggibile e inequivocabile che l’operazione comporta l’obbligo di pagare, ad esempio “Conferma e paga” o “Acquista ora - obbligo di pagare”.</p>
-        <p class="mt-3"><strong>8.2 </strong>L’attivazione del pulsante costituisce richiesta vincolante di acquistare il Founder Pass selezionato al prezzo indicato, subordinatamente al buon esito del pagamento e ai controlli di disponibilità, sicurezza e antifrode.</p>
+        <h2 class="text-2xl font-black text-slate-950">8. Passaggio al pagamento e obbligo sul comando finale</h2>
+        <p class="mt-3"><strong>8.1 </strong>Nel sito WAYOUT il comando “Conferma e vai al pagamento” valida i dati, crea o riconosce l’account, verifica disponibilità e idoneità, registra un ordine provvisorio e trasferisce l’Acquirente al checkout Stripe. Tale comando non costituisce ancora il comando finale con obbligo di pagamento. L’obbligo di pagare deve risultare in modo facilmente leggibile e inequivocabile dal comando finale mostrato da Stripe con il prezzo totale.</p>
+        <p class="mt-3"><strong>8.2 </strong>Prima del trasferimento a Stripe, WAYOUT verifica il pacchetto disponibile nel catalogo del backend, il requisito 18+, il numero di telefono tramite Firebase, la creazione/riconoscimento dell’account e l’idoneità all’acquisto. Il prezzo visualizzato nel riepilogo deve coincidere con quello restituito dal catalogo e salvato nell’ordine; in caso di incoerenza il checkout deve essere bloccato.</p>
         <p class="mt-3"><strong>8.3 </strong>Se l’Acquirente non completa il pagamento, il contratto non si conclude e l’eventuale disponibilità temporaneamente riservata può essere liberata. WAYOUT non addebita alcun importo per un checkout abbandonato.</p>
     </section>
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">9. Conclusione del contratto</h2>
-        <p class="mt-3"><strong>9.1 </strong>Il contratto si conclude quando Stripe conferma a WAYOUT il buon esito del pagamento e l’Ordine viene registrato nei sistemi di WAYOUT con stato positivo. La data e l’ora di tale registrazione costituiscono la data di conclusione dell’acquisto, salva prova di un diverso momento risultante dai sistemi di pagamento.</p>
+        <p class="mt-3"><strong>9.1 </strong>Il contratto si conclude quando il pagamento è completato nel checkout Stripe e WAYOUT, tramite il proprio backend, verifica l’entitlement attivo e registra l’Ordine con stato positivo. La data e l’ora di tale registrazione costituiscono la data di conclusione dell’acquisto, salva prova di un diverso momento risultante dai sistemi di pagamento.</p>
         <p class="mt-3"><strong>9.2 </strong>La pagina di successo ha funzione informativa. In caso di incoerenza, prevalgono lo stato effettivo del pagamento, la registrazione dell’Ordine e la conferma inviata da WAYOUT.</p>
         <p class="mt-3"><strong>9.3 </strong>Se un pagamento risulta autorizzato o incassato ma, per acquisti simultanei, errore tecnico, duplicazione o superamento della capienza, l’Ordine non può essere validamente registrato, WAYOUT annulla l’acquisto e rimborsa integralmente l’importo senza costi e senza indebito ritardo, di regola sullo stesso mezzo di pagamento.</p>
         <p class="mt-3"><strong>9.4 </strong>WAYOUT può sospendere la finalizzazione dell’Ordine per il tempo strettamente necessario a svolgere controlli antifrode o di sicurezza. Se il controllo non consente di confermare l’acquisto, l’Ordine viene annullato e le somme dovute sono rimborsate.</p>
@@ -197,7 +202,7 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">10. Pagamento tramite Stripe</h2>
-        <p class="mt-3"><strong>10.1 </strong>Il pagamento è gestito tramite Stripe Checkout. I metodi effettivamente disponibili sono quelli visualizzati nel checkout e possono includere carte di pagamento o ulteriori strumenti abilitati da Stripe e da WAYOUT.</p>
+        <p class="mt-3"><strong>10.1 </strong>Il pagamento è gestito tramite Stripe Checkout, la cui sessione viene creata dal backend WAYOUT dopo i controlli preliminari del sito. I metodi effettivamente disponibili sono quelli visualizzati nel checkout e possono includere carte di pagamento o ulteriori strumenti abilitati da Stripe e da WAYOUT.</p>
         <p class="mt-3"><strong>10.2 </strong>WAYOUT non conserva direttamente i dati completi della carta. Stripe e gli eventuali prestatori del metodo scelto trattano i dati di pagamento secondo i propri termini e informative e possono effettuare controlli di autenticazione, sicurezza e prevenzione delle frodi.</p>
         <p class="mt-3"><strong>10.3 </strong>L’Acquirente garantisce di essere autorizzato a utilizzare il metodo di pagamento selezionato. Il rifiuto, la revoca o la mancata autenticazione del pagamento impediscono la conclusione dell’Ordine.</p>
         <p class="mt-3"><strong>10.4 </strong>La valuta dell’acquisto è l’euro. Eventuali costi applicati autonomamente dalla banca, dall’emittente o dal prestatore di pagamento dell’Acquirente non sono addebitati da WAYOUT e restano soggetti al rapporto tra l’Acquirente e tale soggetto.</p>
@@ -206,25 +211,25 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">11. Conferma dell’ordine su supporto durevole</h2>
         <p class="mt-3"><strong>11.1 </strong>Dopo la conclusione del contratto, WAYOUT invia senza indebito ritardo all’email utilizzata per l’acquisto una conferma dell’Ordine su supporto durevole.</p>
-        <p class="mt-3"><strong>11.2 </strong>La conferma contiene o rende disponibile in formato stabile e salvabile almeno: identificativo dell’Ordine, data, piano acquistato, prezzo totale, metodo o stato del pagamento, durata, decorrenza dal go-live, assenza di rinnovo automatico, dati del Venditore, informazioni sul recesso e link o copia dei documenti contrattuali accettati.</p>
+        <p class="mt-3"><strong>11.2 </strong>La conferma contiene o rende disponibile in formato stabile e salvabile almeno: identificativo dell’Ordine, data, piano acquistato, prezzo totale, metodo o stato del pagamento, durata, regola di attivazione individuale a partire dal go-live, assenza di rinnovo automatico, dati del Venditore, informazioni sul recesso e copia immutabile o allegato dei documenti contrattuali accettati con relativa versione/data.</p>
         <p class="mt-3"><strong>11.3 </strong>L’Acquirente deve controllare la conferma e segnalare tempestivamente eventuali incongruenze. La mancata ricezione dell’email non annulla un contratto già concluso, ma l’Acquirente può chiederne il reinvio tramite i canali di assistenza.</p>
         <p class="mt-3"><strong>11.4 </strong>WAYOUT conserva le evidenze tecniche dell’acquisto, comprese data e ora, identificativo dell’Ordine, piano, prezzo, stato del pagamento e versione dei documenti accettati, nel rispetto della <a class="font-black text-violet-700" href="/privacy-policy">Privacy Policy</a> e degli obblighi di legge.</p>
     </section>
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">12. Fattura e documentazione fiscale</h2>
-        <p class="mt-3"><strong>12.1 </strong>La conferma dell’Ordine non costituisce di per sé fattura. L’Acquirente che desidera ricevere fattura deve selezionare l’apposita opzione prima del pagamento e fornire o confermare i seguenti dati: nome; cognome; codice fiscale; indirizzo e numero civico; CAP; comune; provincia; Stato; e-mail alla quale inviare la copia della fattura. I dati già associati alla waitlist o all’Ordine possono essere precompilati, ma devono essere verificati e, se necessario, corretti dall’Acquirente prima dell’inoltro dell’Ordine.</p>
+        <p class="mt-3"><strong>12.1 </strong>La conferma dell’Ordine non costituisce di per sé fattura. L’Acquirente che desidera ricevere fattura deve selezionare l’apposita opzione prima del pagamento. Per persona fisica sono richiesti i dati anagrafici/fiscali previsti dal form; per persona giuridica possono essere richiesti ragione sociale, Partita IVA, indirizzo, CAP, comune, provincia, Stato, PEC e codice destinatario SDI ove applicabili. I dati devono essere verificati prima del pagamento.</p>
         <p class="mt-3"><strong>12.2 </strong>WAYOUT può richiedere l’integrazione dei dati mancanti indispensabili per la corretta emissione del documento fiscale. L’Acquirente è responsabile dell’esattezza e completezza dei dati comunicati e deve segnalare eventuali errori senza ritardo.</p>
-        <p class="mt-3"><strong>12.3 </strong>La fattura sarà emessa e resa disponibile secondo la normativa fiscale applicabile. Le richieste tardive o di modifica sono gestite nei limiti consentiti dalla disciplina fiscale e dai sistemi utilizzati.</p>
+        <p class="mt-3"><strong>12.3 </strong>La fattura elettronica, quando richiesta, è gestita tramite Qonto secondo la normativa fiscale applicabile; gli stati di creazione, trasmissione e gli eventuali errori sono riconciliati nei sistemi WAYOUT. Le richieste tardive o di modifica sono gestite nei limiti consentiti dalla disciplina fiscale e dai sistemi utilizzati.</p>
         <p class="mt-3"><strong>12.4 </strong>In assenza di richiesta di fattura, WAYOUT emette e conserva la documentazione prevista dalla normativa applicabile e invia comunque la conferma contrattuale dell’Ordine.</p>
     </section>
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">13. Esecuzione del contratto e attivazione del Founder Pass</h2>
-        <p class="mt-3"><strong>13.1 </strong>Il pagamento perfeziona l’acquisto anticipato del Founder Pass, ma l’utilizzo delle funzionalità digitali inizia dal go-live pubblico dell’app nella città pilota di Milano.</p>
-        <p class="mt-3"><strong>13.2 </strong>La durata di 12 mesi decorre dal go-live effettivo, non dalla data di pagamento. Il semplice rinvio del lancio entro la data massima disciplinata dalle <a class="font-black text-violet-700" href="/condizioni-di-pre-sale">Condizioni specifiche di pre-sale</a> non riduce la durata del pass.</p>
+        <p class="mt-3"><strong>13.1 </strong>Il pagamento perfeziona l’acquisto anticipato del Founder Pass. Il pass può essere attivato solo a partire dal go-live pubblico dell’app nella città pilota di Milano e diventa utilizzabile quando l’Acquirente completa correttamente l’attivazione del proprio account nell’app.</p>
+        <p class="mt-3"><strong>13.2 </strong>La durata di 12 mesi decorre dalla corretta attivazione individuale del Founder Pass sull’account, non dalla data di pagamento e non automaticamente dal go-live. L’attivazione non può avvenire prima del go-live: l’Acquirente non perde giorni per il periodo compreso tra il go-live e la propria corretta attivazione.</p>
         <p class="mt-3"><strong>13.3 </strong>L’attivazione richiede il completamento dell’onboarding standard dell’app, inclusi verifica del numero di telefono, maggiore età, dati veritieri, fotografia personale reale e conforme e accettazione delle regole applicabili. Non è previsto un gate discrezionale ulteriore per Founder Creator rispetto a Founder Join.</p>
-        <p class="mt-3"><strong>13.4 </strong>Il mancato o tardivo completamento dell’onboarding per scelta o causa imputabile all’Acquirente non sospende la decorrenza del pass e non dà diritto al rimborso. Se l’attivazione è impedita da un problema imputabile a WAYOUT, si applicano assistenza, estensione o rimborso secondo le <a class="font-black text-violet-700" href="/condizioni-di-pre-sale">Condizioni specifiche di pre-sale</a> e la normativa sui servizi digitali.</p>
+        <p class="mt-3"><strong>13.4 </strong>Finché l’Acquirente non completa correttamente l’attivazione, i 12 mesi non decorrono. Se l’attivazione è impedita da un problema imputabile a WAYOUT, si applicano assistenza o gli altri rimedi previsti dalle <a class="font-black text-violet-700" href="/condizioni-di-pre-sale">Condizioni specifiche di pre-sale</a> e dalla normativa sui servizi digitali.</p>
     </section>
 
     <section>
@@ -241,7 +246,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">15. Ulteriori rimborsi e scenari della Pre-sale</h2>
         <p class="mt-3"><strong>15.1 </strong>Oltre al recesso, i rimborsi sono riconosciuti nei casi e secondo le procedure previste dalle <a class="font-black text-violet-700" href="/condizioni-di-pre-sale">Condizioni specifiche di pre-sale</a> e dalla <a class="font-black text-violet-700" href="/recedere-dal-contratto">Refund Policy</a>, inclusi mancato lancio, superamento del 31 dicembre 2026 su richiesta dell’Acquirente, modifica sostanziale e peggiorativa rifiutata entro il termine comunicato e impossibilità definitiva di attivazione non imputabile all’Acquirente.</p>
-        <p class="mt-3"><strong>15.2 </strong>Se l’app non è resa pubblicamente disponibile a Milano entro il 31 dicembre 2026, l’Acquirente può scegliere se mantenere il Founder Pass per il successivo go-live oppure chiedere il rimborso integrale. In assenza di richiesta, il pass resta valido e decorrerà dall’effettivo go-live.</p>
+        <p class="mt-3"><strong>15.2 </strong>Se l’app non è resa pubblicamente disponibile a Milano entro il 31 dicembre 2026, l’Acquirente può scegliere se mantenere il Founder Pass per il successivo go-live oppure chiedere il rimborso integrale. In assenza di richiesta, il pass resta valido e potrà essere attivato dal successivo go-live; i 12 mesi decorreranno dalla corretta attivazione individuale.</p>
         <p class="mt-3"><strong>15.3 </strong>In caso di modifica sostanziale e peggiorativa prima del go-live, l’Acquirente può accettare la modifica oppure richiedere il rimborso entro 30 giorni dalla comunicazione. Non è previsto rimborso automatico per il solo decorso del termine.</p>
         <p class="mt-3"><strong>15.4 </strong>Non danno di per sé diritto al rimborso: ritardi entro la data massima, mancato utilizzo volontario, mancata partecipazione o accettazione in tavoli specifici, assenza del risultato sociale desiderato, mancata disponibilità di eventi determinati, crescita della community inferiore alle aspettative o sospensione correttamente disposta per violazioni imputabili all’utente, fatti salvi i diritti inderogabili.</p>
         <p class="mt-3"><strong>15.5 </strong>I rimborsi diversi dal recesso sono processati, di regola, entro 14 giorni dall’accettazione della richiesta o dalla comunicazione che ne determina il diritto e sullo stesso mezzo di pagamento, salvo impossibilità tecnica o diverso accordo.</p>

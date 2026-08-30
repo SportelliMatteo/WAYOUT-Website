@@ -1,15 +1,15 @@
 WAYOUT S.R.L.
-RICEVUTA DELLA DICHIARAZIONE DI RECESSO
+{{ mb_strtoupper(__('messages.withdrawal.receipt_title')) }}
 
-Codice ricevuta: {{ $withdrawal->receipt_number }}
-Data e ora: {{ $withdrawal->submitted_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i:s') }} (Europe/Rome)
-Intestatario: {{ $withdrawal->first_name }} {{ $withdrawal->last_name }}
-Email di acquisto: {{ $withdrawal->purchase_email }}
-Email ricevuta: {{ $withdrawal->receipt_email }}
-Contratto/ordine: {{ $withdrawal->order_reference }}
+{{ __('messages.withdrawal.receipt_code') }}: {{ $withdrawal->receipt_number }}
+{{ __('messages.withdrawal.date_time') }}: {{ $withdrawal->submitted_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i:s') }} (Europe/Rome)
+{{ __('messages.withdrawal.holder') }}: {{ $withdrawal->first_name }} {{ $withdrawal->last_name }}
+{{ __('messages.withdrawal.purchase_email_short') }}: {{ $withdrawal->purchase_email }}
+{{ __('messages.withdrawal.receipt_email_short') }}: {{ $withdrawal->receipt_email }}
+{{ __('messages.withdrawal.contract_order') }}: {{ $withdrawal->order_reference }}
 Pass: {{ $withdrawal->plan }}
 
-DICHIARAZIONE INVIATA
+{{ __('messages.withdrawal.submitted_declaration') }}
 {{ $withdrawal->declaration }}
 
-Documento generato da WAYOUT S.R.L. - C.F./P.IVA 14805930964
+{{ __('messages.withdrawal.generated_document') }}

@@ -132,6 +132,7 @@ class ProductionCheck extends Command
                 'consent_events',
                 'admin_users',
                 'cookie_consent_events',
+                'data_retention_runs',
             ])->every(static fn (string $table): bool => Schema::hasTable($table));
         } catch (Throwable) {
             return false;

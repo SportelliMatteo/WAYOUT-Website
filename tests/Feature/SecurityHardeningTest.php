@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\WayoutApiException;
 use App\Http\Controllers\AdminAuthController;
 use App\Support\QontoInvoiceService;
 use App\Support\WayoutApiClient;
@@ -86,5 +87,40 @@ class SecurityHardeningTest extends TestCase
                     $signature,
                 );
         });
+    }
+
+    public function test_wayout_api_errors_expose_safe_diagnostic_context_for_logs(): void
+    {
+        Http::fake([
+            'https://staging-app.wayoutapp.test/api/auth/create-profile' => Http::response([
+                'message' => 'I dati inviati non sono validi.',
+                'code' => 'VALIDATION_ERROR',
+                'errors' => [
+                    'nickname' => ['Il nickname non può superare 20 caratteri.'],
+                    'email' => ['L’indirizzo mario@example.com non è valido.'],
+                    'success_url' => ['URL https://example.com/checkout?token=secret non consentito.'],
+                    'firebase_token' => [str_repeat('a', 60)],
+                ],
+            ], 400),
+        ]);
+
+        $context = [];
+
+        try {
+            app(WayoutApiClient::class)->post('/api/auth/create-profile', ['firebase_token' => 'not-logged']);
+            $this->fail('La chiamata avrebbe dovuto generare un errore API.');
+        } catch (WayoutApiException $exception) {
+            $context = $exception->logContext();
+        }
+
+        $this->assertSame('POST', $context['method']);
+        $this->assertSame('/api/auth/create-profile', $context['path']);
+        $this->assertSame(400, $context['status']);
+        $this->assertSame('VALIDATION_ERROR', $context['code']);
+        $this->assertSame(['Il nickname non può superare 20 caratteri.'], $context['validation_errors']['nickname']);
+        $this->assertStringContainsString('[redacted-email]', $context['validation_errors']['email'][0]);
+        $this->assertStringContainsString('[redacted-url]', $context['validation_errors']['success_url'][0]);
+        $this->assertSame('[redacted-value]', $context['validation_errors']['firebase_token'][0]);
+        $this->assertArrayNotHasKey('response', $context);
     }
 }

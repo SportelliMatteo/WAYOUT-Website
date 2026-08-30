@@ -96,8 +96,7 @@ class AppServiceProvider extends ServiceProvider
                     ->with('founderCatalogError', null);
             } catch (WayoutApiException $exception) {
                 Log::warning('Founder promo catalog unavailable in waitlist offer.', [
-                    'status' => $exception->status,
-                    'code' => $exception->apiCode,
+                    ...$exception->logContext(),
                 ]);
 
                 $view->with('founderPackages', ['join' => null, 'creator' => null])

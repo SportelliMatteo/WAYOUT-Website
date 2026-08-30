@@ -9,6 +9,7 @@ use App\Support\LegalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
@@ -55,7 +56,7 @@ class AdminDashboardTest extends TestCase
             ->assertSee('88,00€')
             ->assertSee('29,00€')
             ->assertSee('59,00€')
-            ->assertSee('Capienze Founder')
+            ->assertDontSee('Capienze Founder')
             ->assertSee('Utenti Founder Join 12M')
             ->assertSee('Utenti Founder Creator 12M')
             ->assertSee('Verificata')
@@ -79,40 +80,22 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Testi delle checkbox');
     }
 
-    public function test_admin_can_update_founder_capacities(): void
+    public function test_admin_dashboard_shows_backend_founder_maximum_quantities(): void
     {
-        $response = $this->withSession($this->adminSession())
-            ->post(route('admin.settings.update'), [
-                'waitlist_capacity' => 2500,
-                'join_capacity' => 700,
-                'creator_capacity' => 220,
-            ]);
-
-        $response->assertRedirect()
-            ->assertSessionHas('admin_success', 'Dati aggiornati.');
-
-        $this->assertDatabaseHas('founder_settings', [
-            'key' => 'waitlist_capacity',
-            'value' => 2500,
+        Http::fake([
+            '*/api/v1/internal/promo-packages' => Http::response(['data' => [
+                ['code' => 'FOUNDER_JOIN_12M_PASS', 'price' => '29.00', 'free' => false, 'available' => 499, 'max_available_quantity' => 500],
+                ['code' => 'FOUNDER_CREATOR_12M_PASS', 'price' => '59.00', 'free' => false, 'available' => 149, 'max_available_quantity' => 150],
+            ]]),
         ]);
+        $this->seedDashboardData();
 
-        $this->assertDatabaseHas('founder_settings', [
-            'key' => 'join_capacity',
-            'value' => 700,
-        ]);
-
-        $this->assertDatabaseHas('founder_settings', [
-            'key' => 'creator_capacity',
-            'value' => 220,
-        ]);
-
-        $audit = DB::table('admin_audit_events')
-            ->where('action', 'founder_capacities.updated')
-            ->first();
-
-        $this->assertNotNull($audit);
-        $this->assertSame('admin@example.com', $audit->actor_email);
-        $this->assertSame(2500, json_decode($audit->new_values, true)['waitlist_capacity']);
+        $this->withSession($this->adminSession())
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('1 / 500 pass')
+            ->assertSee('1 / 150 pass')
+            ->assertDontSee('Capienze Founder');
     }
 
     public function test_admin_can_enable_legal_entity_invoicing(): void
@@ -190,6 +173,62 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Nuovo testo privacy')
             ->assertSee('Versione 2026-07-15')
             ->assertDontSee('alert(1)');
+    }
+
+    public function test_admin_can_edit_and_publish_the_english_legal_version_without_changing_italian(): void
+    {
+        $italian = app(LegalDocumentService::class)->current('privacy', 'it');
+        $session = $this->adminSession();
+
+        $this->withSession($session)
+            ->get(route('admin.dashboard', [
+                'lang' => 'en',
+                'tab' => 'legal',
+                'legal_group' => 'policies',
+            ]))
+            ->assertOk()
+            ->assertSee('Document language')
+            ->assertSee('You are editing the English versions.')
+            ->assertSee('name="locale" value="en"', false);
+
+        $response = $this->withSession($session)
+            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [
+                'document_key' => 'privacy',
+                'locale' => 'en',
+                'version' => '2026-08-29',
+                'title' => 'Updated privacy policy',
+                'description' => 'Updated English privacy information.',
+                'content_html' => '<div><h2>English privacy text</h2><p>Published independently.</p></div>',
+            ]);
+
+        $response->assertRedirect(route('admin.dashboard', [
+            'lang' => 'en',
+            'tab' => 'legal',
+            'legal_group' => 'policies',
+        ]).'#legal-documents');
+
+        $this->get(route('legal.privacy', ['lang' => 'en']))
+            ->assertOk()
+            ->assertSee('Updated privacy policy')
+            ->assertSee('English privacy text')
+            ->assertSee('Legal area')
+            ->assertSee('Website and waitlist terms');
+
+        $italianAfterPublication = app(LegalDocumentService::class)->current('privacy', 'it');
+        $this->assertSame($italian->version_id, $italianAfterPublication->version_id);
+        $this->assertSame($italian->content_hash, $italianAfterPublication->content_hash);
+    }
+
+    public function test_all_compliance_documents_have_distinct_english_initial_content(): void
+    {
+        foreach (['privacy', 'cookies', 'terms', 'passes', 'sales', 'presale', 'refunds', 'withdrawal_info', 'notice'] as $document) {
+            $italian = app(LegalDocumentService::class)->current($document, 'it');
+            $english = app(LegalDocumentService::class)->current($document, 'en');
+
+            $this->assertSame('en', $english->locale, $document);
+            $this->assertNotSame($italian->content_hash, $english->content_hash, $document);
+            $this->assertNotSame($italian->content_snapshot, $english->content_snapshot, $document);
+        }
     }
 
     public function test_legal_document_publication_requires_admin_authentication(): void
@@ -323,6 +362,43 @@ class AdminDashboardTest extends TestCase
 
         $response->assertOk()
             ->assertSee('15/07/2026 22:00');
+    }
+
+    public function test_admin_dashboard_shows_retention_schedule_candidates_and_history(): void
+    {
+        DB::table('waitlist_entries')->insert([
+            'id' => DatabaseUuid::new(),
+            'email' => 'expired-unverified@example.com',
+            'email_verified_at' => null,
+            'marketing_consent' => false,
+            'created_at' => now()->subDays(31),
+            'updated_at' => now()->subDays(31),
+        ]);
+        DB::table('data_retention_runs')->insert([
+            'id' => DatabaseUuid::new(),
+            'trigger' => 'scheduled',
+            'dry_run' => false,
+            'status' => 'completed',
+            'results' => json_encode([
+                'email_verifications' => ['matched' => 2, 'affected' => 2, 'cutoff' => now()->toISOString()],
+                'unverified_waitlist' => ['matched' => 1, 'affected' => 1, 'cutoff' => now()->subDays(30)->toISOString()],
+                'admin_audit_events' => ['matched' => 3, 'affected' => 3, 'cutoff' => now()->subYear()->toISOString()],
+            ]),
+            'started_at' => now()->subHour(),
+            'completed_at' => now()->subHour()->addSecond(),
+            'created_at' => now()->subHour(),
+        ]);
+
+        $this->withSession($this->adminSession())
+            ->get(route('admin.dashboard', ['tab' => 'settings']))
+            ->assertOk()
+            ->assertSee('Retention automatica dei dati')
+            ->assertSee('Ogni ora al minuto 20')
+            ->assertSee('Waitlist non verificata')
+            ->assertSee('1')
+            ->assertSee('Storico delle esecuzioni')
+            ->assertSee('Pianificato')
+            ->assertSee('Completato');
     }
 
     public function test_email_log_channel_uses_rome_timezone(): void

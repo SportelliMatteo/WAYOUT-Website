@@ -19,6 +19,8 @@ class WithdrawalTest extends TestCase
         $this->get('/recedere-dal-contratto')
             ->assertOk()
             ->assertSee('Recesso e rimborsi')
+            ->assertSee('Ultimo aggiornamento: 31 agosto 2026 · Versione 1.0')
+            ->assertDontSee('Versione Informativa')
             ->assertSee('Recedere dal contratto qui')
             ->assertSee('Informativa sul diritto di recesso')
             ->assertSee('Refund Policy')
@@ -29,11 +31,63 @@ class WithdrawalTest extends TestCase
             ->assertStatus(301);
     }
 
+    public function test_english_withdrawal_flow_uses_english_documents_and_receipts(): void
+    {
+        Mail::fake();
+        config()->set('email.enabled', true);
+        $this->insertPurchase();
+
+        $this->get(route('legal.refunds', ['lang' => 'en']))
+            ->assertOk()
+            ->assertSee('Withdraw from the contract here')
+            ->assertSee('Information on the right of withdrawal')
+            ->assertSee('Order number or other contract identifier')
+            ->assertSee('Annex A — Model withdrawal form')
+            ->assertSee('border-dashed', false)
+            ->assertDontSee('______________________________')
+            ->assertDontSee('Recedere dal contratto qui');
+
+        $this->post(route('withdrawal.review.store'), $this->validForm())
+            ->assertRedirect(route('withdrawal.review'));
+
+        $this->assertSame('en', session('withdrawal.review.locale'));
+        $this->get(route('withdrawal.review'))
+            ->assertOk()
+            ->assertSee('Confirm withdrawal')
+            ->assertSee('I, Ada Lovelace, hereby give notice');
+
+        $review = session('withdrawal.review');
+        $response = $this->post(route('withdrawal.confirm'), ['nonce' => $review['nonce']]);
+        $withdrawal = DB::table('withdrawal_requests')->first();
+
+        $this->assertSame('en', $withdrawal->locale);
+        $this->assertSame(
+            app(\App\Support\LegalDocumentService::class)->current('withdrawal_info', 'en')->version,
+            json_decode($withdrawal->document_versions, true)['withdrawal_info'],
+        );
+
+        $this->get($response->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('Withdrawal receipt')
+            ->assertSee('Declaration received');
+        $this->get(route('withdrawal.receipt.download', ['token' => $review['public_token']]))
+            ->assertOk()
+            ->assertSee('SUBMITTED DECLARATION');
+    }
+
     public function test_withdrawal_template_is_a_downloadable_editable_word_document(): void
     {
         $this->get(route('withdrawal.template.download'))
             ->assertOk()
             ->assertDownload('Modulo-tipo-di-recesso-WAYOUT.docx')
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    }
+
+    public function test_english_withdrawal_template_downloads_the_english_word_document(): void
+    {
+        $this->get(route('withdrawal.template.download', ['lang' => 'en']))
+            ->assertOk()
+            ->assertDownload('WAYOUT-model-withdrawal-form.docx')
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     }
 
@@ -100,7 +154,7 @@ class WithdrawalTest extends TestCase
         $this->get(route('legal.refunds'))
             ->assertOk()
             ->assertSee('Ordine non trovato')
-            ->assertSee("Ordine non esistente, controlla attentamente nell'email di acquisto", false)
+            ->assertSee("Ordine non esistente, controlla attentamente nell'email di acquisto")
             ->assertSee('value="CONTRATTO-ESTERNO-9"', false);
 
         $this->assertDatabaseCount('withdrawal_requests', 0);

@@ -23,7 +23,12 @@ class WayoutApiClient
         try {
             $body = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         } catch (JsonException $exception) {
-            throw new WayoutApiException('Impossibile preparare la richiesta al backend WAYOUT.', previous: $exception);
+            throw new WayoutApiException(
+                'Impossibile preparare la richiesta al backend WAYOUT.',
+                requestMethod: 'POST',
+                requestPath: $path,
+                previous: $exception,
+            );
         }
 
         return $this->sendInternal('POST', $path, $body);
@@ -37,13 +42,15 @@ class WayoutApiClient
                 ->withHeaders($headers)
                 ->asJson()
                 ->post($path, $payload);
+        } catch (WayoutApiException $exception) {
+            throw $exception->withRequest('POST', $path);
         } catch (ConnectionException $exception) {
-            throw new WayoutApiException('Il backend WAYOUT non è raggiungibile.', previous: $exception);
+            throw new WayoutApiException('Il backend WAYOUT non è raggiungibile.', requestMethod: 'POST', requestPath: $path, previous: $exception);
         } catch (Throwable $exception) {
-            throw new WayoutApiException('La richiesta al backend WAYOUT non è riuscita.', previous: $exception);
+            throw new WayoutApiException('La richiesta al backend WAYOUT non è riuscita.', requestMethod: 'POST', requestPath: $path, previous: $exception);
         }
 
-        $this->throwForFailedResponse($response);
+        $this->throwForFailedResponse($response, 'POST', $path);
 
         return $response;
     }
@@ -54,13 +61,15 @@ class WayoutApiClient
             $response = $this->request()
                 ->withToken($accessToken)
                 ->get($path);
+        } catch (WayoutApiException $exception) {
+            throw $exception->withRequest('GET', $path);
         } catch (ConnectionException $exception) {
-            throw new WayoutApiException('Il backend WAYOUT non è raggiungibile.', previous: $exception);
+            throw new WayoutApiException('Il backend WAYOUT non è raggiungibile.', requestMethod: 'GET', requestPath: $path, previous: $exception);
         } catch (Throwable $exception) {
-            throw new WayoutApiException('La richiesta al backend WAYOUT non è riuscita.', previous: $exception);
+            throw new WayoutApiException('La richiesta al backend WAYOUT non è riuscita.', requestMethod: 'GET', requestPath: $path, previous: $exception);
         }
 
-        $this->throwForFailedResponse($response);
+        $this->throwForFailedResponse($response, 'GET', $path);
 
         return $response->json() ?? [];
     }
@@ -74,6 +83,8 @@ class WayoutApiClient
                 'Il canale sicuro con il backend WAYOUT non è configurato.',
                 503,
                 'WAYOUT_INTERNAL_SECRET_MISSING',
+                requestMethod: $method,
+                requestPath: $path,
             );
         }
 
@@ -89,13 +100,15 @@ class WayoutApiClient
             $response = $method === 'GET'
                 ? $request->get($path)
                 : $request->withBody($body, 'application/json')->post($path);
+        } catch (WayoutApiException $exception) {
+            throw $exception->withRequest($method, $path);
         } catch (ConnectionException $exception) {
-            throw new WayoutApiException('Il backend WAYOUT non è raggiungibile.', previous: $exception);
+            throw new WayoutApiException('Il backend WAYOUT non è raggiungibile.', requestMethod: $method, requestPath: $path, previous: $exception);
         } catch (Throwable $exception) {
-            throw new WayoutApiException('La richiesta firmata al backend WAYOUT non è riuscita.', previous: $exception);
+            throw new WayoutApiException('La richiesta firmata al backend WAYOUT non è riuscita.', requestMethod: $method, requestPath: $path, previous: $exception);
         }
 
-        $this->throwForFailedResponse($response);
+        $this->throwForFailedResponse($response, $method, $path);
 
         return $response->json() ?? [];
     }
@@ -118,7 +131,7 @@ class WayoutApiClient
             ->timeout((int) config('services.wayout.timeout', 15));
     }
 
-    private function throwForFailedResponse(Response $response): void
+    private function throwForFailedResponse(Response $response, string $method, string $path): void
     {
         if ($response->successful()) {
             return;
@@ -130,6 +143,6 @@ class WayoutApiClient
             : 'Il backend WAYOUT ha rifiutato la richiesta.';
         $code = is_string($payload['code'] ?? null) ? $payload['code'] : null;
 
-        throw new WayoutApiException($message, $response->status(), $code, $payload);
+        throw new WayoutApiException($message, $response->status(), $code, $payload, strtoupper($method), $path);
     }
 }

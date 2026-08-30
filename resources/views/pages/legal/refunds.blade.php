@@ -1,10 +1,14 @@
 @extends('pages.legal.layout', [
     'title' => 'Refund Policy',
-    'description' => 'Regole sui rimborsi legali e contrattuali degli acquisti WAYOUT.',
+    'description' => 'Documento pubblico destinato al sito wayoutapp.it e al flusso di acquisto dei Founder Pass WAYOUT.',
 ])
 
 @section('legal-content')
 <div class="space-y-8">
+        <div class="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p class="font-black text-slate-950"><strong>AMBITO</strong></p>
+            <p class="text-slate-700">La presente pagina spiega il diritto di recesso, la funzione digitale per esercitarlo e gli ulteriori casi nei quali l’acquirente di un Founder Pass può ottenere un rimborso. Integra i <a class="font-black text-violet-700" href="/termini-di-vendita">Termini di vendita online</a> e le <a class="font-black text-violet-700" href="/condizioni-di-pre-sale">Condizioni specifiche di pre-sale</a>, che restano applicabili per gli aspetti non disciplinati qui.</p>
+        </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950"><strong>IN BREVE</strong></p>
             <p class="text-slate-700">Il recesso entro 14 giorni non richiede motivazione. Gli ulteriori rimborsi dipendono invece dal caso concreto: mancato lancio, superamento della data massima, modifica sostanziale e peggiorativa, impossibilità definitiva di attivazione, errore di pagamento o rimedi previsti dalla legge per i servizi digitali.</p>
@@ -42,7 +46,7 @@
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Ritardo entro il 31 dicembre 2026</strong></td>
                         <td class="px-4 py-3 align-top"><strong>Nessun rimborso automatico</strong></td>
-                        <td class="px-4 py-3 align-top"><strong>Il pass mantiene 12 mesi dal go-live effettivo</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>Il pass mantiene 12 mesi dalla corretta attivazione individuale</strong></td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Nessun go-live entro il 31 dicembre 2026</strong></td>
@@ -88,7 +92,7 @@
         <h2 class="text-2xl font-black text-slate-950">4. Diritto di recesso entro 14 giorni</h2>
         <p class="mt-3"><strong>4.1 </strong>L’acquirente che agisce come consumatore può recedere dall’acquisto del Founder Pass senza indicarne il motivo entro 14 giorni di calendario dalla conclusione del contratto, ossia dalla conferma dell’ordine a seguito del pagamento completato.</p>
         <p class="mt-3"><strong>4.2 </strong>Per rispettare il termine è sufficiente trasmettere la dichiarazione di recesso prima della sua scadenza. Se l’informazione sul diritto di recesso non fosse stata correttamente fornita, si applicano le estensioni del termine previste dalla normativa vigente.</p>
-        <p class="mt-3"><strong>4.3 </strong>Poiché il Founder Pass è venduto in pre-sale e decorre dal go-live, WAYOUT riconosce il rimborso integrale per il recesso tempestivo anche se il go-live interviene durante il periodo di 14 giorni, senza trattenere importi proporzionali, ferme eventuali condizioni future più favorevoli e la normativa inderogabile.</p>
+        <p class="mt-3"><strong>4.3 </strong>Poiché il Founder Pass è venduto in pre-sale ed è attivabile soltanto dal go-live, con durata di 12 mesi dalla corretta attivazione individuale, WAYOUT riconosce il rimborso integrale per il recesso tempestivo anche se il go-live o l’attivazione intervengono durante il periodo di 14 giorni, senza trattenere importi proporzionali.</p>
     </section>
 
     <section>
@@ -118,7 +122,7 @@
         <h2 class="text-2xl font-black text-slate-950">8. Rimborso se il go-live non avviene entro il 31 dicembre 2026</h2>
         <p class="mt-3"><strong>8.1 </strong>Se l’app non viene resa pubblicamente disponibile nella città pilota di Milano entro il 31 dicembre 2026, WAYOUT informa gli acquirenti su supporto durevole.</p>
         <p class="mt-3"><strong>8.2 </strong>L’acquirente può scegliere se mantenere il Founder Pass per il successivo go-live oppure richiedere il rimborso integrale. La comunicazione indica una finestra per esercitare la scelta, in ogni caso non inferiore a 30 giorni dalla ricezione.</p>
-        <p class="mt-3"><strong>8.3 </strong>In assenza di richiesta di rimborso entro la finestra comunicata, il Founder Pass resta valido per il successivo go-live e avrà durata di 12 mesi dall’effettiva disponibilità del servizio, senza rinnovo automatico. Restano fermi i diritti inderogabili eventualmente applicabili.</p>
+        <p class="mt-3"><strong>8.3 </strong>In assenza di richiesta di rimborso entro la finestra comunicata, il Founder Pass resta valido e potrà essere attivato dal successivo go-live. La durata di 12 mesi decorrerà dalla corretta attivazione individuale, senza rinnovo automatico. Restano fermi i diritti inderogabili eventualmente applicabili.</p>
         <p class="mt-3"><strong>8.4 </strong>Il semplice rinvio del lancio entro il 31 dicembre 2026 non dà diritto di per sé a rimborso, salvo il recesso tempestivo, una diversa decisione commerciale di WAYOUT o altri rimedi previsti dalla legge.</p>
     </section>
 
@@ -140,7 +144,7 @@
         <h2 class="text-2xl font-black text-slate-950">11. Impossibilità di attivazione e problemi tecnici</h2>
         <p class="mt-3"><strong>11.1 </strong>Se l’attivazione è impedita da ritardi, errori o malfunzionamenti imputabili a WAYOUT, la Società fornisce assistenza e adotta un rimedio adeguato, come ripristino, riattivazione, estensione del periodo o altra misura equivalente.</p>
         <p class="mt-3"><strong>11.2 </strong>Se l’attivazione resta definitivamente impossibile per cause non imputabili all’acquirente, WAYOUT rimborsa integralmente il prezzo pagato, fatti salvi gli ulteriori rimedi previsti dalla disciplina dei servizi digitali.</p>
-        <p class="mt-3"><strong>11.3 </strong>Se il mancato o tardivo completamento dell’onboarding dipende invece dalla scelta, inerzia o condotta dell’acquirente, la durata del pass continua a decorrere dal go-live e non sorge, per tale sola ragione, un diritto al rimborso.</p>
+        <p class="mt-3"><strong>11.3 </strong>Se il completamento dell’onboarding avviene in un momento successivo al go-live per scelta dell’acquirente, la durata del Founder Pass non è ridotta: i 12 mesi decorrono dalla corretta attivazione individuale. Il semplice ritardo volontario nell’attivazione non genera di per sé un diritto ulteriore al rimborso.</p>
     </section>
 
     <section>
@@ -200,12 +204,23 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">Allegato A - Modulo tipo di recesso</h2>
-        <div class="mt-4 rounded-[1.25rem] border-2 border-amber-300 bg-white p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
-            <div>
-                <p class="font-black text-slate-950">Modulo Word modificabile</p>
-                <p class="mt-2 text-slate-700">Scarica il documento, compilalo e invialo a <a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a> oppure via PEC a <a class="font-black text-violet-700" href="mailto:wayout@pec.wayoutapp.it">wayout@pec.wayoutapp.it</a>.</p>
+        <div class="mt-4 space-y-3 rounded-[1.25rem] border-2 border-amber-300 bg-white p-5">
+            <p>Compilare e inviare il presente modulo solo se si desidera recedere dal contratto. È possibile utilizzare anche la funzione online o una diversa dichiarazione esplicita.</p>
+            <p><strong>Destinatario:</strong> WAYOUT S.r.l., Via Guglielmo Marconi 24/B, 20082 Binasco (MI), Italia - <a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a> - PEC <a class="font-black text-violet-700" href="mailto:wayout@pec.wayoutapp.it">wayout@pec.wayoutapp.it</a></p>
+            <p>Con la presente comunico il recesso dal contratto relativo all’acquisto del seguente Founder Pass WAYOUT:</p>
+            <div class="grid gap-4 pt-2">
+                <p><span class="font-bold">Founder Pass:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Numero ordine (se disponibile):</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Data dell’acquisto:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Email utilizzata per l’acquisto:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Nome e cognome:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <p><span class="font-bold">Indirizzo (facoltativo):</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <p><span class="font-bold">Data:</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                    <p><span class="font-bold">Firma (solo per modulo cartaceo):</span><span class="mt-2 block min-h-7 border-b border-dashed border-slate-500"></span></p>
+                </div>
             </div>
-            <a class="mt-4 inline-flex shrink-0 rounded-xl bg-slate-950 px-5 py-3 font-black text-white hover:bg-violet-800 sm:mt-0" href="/documenti/modulo-tipo-recesso">Scarica il modulo (.docx)</a>
+            <a class="inline-flex rounded-xl bg-slate-950 px-5 py-3 font-black text-white hover:bg-violet-800" href="/documenti/modulo-tipo-recesso?lang=it">Scarica il modulo (.docx)</a>
         </div>
     </section>
 </div>

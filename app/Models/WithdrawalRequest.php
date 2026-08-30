@@ -10,7 +10,7 @@ class WithdrawalRequest extends Model
     use HasUuids;
 
     protected $fillable = [
-        'purchase_id', 'receipt_number', 'public_token_hash', 'idempotency_key',
+        'purchase_id', 'receipt_number', 'public_token_hash', 'idempotency_key', 'locale',
         'first_name', 'last_name', 'purchase_email', 'receipt_email',
         'order_reference', 'purchase_date', 'plan', 'declaration',
         'document_versions', 'document_hashes', 'submitted_at',

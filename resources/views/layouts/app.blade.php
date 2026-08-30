@@ -159,7 +159,7 @@
                                 <a href="{{ route('legal.presale') }}" class="transition hover:text-white">{{ __('messages.legal.presale') }}</a>
                                 <a href="{{ route('legal.refunds') }}" class="transition hover:text-white">{{ __('messages.legal.refunds') }}</a>
                                 <a href="{{ route('legal.notice') }}" class="transition hover:text-white">{{ __('messages.legal.notice') }}</a>
-                                <a href="{{ route('legal.refunds') }}#recedere" class="rounded-lg border border-violet-400/40 bg-violet-400/10 px-3 py-2 font-black text-white transition hover:bg-violet-400/20">Recedere dal contratto qui</a>
+                                <a href="{{ route('legal.refunds', ['lang' => app()->getLocale()]) }}#recedere" class="rounded-lg border border-violet-400/40 bg-violet-400/10 px-3 py-2 font-black text-white transition hover:bg-violet-400/20">{{ __('messages.withdrawal.withdraw_here') }}</a>
                             </div>
                         </div>
                     </div>
