@@ -14,6 +14,9 @@ const setupCheckoutPhoneVerification = () => {
     const submit = document.getElementById('payment-details-submit');
 
     if (!form || !prefix || !number || !send || !codePanel || !code || !verify || !token || !status || !submit) return;
+    if (form.dataset.phoneVerificationInitialized === 'true') return;
+
+    form.dataset.phoneVerificationInitialized = 'true';
 
     const config = window.wayoutFirebaseConfig || {};
     const messages = window.wayoutPhoneVerificationMessages || {};
@@ -73,9 +76,18 @@ const setupCheckoutPhoneVerification = () => {
         updateSendButton();
         countdownTimer = window.setInterval(updateSendButton, 250);
     };
-    const resetRecaptcha = () => {
+    const recreateRecaptchaContainer = () => {
         recaptcha?.clear();
         recaptcha = null;
+
+        const current = document.getElementById('payment-phone-recaptcha');
+
+        if (!current) return null;
+
+        const replacement = current.cloneNode(false);
+        current.replaceWith(replacement);
+
+        return replacement;
     };
 
     if (!['apiKey', 'authDomain', 'projectId', 'appId'].every((key) => Boolean(config[key]))) {
@@ -107,8 +119,11 @@ const setupCheckoutPhoneVerification = () => {
         showStatus(messages.sending);
 
         try {
-            resetRecaptcha();
-            recaptcha = new RecaptchaVerifier(auth, 'payment-phone-recaptcha', { size: 'invisible' });
+            const recaptchaContainer = recreateRecaptchaContainer();
+
+            if (!recaptchaContainer) throw new Error('Firebase reCAPTCHA container is missing.');
+
+            recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, { size: 'invisible' });
             confirmation = await signInWithPhoneNumber(auth, targetPhone, recaptcha);
             codePanel.classList.remove('hidden');
             showStatus(messages.codeSent);
@@ -116,7 +131,7 @@ const setupCheckoutPhoneVerification = () => {
             code.focus();
         } catch (error) {
             console.error('Firebase checkout phone verification failed.', error);
-            resetRecaptcha();
+            recreateRecaptchaContainer();
             showStatus(messages.sendError, 'error');
         } finally {
             sendInProgress = false;

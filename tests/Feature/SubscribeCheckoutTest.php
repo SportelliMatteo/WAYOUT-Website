@@ -30,6 +30,7 @@ class SubscribeCheckoutTest extends TestCase
     public function test_subscribe_page_uses_only_the_two_paid_founder_packages(): void
     {
         $this->fakeCatalog();
+        config()->set('services.firebase.client.measurement_id', 'G-TEST123');
 
         $response = $this->withSession(['subscribe_entry_allowed' => true])->get(route('subscribe'));
 
@@ -42,6 +43,7 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSee('data-resend-seconds="60"', false)
             ->assertSee('Reinvia tra :seconds s')
             ->assertSee('id="payment-phone-verify"', false)
+            ->assertSeeInOrder(['window.wayoutFirebaseConfig', 'measurementId', 'G-TEST123'], false)
             ->assertDontSee('WAITLIST_60D_PASS')
             ->assertDontSee('js.stripe.com', false);
     }

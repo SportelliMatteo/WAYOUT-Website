@@ -44,6 +44,7 @@ mkdir -p \
     "$PRIVATE_DIR/storage/framework/views" \
     "$PRIVATE_DIR/storage/logs/application" \
     "$PRIVATE_DIR/storage/logs/email" \
+    "$PRIVATE_DIR/storage/logs/schedule" \
     "$PRIVATE_DIR/storage/logs/testing"
 
 composer install \

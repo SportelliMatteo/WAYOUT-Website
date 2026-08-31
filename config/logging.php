@@ -148,6 +148,23 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'schedule' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/schedule/schedule.log'),
+            'level' => env('SCHEDULE_LOG_LEVEL', 'error'),
+            'days' => (int) env('SCHEDULE_LOG_DAYS', 30),
+            'tap' => [SetLogTimezone::class],
+            'formatter' => LineFormatter::class,
+            'formatter_with' => [
+                'format' => "[%datetime%] %level_name% | %message% %context%\n",
+                'dateFormat' => 'Y-m-d H:i:s',
+                'allowInlineLineBreaks' => false,
+                'ignoreEmptyContextAndExtra' => true,
+                'includeStacktraces' => false,
+            ],
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

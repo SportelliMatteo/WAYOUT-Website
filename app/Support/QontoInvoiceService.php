@@ -334,7 +334,7 @@ class QontoInvoiceService
         $today = now()->toDateString();
         $isProduction = config('services.qonto.environment') === 'production';
 
-        $response = $this->request()->post('/v2/client_invoices', [
+        $payload = [
             'client_id' => $clientId,
             'issue_date' => $today,
             'due_date' => $today,
@@ -357,7 +357,16 @@ class QontoInvoiceService
             'purchase_order' => mb_substr((string) $purchase->order_reference, 0, 40),
             'status' => 'unpaid',
             'report_einvoicing' => $isProduction,
-        ]);
+        ];
+
+        if ($isProduction) {
+            $payload['payment_reporting'] = [
+                'conditions' => config('services.qonto.payment_conditions', 'TP02'),
+                'method' => config('services.qonto.payment_method', 'MP08'),
+            ];
+        }
+
+        $response = $this->request()->post('/v2/client_invoices', $payload);
         $this->throwForFailedResponse($response->successful(), $response->status(), $response->body(), 'creazione fattura');
 
         $invoiceId = $response->json('client_invoice.id') ?? $response->json('data.id') ?? $response->json('id');

@@ -40,6 +40,8 @@ QONTO_ACCESS_TOKEN=
 QONTO_STAGING_TOKEN=...
 QONTO_INVOICE_IBAN=...
 QONTO_INVOICE_VAT_RATE=0.22
+QONTO_INVOICE_PAYMENT_CONDITIONS=TP02
+QONTO_INVOICE_PAYMENT_METHOD=MP08
 ```
 
 La Sandbox permette di verificare creazione cliente, creazione fattura e marcatura come pagata, ma Qonto non collega la Sandbox alla rete di fatturazione elettronica: nessuna fattura di test viene realmente inviata allo SdI. Nel database lo stato risultante è `test_created`.
@@ -62,11 +64,13 @@ QONTO_ACCESS_TOKEN=
 QONTO_STAGING_TOKEN=
 QONTO_INVOICE_IBAN=...
 QONTO_INVOICE_VAT_RATE=0.22
+QONTO_INVOICE_PAYMENT_CONDITIONS=TP02
+QONTO_INVOICE_PAYMENT_METHOD=MP08
 ```
 
 5. Dopo ogni modifica alle variabili, esegui una volta il Cron PHP `_wayout/run-deploy.php`, che rigenera in sicurezza la cache Laravel.
 
-In produzione la creazione usa `report_einvoicing=true`: per un’organizzazione italiana abilitata Qonto inoltra automaticamente l’XML allo SdI. La consegna è asincrona; lo stato `sent` nel database indica che Qonto ha accettato la creazione, non l’esito finale dello SdI.
+In produzione la creazione usa `report_einvoicing=true`: per un’organizzazione italiana abilitata Qonto inoltra automaticamente l’XML allo SdI. Il payload include anche `payment_reporting` con pagamento completo (`TP02`) e carta (`MP08`), coerente con l'incasso Stripe già avvenuto. La consegna è asincrona; lo stato `sent` nel database indica che Qonto ha accettato la creazione, non l’esito finale dello SdI.
 
 ## OAuth opzionale
 
@@ -94,7 +98,7 @@ Per un solo acquisto:
 php artisan qonto:sync-invoices UUID_ACQUISTO
 ```
 
-Laravel pianifica automaticamente il comando ogni dieci minuti. Nel pannello Aruba configura un processo Cron di tipo PHP, ogni dieci minuti, verso il percorso assoluto `/web/htdocs/www.wayoutapp.it/home/_wayout/run-schedule.php`. Gli orari del pannello Cron sono UTC.
+Nel pannello Aruba configura un processo Cron di tipo PHP, ogni dieci minuti, verso il percorso assoluto `/web/htdocs/www.wayoutapp.it/home/_wayout/run-schedule.php`. Gli orari del pannello Cron sono UTC. Il runner richiama il comando direttamente, senza richiedere `proc_open`, e registra soltanto gli errori in `_wayout/storage/logs/schedule/`.
 
 In Sandbox lo stato serve a verificare il flusso applicativo, ma non rappresenta una consegna reale allo SdI. In produzione la dashboard espone gli stati restituiti da Qonto e gli eventi del ciclo di vita disponibili dall’API.
 

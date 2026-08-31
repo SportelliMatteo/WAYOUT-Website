@@ -35,6 +35,7 @@
         'authDomain' => $firebaseConfig['auth_domain'] ?? null,
         'projectId' => config('services.firebase.project_id'),
         'appId' => $firebaseConfig['app_id'] ?? null,
+        'measurementId' => $firebaseConfig['measurement_id'] ?? null,
     ];
     $phoneVerificationMessages = [
         'configurationError' => __('messages.subscribe.phone_configuration_error'),

@@ -111,7 +111,7 @@ return [
         'founder_pass_short' => 'Waitlist',
         'founder_pass_short2' => 'Pass',
         'text_down_chip' => 'The Waitlist Pass is free for the first ',
-        'text_down_chip2' => ' users and includes Join features. It does not include table creation',
+        'text_down_chip2' => ' users and includes Join + Creator features',
         'email_placeholder' => 'Your email',
         'join_button' => 'Join',
         'verification_sent' => 'Check your inbox: we sent you a link to verify your address and complete the signup.',

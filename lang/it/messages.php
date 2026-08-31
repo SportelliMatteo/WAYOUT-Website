@@ -111,7 +111,7 @@ return [
         'founder_pass_short' => 'Waitlist',
         'founder_pass_short2' => 'Pass',
         'text_down_chip' => 'Il Waitlist Pass è gratuito per i primi  ',
-        'text_down_chip2' => ' utenti e include funzioni Join. Non include la creazione di tavoli',
+        'text_down_chip2' => ' utenti e include funzioni Join + Creator',
         'email_placeholder' => 'La tua email',
         'join_button' => 'Entra gratis',
         'verification_sent' => 'Controlla la tua casella email: ti abbiamo inviato il link per verificare l’indirizzo e completare l’iscrizione.',

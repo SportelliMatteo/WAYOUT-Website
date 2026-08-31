@@ -42,6 +42,7 @@ return [
             'api_key' => env('FIREBASE_API_KEY'),
             'auth_domain' => env('FIREBASE_AUTH_DOMAIN'),
             'app_id' => env('FIREBASE_APP_ID'),
+            'measurement_id' => env('FIREBASE_MEASUREMENT_ID', env('ANALYTICS_GA4_ID')),
         ],
     ],
 
@@ -69,6 +70,8 @@ return [
         'attachment_hosts' => env('QONTO_ATTACHMENT_HOSTS', 'qonto.com,amazonaws.com'),
         'iban' => env('QONTO_INVOICE_IBAN'),
         'vat_rate' => env('QONTO_INVOICE_VAT_RATE', 0.22),
+        'payment_conditions' => env('QONTO_INVOICE_PAYMENT_CONDITIONS', 'TP02'),
+        'payment_method' => env('QONTO_INVOICE_PAYMENT_METHOD', 'MP08'),
     ],
 
 ];

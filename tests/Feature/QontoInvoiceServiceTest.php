@@ -53,6 +53,7 @@ class QontoInvoiceServiceTest extends TestCase
             }
 
             return $request['report_einvoicing'] === false
+                && ! isset($request['payment_reporting'])
                 && $request['items'][0]['unit_price']['value'] === '23.77'
                 && $request['items'][0]['vat_rate'] === '0.22';
         });
@@ -93,7 +94,11 @@ class QontoInvoiceServiceTest extends TestCase
         });
 
         Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/v2/client_invoices')
-            && $request['report_einvoicing'] === true);
+            && $request['report_einvoicing'] === true
+            && $request['payment_reporting'] === [
+                'conditions' => 'TP02',
+                'method' => 'MP08',
+            ]);
     }
 
     public function test_retry_reuses_an_invoice_created_before_marking_it_as_paid_failed(): void
@@ -188,6 +193,8 @@ class QontoInvoiceServiceTest extends TestCase
             'attachment_hosts' => 'qonto.com,amazonaws.com,files.example.test',
             'iban' => 'IT60X0542811101000000123456',
             'vat_rate' => 0.22,
+            'payment_conditions' => 'TP02',
+            'payment_method' => 'MP08',
         ]);
     }
 

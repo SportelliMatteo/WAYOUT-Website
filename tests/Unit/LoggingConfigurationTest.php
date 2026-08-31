@@ -18,6 +18,18 @@ class LoggingConfigurationTest extends TestCase
         );
     }
 
+    public function test_schedule_errors_are_isolated_without_stack_traces(): void
+    {
+        $this->assertSame('daily', config('logging.channels.schedule.driver'));
+        $this->assertSame('error', config('logging.channels.schedule.level'));
+        $this->assertSame(30, config('logging.channels.schedule.days'));
+        $this->assertFalse(config('logging.channels.schedule.formatter_with.includeStacktraces'));
+        $this->assertStringContainsString(
+            'storage'.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR.'schedule',
+            config('logging.channels.schedule.path'),
+        );
+    }
+
     public function test_test_logs_are_isolated_and_rotate_for_seven_days(): void
     {
         $this->assertSame('testing', config('logging.default'));
