@@ -288,6 +288,7 @@
                         </tbody>
                     </table>
                 </div>
+                @include('admin.partials.pagination', ['paginator' => $retentionRuns, 'perPageName' => 'retention_per_page'])
             </div>
         </section>
 
@@ -350,11 +351,12 @@
                     </tbody>
                 </table>
             </div>
+            @include('admin.partials.pagination', ['paginator' => $adminUsers, 'perPageName' => 'admins_per_page'])
 
-            @if($adminUsers->count() < config('admin.max_users'))
+            @if($adminUsers->total() < config('admin.max_users'))
                 <form method="POST" action="{{ route('admin.users.store') }}" class="mt-5 grid gap-3 rounded-xl bg-slate-50 p-4 lg:grid-cols-2">
                     @csrf
-                    <h3 class="font-black lg:col-span-2">{{ __('messages.admin.add_admin_user') }} ({{ $adminUsers->count() }}/{{ config('admin.max_users') }})</h3>
+                    <h3 class="font-black lg:col-span-2">{{ __('messages.admin.add_admin_user') }} ({{ $adminUsers->total() }}/{{ config('admin.max_users') }})</h3>
                     <input name="name" required maxlength="120" value="{{ old('name') }}" placeholder="{{ __('messages.admin.first_and_last_name') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
                     <input name="email" type="email" required value="{{ old('email') }}" placeholder="Email" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
                     <input name="password" type="password" required minlength="12" autocomplete="new-password" placeholder="{{ __('messages.admin.temporary_password') }}" class="rounded-lg border border-slate-200 px-4 py-3 font-bold">
@@ -439,6 +441,9 @@
                     </tbody>
                 </table>
             </div>
+            @if(method_exists($recentAdminAuditEvents, 'links'))
+                @include('admin.partials.pagination', ['paginator' => $recentAdminAuditEvents, 'perPageName' => 'audit_per_page'])
+            @endif
         </section>
         </div>
 
@@ -478,7 +483,9 @@
             <div class="mt-4 grid gap-3">
                 @foreach($legalDocuments as $documentKey => $legalDocument)
                     @php
-                        $editingDocument = old('document_key') === $documentKey;
+                        $history = $legalDocumentHistory->get($documentKey);
+                        $historyParameter = 'legal_'.$documentKey;
+                        $editingDocument = old('document_key') === $documentKey || request()->hasAny([$historyParameter.'_page', $historyParameter.'_per_page']);
                         $documentGroup = config('legal.documents.'.$documentKey.'.group', 'policies');
                     @endphp
                     <details data-legal-panel="{{ $documentGroup }}" class="rounded-lg border border-slate-200 bg-slate-50 {{ $activeLegalGroup === $documentGroup ? '' : 'hidden' }}" @if($editingDocument) open @endif>
@@ -518,12 +525,13 @@
                                 <span class="mt-2 block text-xs font-bold leading-5 text-slate-500">{{ __('messages.admin.legal_html_help') }}</span>
                             </label>
 
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex flex-col gap-3">
                                 <div class="text-xs font-bold text-slate-500">
                                     <span class="font-black text-slate-700">{{ __('messages.admin.legal_history') }}:</span>
-                                    {{ ($legalDocumentHistory->get($documentKey) ?? collect())->take(5)->pluck('version')->join(' · ') }}
+                                    {{ $history->pluck('version')->join(' · ') ?: '-' }}
                                 </div>
-                                <button type="submit" class="rounded-lg bg-slate-950 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
+                                @include('admin.partials.pagination', ['paginator' => $history, 'perPageName' => $historyParameter.'_per_page'])
+                                <button type="submit" class="self-end rounded-lg bg-slate-950 px-5 py-3 font-black text-white shadow-sm transition hover:bg-violet-700">
                                     {{ __('messages.admin.legal_publish_new_version') }}
                                 </button>
                             </div>
@@ -647,9 +655,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="border-t border-slate-200 p-4">
-                {{ $waitlistEntries->links() }}
-            </div>
+            @include('admin.partials.pagination', ['paginator' => $waitlistEntries, 'perPageName' => 'waitlist_per_page'])
         </section>
         </div>
 
@@ -749,6 +755,7 @@
                     </tbody>
                 </table>
             </div>
+            @include('admin.partials.pagination', ['paginator' => $recentPurchases, 'perPageName' => 'orders_per_page'])
         </section>
         </div>
 
@@ -790,6 +797,9 @@
                     </tbody>
                 </table>
             </div>
+            @if(method_exists($recentWithdrawals, 'links'))
+                @include('admin.partials.pagination', ['paginator' => $recentWithdrawals, 'perPageName' => 'withdrawals_per_page'])
+            @endif
         </section>
         </div>
 
@@ -835,6 +845,7 @@
                     </tbody>
                 </table>
             </div>
+            @include('admin.partials.pagination', ['paginator' => $recentConsentEvents, 'perPageName' => 'consents_per_page'])
         </section>
         </div>
 
@@ -873,6 +884,7 @@
                             </tbody>
                         </table>
                     </div>
+                    @include('admin.partials.pagination', ['paginator' => $buyers, 'perPageName' => $planCode.'_buyers_per_page'])
                 </div>
             @endforeach
         </section>
@@ -885,6 +897,15 @@
             const adminExtras = [...document.querySelectorAll('[data-admin-panel-extra]')];
             const legalTabs = [...document.querySelectorAll('[data-legal-tab]')];
             const legalPanels = [...document.querySelectorAll('[data-legal-panel]')];
+
+            document.querySelectorAll('[data-per-page]').forEach((select) => {
+                select.addEventListener('change', () => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set(select.dataset.perPage, select.value);
+                    url.searchParams.delete(select.dataset.pageName);
+                    window.location.assign(url);
+                });
+            });
 
             const styleTab = (tab, active, dark = false) => {
                 tab.setAttribute('aria-selected', active ? 'true' : 'false');

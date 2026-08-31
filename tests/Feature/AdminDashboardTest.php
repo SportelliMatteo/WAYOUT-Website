@@ -63,6 +63,43 @@ class AdminDashboardTest extends TestCase
             ->assertSee('In attesa di verifica');
     }
 
+    public function test_dashboard_lists_have_independent_page_sizes_and_reject_unsupported_sizes(): void
+    {
+        $session = $this->adminSession();
+        $response = $this->withSession($session)
+            ->get(route('admin.dashboard', [
+                'waitlist_per_page' => 5,
+                'orders_per_page' => 20,
+                'consents_per_page' => 5,
+                'withdrawals_per_page' => 20,
+                'audit_per_page' => 5,
+                'retention_per_page' => 20,
+                'admins_per_page' => 5,
+                'join_buyers_per_page' => 20,
+                'creator_buyers_per_page' => 5,
+                'legal_privacy_per_page' => 20,
+            ]));
+
+        $response->assertOk()
+            ->assertSee('Righe per pagina');
+
+        $this->assertSame(5, $response->viewData('waitlistEntries')->perPage());
+        $this->assertSame(20, $response->viewData('recentPurchases')->perPage());
+        $this->assertSame(5, $response->viewData('recentConsentEvents')->perPage());
+        $this->assertSame(20, $response->viewData('recentWithdrawals')->perPage());
+        $this->assertSame(5, $response->viewData('recentAdminAuditEvents')->perPage());
+        $this->assertSame(20, $response->viewData('retentionRuns')->perPage());
+        $this->assertSame(5, $response->viewData('adminUsers')->perPage());
+        $this->assertSame(20, $response->viewData('joinBuyers')->perPage());
+        $this->assertSame(5, $response->viewData('creatorBuyers')->perPage());
+        $this->assertSame(20, $response->viewData('legalDocumentHistory')->get('privacy')->perPage());
+
+        $invalid = $this->withSession($session)
+            ->get(route('admin.dashboard', ['orders_per_page' => 100]));
+
+        $this->assertSame(10, $invalid->viewData('recentPurchases')->perPage());
+    }
+
     public function test_admin_dashboard_sections_and_legal_categories_are_accessible_as_tabs(): void
     {
         $response = $this->withSession($this->adminSession())

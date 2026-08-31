@@ -714,6 +714,7 @@ return [
         'in_waitlist' => 'On waitlist',
         'no_pass' => 'No pass',
         'recent_orders' => 'Recent orders',
+        'rows_per_page' => 'Rows per page',
         'withdrawal_requests' => 'Withdrawal requests',
         'withdrawal_requests_help' => 'Declarations recorded through the public function. Refund operations remain separate and must be reviewed.',
         'receipt_code' => 'Receipt code',

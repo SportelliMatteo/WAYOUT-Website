@@ -41,6 +41,9 @@ class AdminController extends Controller
             'status' => $request->query('status', 'all'),
             'plan' => $request->query('plan', 'all'),
         ];
+        $perPage = fn (string $name): int => in_array((int) $request->query($name.'_per_page', 10), [5, 10, 20], true)
+            ? (int) $request->query($name.'_per_page', 10)
+            : 10;
 
         $purchaseSummary = DB::table('purchases')
             ->selectRaw('COUNT(*) as total_orders')
@@ -143,45 +146,50 @@ class AdminController extends Controller
         }
 
         $waitlistEntries = $waitlistQuery
-            ->paginate(20)
+            ->paginate($perPage('waitlist'), ['*'], 'waitlist_page')
             ->withQueryString();
 
         $recentPurchases = DB::table('purchases')
             ->orderByDesc('created_at')
-            ->limit(12)
-            ->get();
+            ->paginate($perPage('orders'), ['*'], 'orders_page')
+            ->withQueryString();
 
         $recentConsentEvents = DB::table('consent_events')
             ->orderByDesc('occurred_at')
             ->orderByDesc('id')
-            ->limit(20)
-            ->get();
+            ->paginate($perPage('consents'), ['*'], 'consents_page')
+            ->withQueryString();
 
         $recentWithdrawals = Schema::hasTable('withdrawal_requests')
             ? DB::table('withdrawal_requests')
                 ->orderByDesc('submitted_at')
-                ->limit(30)
-                ->get()
+                ->paginate($perPage('withdrawals'), ['*'], 'withdrawals_page')
+                ->withQueryString()
             : collect();
 
-        $joinBuyers = $this->buyersForPlan('join');
-        $creatorBuyers = $this->buyersForPlan('creator');
+        $joinBuyers = $this->buyersForPlan('join', $perPage('join_buyers'), 'join_buyers_page');
+        $creatorBuyers = $this->buyersForPlan('creator', $perPage('creator_buyers'), 'creator_buyers_page');
         $currentLegalDocuments = $legalDocuments->allCurrent();
-        $legalDocumentHistory = $legalDocuments->history();
-        $adminUsers = AdminUser::query()->orderBy('name')->get();
+        $legalDocumentHistory = $legalDocuments->paginatedHistory(
+            fn (string $document): int => $perPage('legal_'.$document),
+        );
+        $adminUsers = AdminUser::query()
+            ->orderBy('name')
+            ->paginate($perPage('admins'), ['*'], 'admins_page')
+            ->withQueryString();
         $recentAdminAuditEvents = Schema::hasTable('admin_audit_events')
             ? DB::table('admin_audit_events')
                 ->orderByDesc('occurred_at')
                 ->orderByDesc('id')
-                ->limit(30)
-                ->get()
+                ->paginate($perPage('audit'), ['*'], 'audit_page')
+                ->withQueryString()
             : collect();
         $sitePreviewExpiresAt = $sitePreview->expiresAt($request);
         $retentionPreview = $dataRetention->preview();
         $retentionRuns = DB::table('data_retention_runs')
             ->orderByDesc('started_at')
-            ->limit(10)
-            ->get();
+            ->paginate($perPage('retention'), ['*'], 'retention_page')
+            ->withQueryString();
 
         return view('admin.dashboard', [
             'filters' => $filters,
@@ -463,7 +471,7 @@ class AdminController extends Controller
             : $response->withErrors(['invoice' => $updated->qonto_invoice_error ?: __('messages.admin.invoice_sync_failed')]);
     }
 
-    private function buyersForPlan(string $plan)
+    private function buyersForPlan(string $plan, int $perPage, string $pageName)
     {
         return DB::table('purchases')
             ->select('email')
@@ -476,8 +484,8 @@ class AdminController extends Controller
             ->where('plan', $plan)
             ->groupBy('email')
             ->orderByDesc('latest_purchase_at')
-            ->limit(20)
-            ->get();
+            ->paginate($perPage, ['*'], $pageName)
+            ->withQueryString();
     }
 
     /** @return array<string, mixed> */
@@ -515,5 +523,4 @@ class AdminController extends Controller
 
         return "STRING_AGG(DISTINCT CASE WHEN status = 'succeeded' THEN plan END, ',') as plans";
     }
-
 }

@@ -714,6 +714,7 @@ return [
         'in_waitlist' => 'In waitlist',
         'no_pass' => 'Nessun pass',
         'recent_orders' => 'Ordini recenti',
+        'rows_per_page' => 'Righe per pagina',
         'withdrawal_requests' => 'Richieste di recesso',
         'withdrawal_requests_help' => 'Dichiarazioni registrate dalla funzione pubblica. Le operazioni di rimborso restano separate e devono essere verificate.',
         'receipt_code' => 'Codice ricevuta',

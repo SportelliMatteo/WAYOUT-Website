@@ -14,13 +14,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for command in composer npm rsync zip; do
+for command in composer npm php rsync zip; do
     command -v "$command" >/dev/null 2>&1 || { echo "Comando mancante: $command" >&2; exit 1; }
 done
 
 cd "$PROJECT_DIR"
-npm ci
-npm run build
+if [[ "${SKIP_FRONTEND_BUILD:-0}" != "1" ]]; then
+    npm ci
+    npm run build
+fi
 
 mkdir -p "$PRIVATE_DIR" "$DIST_DIR"
 
@@ -79,7 +81,11 @@ fi
 ARCHIVE="$DIST_DIR/wayout-aruba-$RELEASE_ID.zip"
 (cd "$PUBLIC_DIR" && zip -qr "$ARCHIVE" .)
 shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
+EXTRACTOR="$DIST_DIR/extract-wayout-$RELEASE_ID.php"
+php "$PROJECT_DIR/scripts/build-aruba-extractor.php" "$ARCHIVE" "$EXTRACTOR"
 
 echo "Pacchetto creato: $ARCHIVE"
+echo "Checksum creato: $ARCHIVE.sha256"
+echo "Estrattore creato: $EXTRACTOR"
 echo "Release ID: $RELEASE_ID"
 echo "Il pacchetto non contiene il file .env né credenziali."

@@ -71,6 +71,25 @@ class LegalDocumentService
             ->groupBy('document_key');
     }
 
+    public function paginatedHistory(callable $perPage, ?string $locale = null): Collection
+    {
+        $locale ??= app()->getLocale();
+
+        $this->allCurrent($locale);
+
+        return collect($this->keys())->mapWithKeys(function (string $document) use ($locale, $perPage) {
+            $parameter = 'legal_'.$document;
+
+            return [$document => DB::table('legal_document_versions')
+                ->where('document_key', $document)
+                ->where('locale', $locale)
+                ->orderByDesc('published_at')
+                ->orderByDesc('id')
+                ->paginate($perPage($document), ['*'], $parameter.'_page')
+                ->withQueryString()];
+        });
+    }
+
     public function publish(
         string $document,
         string $locale,
