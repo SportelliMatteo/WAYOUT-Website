@@ -32,7 +32,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">3. Categorie di strumenti utilizzati</h2>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.1 Strumenti strettamente necessari</h3>
-        <p class="mt-3">Consentono la navigazione, la protezione dei form, la gestione della sessione, la registrazione delle preferenze cookie, la verifica email, il checkout, la verifica telefonica Firebase/reCAPTCHA, il pagamento e la prevenzione delle frodi. Il loro utilizzo non richiede consenso quando è limitato a quanto strettamente necessario per il servizio richiesto e non è impiegato per finalità ulteriori, fermo restando l’obbligo di informazione.</p>
+        <p class="mt-3">Consentono la navigazione, la protezione dei form pubblici mediante Google reCAPTCHA v3, la gestione della sessione, la registrazione delle preferenze cookie, la verifica email, il checkout, la verifica telefonica Firebase/reCAPTCHA, il pagamento e la prevenzione delle frodi. Il loro utilizzo non richiede consenso quando è limitato a quanto strettamente necessario per il servizio richiesto e non è impiegato per finalità ulteriori, fermo restando l’obbligo di informazione.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.2 Analytics</h3>
         <p class="mt-3">Google Tag Manager e Google Analytics 4 vengono caricati soltanto dopo il consenso dell’utente alla categoria Analytics. La configurazione utilizza Google Consent Mode in modalità Basic: prima dell’interazione con il banner i tag Google restano bloccati e non vengono trasmessi dati a Google.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.3 Marketing e profilazione</h3>
@@ -116,9 +116,9 @@
                         <td class="px-4 py-3 align-top">Pagamento/antifrode - nessun consenso</td>
                     </tr>
                     <tr>
-                        <td class="px-4 py-3 align-top font-black text-slate-900">Firebase Phone Authentication / reCAPTCHA</td>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">Google reCAPTCHA v3 / Firebase Phone Authentication</td>
                         <td class="px-4 py-3 align-top">Google / Firebase</td>
-                        <td class="px-4 py-3 align-top">Verifica del numero di telefono e prevenzione di abusi nel checkout; può usare richieste di rete, token e storage tecnico.</td>
+                        <td class="px-4 py-3 align-top">Protezione anti-spam dei form pubblici e verifica del numero di telefono nel checkout; può usare richieste di rete, token, punteggi di rischio e storage tecnico.</td>
                         <td class="px-4 py-3 align-top">Sessione o durata tecnica necessaria alla verifica; dettagli variabili secondo configurazione Google</td>
                         <td class="px-4 py-3 align-top">Necessario per verifica/autenticazione - nessun consenso, se limitato alla funzione richiesta</td>
                     </tr>

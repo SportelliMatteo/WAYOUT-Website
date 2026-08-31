@@ -55,6 +55,7 @@
 
             <form class="space-y-6" method="POST" action="{{ route('contact.store') }}">
                 @csrf
+                @include('partials.recaptcha', ['action' => 'contact'])
                 <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
 
                 <div class="grid gap-6 sm:grid-cols-2">

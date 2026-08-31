@@ -13,6 +13,7 @@ return [
         'description' => 'WAYOUT ti porta offline: trovi il gruppo giusto, entri nella serata, vivi la città.',
         'company_name' => 'Ragione sociale',
         'vat' => 'C.F./P.IVA',
+        'share_capital' => 'Capitale Sociale',
         'rea' => 'REA',
         'pec' => 'PEC',
         'email' => 'Email',
@@ -796,6 +797,7 @@ return [
         'checkout_unavailable' => 'Checkout temporaneamente non disponibile. Riprova tra qualche minuto.',
         'contact_success' => 'Grazie! Abbiamo ricevuto il tuo messaggio e ti risponderemo presto.',
         'contact_error' => 'Non siamo riusciti a inviare il messaggio. Riprova tra qualche minuto.',
+        'recaptcha_error' => 'Non è stato possibile completare la verifica anti-spam. Ricarica la pagina e riprova.',
         'email_sending_disabled' => 'L’invio email è temporaneamente disabilitato.',
     ],
 ];

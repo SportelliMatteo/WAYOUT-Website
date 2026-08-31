@@ -26,7 +26,7 @@ Route::redirect('/condizioni-di-vendita', '/termini-di-vendita', 301);
 Route::get('/condizioni-di-pre-sale', [LegalDocumentController::class, 'show'])->defaults('document', 'presale')->name('legal.presale');
 Route::get('/recedere-dal-contratto', [WithdrawalController::class, 'create'])->name('legal.refunds');
 Route::get('/documenti/modulo-tipo-recesso', [WithdrawalController::class, 'downloadTemplate'])->name('withdrawal.template.download');
-Route::post('/recedere-dal-contratto/verifica', [WithdrawalController::class, 'storeReview'])->middleware('throttle:withdrawal')->name('withdrawal.review.store');
+Route::post('/recedere-dal-contratto/verifica', [WithdrawalController::class, 'storeReview'])->middleware(['throttle:withdrawal', 'recaptcha:withdrawal_review'])->name('withdrawal.review.store');
 Route::get('/recedere-dal-contratto/conferma', [WithdrawalController::class, 'review'])->name('withdrawal.review');
 Route::post('/recedere-dal-contratto/conferma', [WithdrawalController::class, 'confirm'])->middleware('throttle:withdrawal-confirm')->name('withdrawal.confirm');
 Route::get('/recedere-dal-contratto/ricevuta/{token}', [WithdrawalController::class, 'receipt'])->where('token', '[A-Za-z0-9]{64}')->name('withdrawal.receipt');
@@ -37,12 +37,12 @@ Route::get('/subscribe', [SubscribeController::class, 'show'])->name('subscribe'
 Route::get('/checkout/success/{purchase}', [SubscribeController::class, 'success'])->middleware('signed')->name('checkout.success');
 Route::get('/checkout/status/{purchase}', [SubscribeController::class, 'status'])->middleware(['signed', 'throttle:checkout'])->name('checkout.status');
 Route::get('/checkout/cancel/{purchase}', [WayoutCheckoutController::class, 'cancel'])->middleware('signed')->name('checkout.cancel');
-Route::post('/subscribe/access', [SubscribeController::class, 'access'])->middleware('throttle:waitlist')->name('subscribe.access');
+Route::post('/subscribe/access', [SubscribeController::class, 'access'])->middleware(['throttle:waitlist', 'recaptcha:subscribe_access'])->name('subscribe.access');
 Route::post('/subscribe/checkout', [WayoutCheckoutController::class, 'store'])->middleware('throttle:checkout')->name('subscribe.checkout');
-Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware('throttle:purchase-confirmation')->name('purchase.confirmation.resend');
-Route::post('/contatti', [ContactController::class, 'store'])->middleware('throttle:contact')->name('contact.store');
+Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware(['throttle:purchase-confirmation', 'recaptcha:purchase_confirmation'])->name('purchase.confirmation.resend');
+Route::post('/contatti', [ContactController::class, 'store'])->middleware(['throttle:contact', 'recaptcha:contact'])->name('contact.store');
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->middleware('throttle:120,1')->name('cookie-consent.store');
-Route::post('/waitlist', [WaitlistController::class, 'store'])->middleware('throttle:waitlist')->name('waitlist.store');
+Route::post('/waitlist', [WaitlistController::class, 'store'])->middleware(['throttle:waitlist', 'recaptcha:waitlist'])->name('waitlist.store');
 Route::get('/waitlist/verifica/{token}', [WaitlistController::class, 'showVerification'])->where('token', '[A-Za-z0-9]{64}')->name('waitlist.verify.show');
 Route::post('/waitlist/verifica/{token}', [WaitlistController::class, 'verify'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:waitlist')->name('waitlist.verify');
 Route::get('/preferenze/marketing/{waitlist}', [ConsentController::class, 'showMarketingRevocation'])
@@ -53,8 +53,8 @@ Route::post('/preferenze/marketing/{waitlist}', [ConsentController::class, 'revo
     ->name('consent.marketing.revoke');
 
 Route::get('/admin/login', [AdminAuthController::class, 'login'])->middleware('throttle:admin')->name('admin.login');
-Route::post('/admin/login', [AdminAuthController::class, 'authenticate'])->middleware('throttle:admin')->name('admin.authenticate');
-Route::post('/admin/recover', [AdminAuthController::class, 'recover'])->middleware('throttle:admin')->name('admin.recover');
+Route::post('/admin/login', [AdminAuthController::class, 'authenticate'])->middleware(['throttle:admin', 'recaptcha:admin_login'])->name('admin.authenticate');
+Route::post('/admin/recover', [AdminAuthController::class, 'recover'])->middleware(['throttle:admin', 'recaptcha:admin_recover'])->name('admin.recover');
 Route::get('/admin/otp/setup', [AdminAuthController::class, 'showSetup'])->middleware('throttle:admin')->name('admin.otp.setup');
 Route::post('/admin/otp/setup', [AdminAuthController::class, 'confirmSetup'])->middleware('throttle:admin')->name('admin.otp.setup.confirm');
 Route::get('/admin/otp/challenge', [AdminAuthController::class, 'showChallenge'])->middleware('throttle:admin')->name('admin.otp.challenge');

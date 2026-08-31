@@ -32,6 +32,7 @@
 
             <form action="{{ route('admin.authenticate') }}" method="POST" class="mt-7 space-y-4">
                 @csrf
+                @include('partials.recaptcha', ['action' => 'admin_login', 'errorClass' => 'text-sm font-semibold text-rose-200'])
                 <div>
                     <label for="email" class="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.admin.email') }}</label>
                     <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required class="mt-2 w-full rounded-2xl border border-white/10 bg-white px-4 py-3 font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/20">
@@ -56,6 +57,7 @@
                 </p>
                 <form action="{{ route('admin.recover') }}" method="POST" class="mt-5 space-y-4">
                     @csrf
+                    @include('partials.recaptcha', ['action' => 'admin_recover', 'errorClass' => 'text-sm font-semibold text-rose-200'])
                     <input type="hidden" name="recovery_mode" value="1">
                     <div>
                         <label for="recovery-email" class="text-sm font-black uppercase tracking-[0.16em] text-slate-300">{{ __('messages.admin.email') }}</label>

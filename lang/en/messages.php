@@ -13,6 +13,7 @@ return [
         'description' => 'Social clubbing to discover tables, clubs, and private parties with people on your wavelength.',
         'company_name' => 'Company name',
         'vat' => 'VAT',
+        'share_capital' => 'Share capital',
         'rea' => 'REA',
         'pec' => 'PEC',
         'email' => 'Email',
@@ -796,6 +797,7 @@ return [
         'checkout_unavailable' => 'Checkout is temporarily unavailable. Please try again in a few minutes.',
         'contact_success' => 'Thank you! We received your message and will reply soon.',
         'contact_error' => 'We could not send the message. Please try again in a few minutes.',
+        'recaptcha_error' => 'The anti-spam check could not be completed. Reload the page and try again.',
         'email_sending_disabled' => 'Email sending is temporarily disabled.',
     ],
 ];

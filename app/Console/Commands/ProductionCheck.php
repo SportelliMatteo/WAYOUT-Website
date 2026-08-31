@@ -42,6 +42,11 @@ class ProductionCheck extends Command
             ['Backend WAYOUT HTTPS configurato', str_starts_with((string) config('services.wayout.base_url'), 'https://')],
             ['Segreto interno WAYOUT robusto', strlen((string) config('services.wayout.internal_secret')) >= 32],
             ['Firebase Phone Auth configurato', collect(config('services.firebase.client', []))->every(static fn ($value): bool => filled($value)) && filled(config('services.firebase.project_id'))],
+            ['reCAPTCHA v3 configurato', config('services.recaptcha.enabled') === true
+                && filled(config('services.recaptcha.site_key'))
+                && filled(config('services.recaptcha.secret_key'))
+                && config('services.recaptcha.minimum_score') >= 0.0
+                && config('services.recaptcha.minimum_score') <= 1.0],
             ['Segreto API benefici robusto', filled(config('benefits.server_auth.key')) && strlen((string) config('benefits.server_auth.secret')) >= 32],
             ['Analytics debug disattivato', config('analytics.debug') === false],
             ['Artefatti Vite dev assenti', $this->developmentArtifactsAreAbsent()],

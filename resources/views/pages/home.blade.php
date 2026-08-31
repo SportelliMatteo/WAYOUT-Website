@@ -54,6 +54,7 @@
 
                     <form id="waitlist-join-form" method="POST" action="{{ route('waitlist.store') }}" class="mt-5 space-y-3">
                         @csrf
+                        @include('partials.recaptcha', ['action' => 'waitlist', 'errorClass' => 'px-2 text-left text-sm font-semibold text-rose-200'])
                         <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
                         <input type="email" name="email" value="{{ old('email') }}" placeholder="{{ __('messages.home.email_placeholder') }}" required autocomplete="email" class="min-h-14 w-full rounded-full border border-white/10 bg-white px-5 text-base font-bold text-slate-950 placeholder-slate-400 outline-none transition focus:ring-4 focus:ring-violet-300/40" />
                         @error('email')
@@ -347,6 +348,7 @@
                 @if($purchasedPlan)
                     <form id="purchase-confirmation-resend-form" method="POST" action="{{ route('purchase.confirmation.resend') }}" class="w-full">
                         @csrf
+                        @include('partials.recaptcha', ['action' => 'purchase_confirmation', 'errorClass' => 'mb-3 text-sm font-semibold text-rose-200'])
                         <button id="purchase-confirmation-resend-submit" type="submit" class="flex w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 transition disabled:cursor-wait disabled:opacity-70 sm:text-lg">
                             <svg class="purchase-confirmation-resend-loader hidden h-5 w-5 animate-spin" aria-hidden="true" viewBox="0 0 24 24" fill="none">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -359,6 +361,7 @@
                 @else
                     <form method="POST" action="{{ route('subscribe.access') }}" class="w-full">
                         @csrf
+                        @include('partials.recaptcha', ['action' => 'subscribe_access', 'errorClass' => 'mb-3 text-sm font-semibold text-rose-200'])
                         <input type="hidden" name="email" value="{{ session('waitlist_email') }}" />
                         <input type="hidden" name="waitlist_status" value="{{ session('waitlist_status') }}" />
                         <button id="block-discount" type="submit" @disabled($founderOfferUnavailable) class="w-full rounded-full bg-white px-5 py-4 text-base font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:text-lg">{{ $founderOfferCatalogError ? __('messages.home.catalog_unavailable_short') : ($founderOfferUnavailable ? __('messages.subscribe.passes_sold_out') : __('messages.home.discover_passes')) }}</button>

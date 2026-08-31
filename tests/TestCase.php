@@ -19,6 +19,7 @@ abstract class TestCase extends BaseTestCase
         config()->set('services.firebase.api_key', 'firebase-test-key');
         config()->set('services.firebase.auth_domain', 'wayout-test.firebaseapp.com');
         config()->set('services.firebase.app_id', '1:123:web:test');
+        config()->set('services.recaptcha.enabled', false);
         config()->set('benefits.server_auth.key', 'test-benefit-key');
         config()->set('benefits.server_auth.secret', 'test-benefit-secret');
     }

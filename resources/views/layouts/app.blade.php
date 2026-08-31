@@ -176,6 +176,10 @@
                                 <dd class="mt-1 font-semibold text-slate-200">14805930964</dd>
                             </div>
                             <div>
+                                <dt class="font-bold text-slate-500">{{ __('messages.footer.share_capital') }}</dt>
+                                <dd class="mt-1 font-semibold text-slate-200">{{ app()->getLocale() === 'it' ? '1.000,00 euro' : 'EUR 1,000.00' }}</dd>
+                            </div>
+                            <div>
                                 <dt class="font-bold text-slate-500">{{ __('messages.footer.rea') }}</dt>
                                 <dd class="mt-1 font-semibold text-slate-200">MI2808098</dd>
                             </div>

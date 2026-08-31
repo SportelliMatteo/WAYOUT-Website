@@ -16,6 +16,7 @@
 
         <form method="POST" action="{{ route('withdrawal.review.store') }}" class="grid gap-5 p-5 sm:grid-cols-2 sm:p-8">
             @csrf
+            @include('partials.recaptcha', ['action' => 'withdrawal_review'])
             <div class="absolute -left-[10000px]" aria-hidden="true">
                 <label for="website">{{ __('messages.withdrawal.website') }}</label>
                 <input id="website" name="website" tabindex="-1" autocomplete="off">

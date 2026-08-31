@@ -5,6 +5,7 @@ use App\Http\Middleware\RequireAdminAuthentication;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\VerifyBenefitApiSignature;
+use App\Http\Middleware\VerifyRecaptcha;
 use App\Support\DataRetentionService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth' => RequireAdminAuthentication::class,
             'benefit.api' => VerifyBenefitApiSignature::class,
+            'recaptcha' => VerifyRecaptcha::class,
         ]);
 
         $middleware->web(append: [

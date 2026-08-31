@@ -32,7 +32,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">3. Categories of instruments used</h2>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.1 Strictly necessary tools</h3>
-        <p class="mt-3">They allow navigation, form protection, session management, cookie preferences registration, email verification, checkout, Firebase/reCAPTCHA telephone verification, payment and fraud prevention. Their use does not require consent when it is limited to what is strictly necessary for the service requested and is not used for further purposes, subject to the obligation of information.</p>
+        <p class="mt-3">They enable navigation, protection of public forms through Google reCAPTCHA v3, session management, cookie preference registration, email verification, checkout, Firebase/reCAPTCHA phone verification, payment and fraud prevention. Their use does not require consent when limited to what is strictly necessary for the requested service and not used for additional purposes, subject to the transparency obligation.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.2 Analytics</h3>
         <p class="mt-3">Google Tag Manager and Google Analytics 4 are uploaded only after your consent to the Analytics category. The configuration uses Google Allow Mode in Basic mode: Before interacting with the banner Google tags remain blocked and data is not transmitted to Google.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.3 Marketing and profiling</h3>
@@ -116,9 +116,9 @@
                         <td class="px-4 py-3 align-top">Payment/anti-fraud - no consent</td>
                     </tr>
                     <tr>
-                        <td class="px-4 py-3 align-top font-black text-slate-900">Firebase Phone Authentication / reCAPTCHA</td>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">Google reCAPTCHA v3 / Firebase Phone Authentication</td>
                         <td class="px-4 py-3 align-top">Google / Firebase</td>
-                        <td class="px-4 py-3 align-top">Check phone number and prevention of abuse in checkout; can use network requests, tokens and technical storage.</td>
+                        <td class="px-4 py-3 align-top">Anti-spam protection for public forms and phone verification in checkout; may use network requests, tokens, risk scores and technical storage.</td>
                         <td class="px-4 py-3 align-top">Session or technical duration necessary for verification; variable details according to Google configuration</td>
                         <td class="px-4 py-3 align-top">Required for verification/ authentication - no consent, if limited to the required function</td>
                     </tr>
