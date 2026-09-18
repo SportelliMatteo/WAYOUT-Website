@@ -58,6 +58,10 @@
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Assistenza</strong></td>
                         <td class="px-4 py-3 align-top"><a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a></td>
                     </tr>
+                    <tr>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">Telefono</td>
+                        <td class="px-4 py-3 align-top">+393522164100</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -97,14 +101,14 @@
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Founder Join 12M</strong></td>
                         <td class="px-4 py-3 align-top"><strong>€29</strong></td>
                         <td class="px-4 py-3 align-top"><strong>12 mesi dalla corretta attivazione individuale, possibile dal go-live</strong></td>
-                        <td class="px-4 py-3 align-top"><strong>600 pass</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>500 pass</strong></td>
                         <td class="px-4 py-3 align-top"><strong>Funzionalità Join</strong></td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Founder Creator 12M</strong></td>
                         <td class="px-4 py-3 align-top"><strong>€59</strong></td>
                         <td class="px-4 py-3 align-top"><strong>12 mesi dalla corretta attivazione individuale, possibile dal go-live</strong></td>
-                        <td class="px-4 py-3 align-top"><strong>200 pass</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>150 pass</strong></td>
                         <td class="px-4 py-3 align-top">Funzionalità Join + Creator</td>
                     </tr>
                 </tbody>

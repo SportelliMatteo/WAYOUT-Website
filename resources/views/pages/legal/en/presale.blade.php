@@ -58,6 +58,10 @@
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Support</strong></td>
                         <td class="px-4 py-3 align-top"><a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a></td>
                     </tr>
+                    <tr>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">Phone</td>
+                        <td class="px-4 py-3 align-top">+393522164100</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -97,14 +101,14 @@
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Founder Join 12M</strong></td>
                         <td class="px-4 py-3 align-top"><strong>€29</strong></td>
                         <td class="px-4 py-3 align-top"><strong>12 months from the correct individual activation, possible from the go-live</strong></td>
-                        <td class="px-4 py-3 align-top"><strong>600 passes</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>500 passes</strong></td>
                         <td class="px-4 py-3 align-top"><strong>Join functionality</strong></td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><strong>Founder Creator 12M</strong></td>
                         <td class="px-4 py-3 align-top"><strong>€59</strong></td>
                         <td class="px-4 py-3 align-top"><strong>12 months from the correct individual activation, possible from the go-live</strong></td>
-                        <td class="px-4 py-3 align-top"><strong>200 passes</strong></td>
+                        <td class="px-4 py-3 align-top"><strong>150 passes</strong></td>
                         <td class="px-4 py-3 align-top">Join + Creator functionality</td>
                     </tr>
                 </tbody>

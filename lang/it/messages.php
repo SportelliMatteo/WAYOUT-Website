@@ -190,6 +190,7 @@ return [
         'profile_submitting' => 'Iscrizione in corso…',
     ],
     'subscribe' => [
+        'seller_phone' => 'Telefono WAYOUT per informazioni e assistenza:',
         'title' => 'Acquista un Founder Pass - Wayout',
         'description' => 'Verifica il tuo account e procedi al pagamento del Founder Pass riservato alla waitlist Wayout.',
         'eyebrow' => 'Offerta waitlist',
@@ -218,7 +219,7 @@ return [
         'creator_card_title' => 'Founder Creator 12M',
         'creator_card_text' => 'Per creare tavoli, gestire richieste e diventare host founder della community.',
         'creator_card_price_label' => 'una tantum',
-        'creator_card_capacity' => '200 pass disponibili',
+        'creator_card_capacity' => '150 pass disponibili',
         'creator_includes' => ['Tutto ciò che include Join', 'Creazione tavoli', 'Gestione richieste', 'Badge creator'],
         'creator_card_validity' => 'Validità 12 mesi dal go-live',
         'card_capacity' => 'Posti disponibili',

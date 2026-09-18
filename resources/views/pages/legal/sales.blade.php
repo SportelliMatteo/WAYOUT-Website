@@ -61,6 +61,10 @@
                         <td class="px-4 py-3 align-top"><a class="font-black text-violet-700" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a></td>
                     </tr>
                     <tr>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">Telefono</td>
+                        <td class="px-4 py-3 align-top">+393522164100</td>
+                    </tr>
+                    <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900">PEC</td>
                         <td class="px-4 py-3 align-top"><a class="font-black text-violet-700" href="mailto:wayout@pec.wayoutapp.it">wayout@pec.wayoutapp.it</a></td>
                     </tr>
@@ -112,13 +116,13 @@
                         <td class="px-4 py-3 align-top font-black text-slate-900">Founder Join 12M</td>
                         <td class="px-4 py-3 align-top">€29, IVA e oneri applicabili inclusi</td>
                         <td class="px-4 py-3 align-top">12 mesi dalla corretta attivazione individuale, possibile dal go-live; pagamento unico; nessun rinnovo automatico</td>
-                        <td class="px-4 py-3 align-top">Fino a 600 pass</td>
+                        <td class="px-4 py-3 align-top">Fino a 500 pass</td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900">Founder Creator 12M</td>
                         <td class="px-4 py-3 align-top">€59, IVA e oneri applicabili inclusi</td>
                         <td class="px-4 py-3 align-top">12 mesi dalla corretta attivazione individuale, possibile dal go-live; pagamento unico; nessun rinnovo automatico</td>
-                        <td class="px-4 py-3 align-top">Fino a 200 pass</td>
+                        <td class="px-4 py-3 align-top">Fino a 150 pass</td>
                     </tr>
                 </tbody>
             </table>

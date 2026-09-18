@@ -64,6 +64,10 @@
                         <td class="px-4 py-3 align-top font-black text-slate-900">PEC</td>
                         <td class="px-4 py-3 align-top"><a class="font-black text-violet-700" href="mailto:wayout@pec.wayoutapp.it">wayout@pec.wayoutapp.it</a></td>
                     </tr>
+                    <tr>
+                        <td class="px-4 py-3 align-top font-black text-slate-900">Phone</td>
+                        <td class="px-4 py-3 align-top">+393522164100</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -112,13 +116,13 @@
                         <td class="px-4 py-3 align-top font-black text-slate-900">Founder Join 12M</td>
                         <td class="px-4 py-3 align-top">€29, VAT and applicable charges included</td>
                         <td class="px-4 py-3 align-top">12 months from the correct individual activation, possible from the go-live; single payment; no automatic renewal</td>
-                        <td class="px-4 py-3 align-top">Up to 600 passes</td>
+                        <td class="px-4 py-3 align-top">Up to 500 passes</td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900">Founder Creator 12M</td>
                         <td class="px-4 py-3 align-top">€59, VAT and applicable charges included</td>
                         <td class="px-4 py-3 align-top">12 months from the correct individual activation, possible from the go-live; single payment; no automatic renewal</td>
-                        <td class="px-4 py-3 align-top">Up to 200 passes</td>
+                        <td class="px-4 py-3 align-top">Up to 150 passes</td>
                     </tr>
                 </tbody>
             </table>

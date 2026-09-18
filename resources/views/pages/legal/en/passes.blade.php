@@ -7,7 +7,7 @@
 <div class="space-y-8">
     <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
         <p class="font-black text-slate-950"><strong>In short.</strong></p>
-        <p class="text-slate-700">The entry to the waitlist is free and does not entail purchasing obligations. The Waitlist Pass is a free 60-day benefit with only Join functions. The Founder Pass instead are digital subscriptions purchased in pre-sale, valid for 12 months from the correct individual activation, possible by the public go-live of the app and without automatic renewal.</p>
+        <p class="text-slate-700">The entry to the waitlist is free and does not entail purchasing obligations. The Waitlist Pass is a potential free 60-day benefit with Join and Creator features. The Founder Pass instead are digital subscriptions purchased in pre-sale, valid for 12 months from the correct individual activation, possible by the public go-live of the app and without automatic renewal.</p>
     </div>
     <section>
         <h2 class="text-2xl font-black text-slate-950">1. The Three Pass Comparison</h2>
@@ -19,8 +19,8 @@
             </div>
             <div class="space-y-2 p-5 text-slate-700">
                 <p>Possible benefit for the first 2,000 valid users of the waitlist.</p>
-                <p><em><strong>Includes: </strong></em>Join functionality · Participation requests · Chat after acceptance</p>
-                <p><em><strong>Not included: </strong></em>Creating and managing tables · Functionality Creator</p>
+                <p><em><strong>Includes: </strong></em>Join and Creator features · Participation requests · Chat after acceptance · Creating and managing tables and their participation requests.</p>
+                <p><em><strong>Not included: </strong></em>Services, reservations, admission, drinks or other services provided by venues or third parties · Guaranteed acceptance or availability of specific tables/events.</p>
             </div>
         </div>
         <div class="mt-4 grid overflow-hidden rounded-lg border border-slate-200 bg-white md:grid-cols-[0.38fr_0.62fr]">
@@ -85,7 +85,7 @@
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Functions Creator</strong></em></td>
-                        <td class="px-4 py-3 align-top">No.</td>
+                        <td class="px-4 py-3 align-top">Yes</td>
                         <td class="px-4 py-3 align-top">No.</td>
                         <td class="px-4 py-3 align-top">Yes</td>
                     </tr>
@@ -98,8 +98,8 @@
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Posts / availability</strong></em></td>
                         <td class="px-4 py-3 align-top">First 2,000 valid users</td>
-                        <td class="px-4 py-3 align-top">Maximum 600 passes</td>
-                        <td class="px-4 py-3 align-top">Maximum 200 passes</td>
+                        <td class="px-4 py-3 align-top">Maximum 500 passes</td>
+                        <td class="px-4 py-3 align-top">Maximum 150 passes</td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Early access to the app</strong></em></td>
@@ -139,17 +139,15 @@
         </div>
         <h3 class="mt-6 text-xl font-black text-slate-900">What includes</h3>
         <ul class="mt-3 list-disc space-y-2 pl-6">
-            <li>Join features listed in the app.</li>
-            <li>The possibility to discover tables or social occasions available.</li>
-            <li>The possibility to send requests for participation according to the rules and limits of the service.</li>
-            <li>Access to the chat tables for which the request was accepted.</li>
+            <li>All Join and Creator features made available in the app.</li>
+            <li>Discovery, sending participation requests and chatting after acceptance.</li>
+            <li>Creating and managing digital tables and their participation requests, always subject to the rules and limits of the service.</li>
         </ul>
         <h3 class="mt-6 text-xl font-black text-slate-900">What does not include</h3>
         <ul class="mt-3 list-disc space-y-2 pl-6">
-            <li>The creation or management of tables.</li>
-            <li>Creator functionality.</li>
-            <li>Entrance to the premises, bookings, physical tables, drinks, consummations or third-party services.</li>
-            <li>The guarantee to be accepted in a table or to find tables in a specific date or location.</li>
+            <li>Admission to venues, reservations, physical tables, tickets, drinks, food or third-party services.</li>
+            <li>Guaranteed acceptance at a specific table.</li>
+            <li>An absolute or unlimited right to create tables, which remain subject to publication, capacity, frequency, fair use, security, moderation and community rules.</li>
         </ul>
         <p class="mt-3"><em><strong>Personal features. </strong></em>The Waitlist Pass is personal, non-transferable, non-resible and free of monetary value. It cannot be converted into money, credit or services of third-party premises.</p>
     </section>
@@ -162,11 +160,11 @@
             <p class="text-slate-700">The purchase does not give access to the app before launch, to a public beta, to events, entrances or physical services. It only blocks the Founder Pass that will be activated by the go-live and will start from the proper individual activation.</p>
         </div>
         <h3 class="mt-6 text-xl font-black text-slate-900">Founder Join 12M</h3>
-        <p class="mt-3"><em><strong>Total price: </strong></em>€29, VAT and tax charges applicable included. <em><strong>Maximum availability: </strong></em>600 passes.</p>
+        <p class="mt-3"><em><strong>Total price: </strong></em>€29, VAT and tax charges applicable included. <em><strong>Maximum availability: </strong></em>500 passes.</p>
         <p class="mt-3">Founder Join 12M allows for 12 months from the correct individual activation, possible from the go-live the Join features made available in the app, including the discovery of tables or social occasions, the sending of requests for participation and access to the chat tables for which the request is accepted.</p>
         <p class="mt-3"><em><strong>No guarantee </strong></em>acceptance in a specific table, the presence of tables on each date or place, the entrance to a certain evening or local, or a minimum number of users or social occasions. It does not include Creator functions.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">Founder Creator 12M</h3>
-        <p class="mt-3"><em><strong>Total price: </strong></em>€59, VAT and tax charges applicable included. <em><strong>Maximum availability: </strong></em>200 passes.</p>
+        <p class="mt-3"><em><strong>Total price: </strong></em>€59, VAT and tax charges applicable included. <em><strong>Maximum availability: </strong></em>150 passes.</p>
         <p class="mt-3">Founder Creator 12M includes all Join features and features to create and manage digital tables or social experiences and their requests, according to the rules and limits of the service.</p>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950"><em><strong>No additional discretionary selection. </strong></em></p>
@@ -261,7 +259,7 @@
         </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950">Can I create tables with the Waitlist Pass or with Founder Join?</p>
-            <p class="text-slate-700">No. Both include only Join features. To create and manage tables you need Founder Creator 12M or another available Creator plan.</p>
+            <p class="text-slate-700">Yes with the Waitlist Pass; no with Founder Join. During its 60-day validity period, the Waitlist Pass also includes Creator features and therefore allows you to create and manage tables according to the rules and limits of the service. Founder Join 12M includes Join features only.</p>
         </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950">Founder Creator requires an additional selection?</p>

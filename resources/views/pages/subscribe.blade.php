@@ -270,6 +270,7 @@
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
+        <p class="mt-4 text-sm text-slate-600">{{ __('messages.subscribe.seller_phone') }} <a class="font-bold text-violet-700" href="tel:+393522164100">+393522164100</a></p>
         <form id="payment-details-form" class="mt-5 space-y-4">
             <input id="payment-firebase-token" type="hidden" name="firebase_token" value="" />
             <div class="grid gap-4 sm:grid-cols-2">

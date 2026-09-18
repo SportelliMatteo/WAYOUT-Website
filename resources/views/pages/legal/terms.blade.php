@@ -20,7 +20,7 @@
             <li>“Utente”: la persona fisica che visita il Sito o utilizza una delle relative funzionalità;</li>
             <li>“Waitlist”: la lista pre-lancio mediante la quale un Utente maggiorenne manifesta interesse per il futuro servizio WAYOUT;</li>
             <li>“Utente valido”: l’Utente che ha fornito un indirizzo email valido, ha accettato i presenti Termini, ha confermato l’indirizzo tramite il link di verifica inviato da WAYOUT e non presenta iscrizioni duplicate, abusive, fraudolente o effettuate mediante strumenti automatizzati;</li>
-            <li>“Waitlist Pass”: l’eventuale beneficio gratuito di durata limitata, con sole funzionalità Join, riservato agli Utenti validi che soddisfano le condizioni indicate all’articolo 7;</li>
+            <li>“Waitlist Pass”: l’eventuale beneficio promozionale gratuito di durata limitata che comprende le funzionalità Join e Creator rese disponibili nell’app, riservato agli Utenti validi che soddisfano le condizioni indicate all’articolo 7.</li>
             <li>“Go-live”: la data in cui l’app WAYOUT viene resa pubblicamente disponibile nella città pilota indicata dalla Società.</li>
         </ul>
     </section>
@@ -103,7 +103,7 @@
     <section>
         <h2 class="text-2xl font-black text-slate-950">7. Waitlist Pass gratuito</h2>
         <p class="mt-3">7.1 Il Waitlist Pass è un beneficio promozionale gratuito riservato, salvo diversa comunicazione ufficiale, ai primi 2.000 Utenti validi della Waitlist.</p>
-        <p class="mt-3">7.2 Il Waitlist Pass ha durata di 60 giorni dalla corretta attivazione individuale nell’app, che potrà avvenire a partire dal go-live. Il beneficio comprende esclusivamente le funzionalità Join indicate nell’app e nelle relative condizioni; non comprende la creazione o la gestione di tavoli e non attribuisce funzionalità Creator.</p>
+        <p class="mt-3">7.2 Il Waitlist Pass ha durata di 60 giorni dalla corretta attivazione individuale nell’app, che potrà avvenire a partire dal go-live. Durante il periodo di validità, il beneficio comprende le funzionalità Join e le funzionalità Creator rese disponibili nell’app, inclusa la possibilità di creare e gestire tavoli digitali e le relative richieste di partecipazione, secondo le regole, i limiti, le condizioni di utilizzo, le misure di sicurezza e moderazione applicabili al servizio.</p>
         <p class="mt-3">7.3 Per ricevere e attivare il Waitlist Pass, l’Utente deve, entro 30 giorni di calendario dall’email con cui WAYOUT comunica la disponibilità del beneficio, salvo un termine più lungo indicato nella stessa comunicazione: creare o completare l’account nell’app; mantenere il requisito di maggiore età; completare le verifiche effettivamente previste; accettare i Termini dell’app e prendere visione delle informative e policy applicabili; utilizzare un dispositivo e una versione dell’app compatibili.</p>
         <p class="mt-3">7.4 Il Waitlist Pass è personale, non cedibile, non trasferibile, non rivendibile e privo di valore monetario. Non può essere convertito in denaro, credito o servizi di locali terzi.</p>
         <p class="mt-3">7.5 Il Waitlist Pass non è cumulabile con un Founder Pass acquistato in pre-sale, con eventuali Launch Offer o con altre promozioni, salvo diversa indicazione espressa di WAYOUT. Se l’Utente acquista un Founder Pass, si applicano le relative condizioni e il beneficio gratuito non si somma alla durata acquistata.</p>

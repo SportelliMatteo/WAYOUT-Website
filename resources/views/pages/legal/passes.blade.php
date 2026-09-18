@@ -7,7 +7,7 @@
 <div class="space-y-8">
     <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
         <p class="font-black text-slate-950"><strong>In breve.</strong></p>
-        <p class="text-slate-700">L’iscrizione alla waitlist è gratuita e non comporta obblighi di acquisto. Il Waitlist Pass è un possibile beneficio gratuito di 60 giorni con sole funzioni Join. I Founder Pass sono invece subscription digitali acquistate in pre-sale, valide per 12 mesi dalla corretta attivazione individuale, possibile dal go-live pubblico dell’app e senza rinnovo automatico.</p>
+        <p class="text-slate-700">L’iscrizione alla waitlist è gratuita e non comporta obblighi di acquisto. Il Waitlist Pass è un possibile beneficio gratuito di 60 giorni con funzionalità Join e Creator. I Founder Pass sono invece subscription digitali acquistate in pre-sale, valide per 12 mesi dalla corretta attivazione individuale, possibile dal go-live pubblico dell’app e senza rinnovo automatico.</p>
     </div>
     <section>
         <h2 class="text-2xl font-black text-slate-950">1. I tre Pass a confronto</h2>
@@ -19,8 +19,8 @@
             </div>
             <div class="space-y-2 p-5 text-slate-700">
                 <p>Possibile beneficio per i primi 2.000 utenti validi della waitlist.</p>
-                <p><em><strong>Include: </strong></em>Funzionalità Join · Richieste di partecipazione · Chat dopo l’accettazione</p>
-                <p><em><strong>Non include: </strong></em>Creazione e gestione dei tavoli · Funzionalità Creator</p>
+                <p><em><strong>Include: </strong></em>Funzionalità Join e Creator · Richieste di partecipazione · Chat dopo l’accettazione · Creazione e gestione dei tavoli e delle relative richieste.</p>
+                <p><em><strong>Non include: </strong></em>Servizi, prenotazioni, ingressi, consumazioni o altri servizi forniti da locali o terzi · Garanzia di accettazione o di disponibilità di specifici tavoli/eventi.</p>
             </div>
         </div>
         <div class="mt-4 grid overflow-hidden rounded-lg border border-slate-200 bg-white md:grid-cols-[0.38fr_0.62fr]">
@@ -85,7 +85,7 @@
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Funzioni Creator</strong></em></td>
-                        <td class="px-4 py-3 align-top">No</td>
+                        <td class="px-4 py-3 align-top">Sì</td>
                         <td class="px-4 py-3 align-top">No</td>
                         <td class="px-4 py-3 align-top">Sì</td>
                     </tr>
@@ -98,8 +98,8 @@
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Posti / disponibilità</strong></em></td>
                         <td class="px-4 py-3 align-top">Primi 2.000 utenti validi</td>
-                        <td class="px-4 py-3 align-top">Massimo 600 pass</td>
-                        <td class="px-4 py-3 align-top">Massimo 200 pass</td>
+                        <td class="px-4 py-3 align-top">Massimo 500 pass</td>
+                        <td class="px-4 py-3 align-top">Massimo 150 pass</td>
                     </tr>
                     <tr>
                         <td class="px-4 py-3 align-top font-black text-slate-900"><em><strong>Accesso anticipato all’app</strong></em></td>
@@ -139,17 +139,15 @@
         </div>
         <h3 class="mt-6 text-xl font-black text-slate-900">Cosa include</h3>
         <ul class="mt-3 list-disc space-y-2 pl-6">
-            <li>Le funzionalità Join indicate nell’app.</li>
-            <li>La possibilità di scoprire tavoli o occasioni sociali disponibili.</li>
-            <li>La possibilità di inviare richieste di partecipazione secondo le regole e i limiti del servizio.</li>
-            <li>L’accesso alle chat dei tavoli per i quali la richiesta è stata accettata.</li>
+            <li>Tutte le funzionalità Join e Creator rese disponibili nell’app.</li>
+            <li>Discovery, invio di richieste di partecipazione e chat dopo l’accettazione.</li>
+            <li>Creazione e gestione di tavoli digitali e delle relative richieste, sempre secondo regole e limiti del servizio.</li>
         </ul>
         <h3 class="mt-6 text-xl font-black text-slate-900">Cosa non include</h3>
         <ul class="mt-3 list-disc space-y-2 pl-6">
-            <li>La creazione o la gestione di tavoli.</li>
-            <li>Funzionalità Creator.</li>
-            <li>Ingresso nei locali, prenotazioni, tavoli fisici, drink, consumazioni o servizi di terzi.</li>
-            <li>La garanzia di essere accettati in un tavolo o di trovare tavoli in una data o località specifica.</li>
+            <li>Ingresso nei locali, prenotazioni, tavoli fisici, ticket, drink, consumazioni o servizi di terzi.</li>
+            <li>Garanzia di essere accettati in uno specifico tavolo.</li>
+            <li>Diritto assoluto o illimitato a creare tavoli, che restano soggetti a limiti di pubblicazione, capienza, frequenza, fair use, sicurezza, moderazione e regole della community.</li>
         </ul>
         <p class="mt-3"><em><strong>Caratteristiche personali. </strong></em>Il Waitlist Pass è personale, non cedibile, non trasferibile, non rivendibile e privo di valore monetario. Non può essere convertito in denaro, credito o servizi di locali terzi.</p>
     </section>
@@ -162,11 +160,11 @@
             <p class="text-slate-700">L’acquisto non dà accesso all’app prima del lancio, a una beta pubblica, a eventi, ingressi o servizi fisici. Blocca esclusivamente il Founder Pass che sarà attivabile dal go-live e inizierà a decorrere dalla corretta attivazione individuale.</p>
         </div>
         <h3 class="mt-6 text-xl font-black text-slate-900">Founder Join 12M</h3>
-        <p class="mt-3"><em><strong>Prezzo totale: </strong></em>€29, IVA e oneri fiscali applicabili inclusi. <em><strong>Disponibilità massima: </strong></em>600 pass.</p>
+        <p class="mt-3"><em><strong>Prezzo totale: </strong></em>€29, IVA e oneri fiscali applicabili inclusi. <em><strong>Disponibilità massima: </strong></em>500 pass.</p>
         <p class="mt-3">Founder Join 12M abilita per 12 mesi dalla corretta attivazione individuale, possibile dal go-live le funzionalità Join rese disponibili nell’app, tra cui la scoperta di tavoli o occasioni sociali, l’invio di richieste di partecipazione e l’accesso alle chat dei tavoli per i quali la richiesta viene accettata.</p>
         <p class="mt-3"><em><strong>Non garantisce </strong></em>l’accettazione in uno specifico tavolo, la presenza di tavoli in ogni data o luogo, l’ingresso in una determinata serata o locale, né un numero minimo di utenti o occasioni sociali. Non include funzioni Creator.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">Founder Creator 12M</h3>
-        <p class="mt-3"><em><strong>Prezzo totale: </strong></em>€59, IVA e oneri fiscali applicabili inclusi. <em><strong>Disponibilità massima: </strong></em>200 pass.</p>
+        <p class="mt-3"><em><strong>Prezzo totale: </strong></em>€59, IVA e oneri fiscali applicabili inclusi. <em><strong>Disponibilità massima: </strong></em>150 pass.</p>
         <p class="mt-3">Founder Creator 12M comprende tutte le funzionalità Join e, inoltre, le funzionalità per creare e gestire tavoli digitali o social experience e le relative richieste, secondo le regole e i limiti del servizio.</p>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950"><em><strong>Nessuna selezione discrezionale aggiuntiva. </strong></em></p>
@@ -261,7 +259,7 @@
         </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950">Posso creare tavoli con il Waitlist Pass o con Founder Join?</p>
-            <p class="text-slate-700">No. Entrambi comprendono soltanto le funzionalità Join. Per creare e gestire tavoli serve Founder Creator 12M o un altro piano Creator disponibile.</p>
+            <p class="text-slate-700">Sì con il Waitlist Pass; no con Founder Join. Durante i 60 giorni di validità, il Waitlist Pass comprende anche le funzionalità Creator e consente quindi di creare e gestire tavoli secondo le regole e i limiti del servizio. Founder Join 12M comprende invece esclusivamente le funzionalità Join.</p>
         </div>
         <div class="mt-4 space-y-2 rounded-lg border border-violet-200 bg-violet-50/60 p-4">
             <p class="font-black text-slate-950">Founder Creator richiede una selezione aggiuntiva?</p>
