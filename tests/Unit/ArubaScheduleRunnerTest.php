@@ -15,7 +15,7 @@ class ArubaScheduleRunnerTest extends TestCase
             new DateTimeImmutable('2026-08-31 08:10:00', new DateTimeZone('UTC')),
         );
 
-        $this->assertSame(['qonto:sync-invoices'], array_column($commands, 'command'));
+        $this->assertSame(['qonto:sync-invoices', 'meta:send-conversions'], array_column($commands, 'command'));
     }
 
     public function test_retention_is_due_at_minute_twenty_in_the_application_timezone(): void
@@ -27,7 +27,7 @@ class ArubaScheduleRunnerTest extends TestCase
         );
 
         $this->assertSame(
-            ['qonto:sync-invoices', 'privacy:enforce-retention'],
+            ['qonto:sync-invoices', 'privacy:enforce-retention', 'meta:send-conversions'],
             array_column($commands, 'command'),
         );
         $this->assertSame('scheduled', $commands[1]['arguments']['--trigger']);

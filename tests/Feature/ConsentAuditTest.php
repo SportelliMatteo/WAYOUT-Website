@@ -43,14 +43,14 @@ class ConsentAuditTest extends TestCase
         $this->assertSame('waitlist_email_form', $legal->source);
         $this->assertSame('203.0.113.10', $legal->ip_address);
         $this->assertSame('Consent test browser', $legal->user_agent);
-        $this->assertSame(config('legal.documents.privacy.initial_version'), json_decode($legal->document_versions, true)['privacy']);
+        $this->assertSame(app(LegalDocumentService::class)->current('privacy', 'it')->version, json_decode($legal->document_versions, true)['privacy']);
         $this->assertSame(config('legal.documents.waitlist_acceptance.initial_version'), json_decode($legal->document_versions, true)['waitlist_acceptance']);
         $this->assertSame(64, strlen(json_decode($legal->document_hashes, true)['privacy']));
         $this->assertNotNull($legal->occurred_at);
         $this->assertNotNull($marketing);
         $this->assertDatabaseHas('legal_document_versions', [
             'document_key' => 'privacy',
-            'version' => config('legal.documents.privacy.initial_version'),
+            'version' => app(LegalDocumentService::class)->current('privacy', 'it')->version,
             'locale' => 'it',
             'content_hash' => json_decode($legal->document_hashes, true)['privacy'],
             'content_format' => 'html',

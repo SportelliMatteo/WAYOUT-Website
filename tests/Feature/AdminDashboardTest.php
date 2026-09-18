@@ -17,6 +17,58 @@ class AdminDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_pagination_links_keep_their_own_panel_even_when_rendered_from_overview(): void
+    {
+        $this->seedDashboardData();
+        for ($i = 1; $i <= 6; $i++) {
+            $this->createVerifiedWaitlistEntry('pagination'.$i.'@example.com', 100 + $i);
+        }
+        $response = $this->withSession($this->adminSession())->get(route('admin.dashboard', [
+            'tab' => 'overview', 'waitlist_per_page' => 5, 'lang' => 'it',
+        ]))->assertOk()->assertSee('Successiva')->assertSee('Risultati da')
+            ->assertDontSee('Showing')->assertDontSee('pagination.previous');
+        $document = new \DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($document);
+        $links = $xpath->query('//div[@id="admin-panel-users"]//a[@rel="next"]');
+        $this->assertGreaterThan(0, $links->length);
+        $url = $links->item(0)->getAttribute('href');
+        parse_str(parse_url($url, PHP_URL_QUERY), $query);
+        $this->assertSame('users', $query['tab']);
+        $this->assertSame('2', $query['waitlist_page']);
+        $this->assertSame('5', $query['waitlist_per_page']);
+        $this->get($url)->assertOk()->assertSee('data-admin-panel="users" class=""', false);
+        $this->get(route('admin.dashboard', ['tab' => 'users', 'waitlist_per_page' => 5, 'lang' => 'en']))
+            ->assertOk()->assertSee('Next')->assertSee('Showing')->assertDontSee('Risultati da');
+    }
+
+    public function test_admin_activity_pagination_exposes_only_its_table_for_partial_replacement(): void
+    {
+        for ($i = 1; $i <= 7; $i++) {
+            DB::table('admin_audit_events')->insert([
+                'id' => DatabaseUuid::new(), 'actor_name' => 'Operatore', 'actor_email' => 'admin@example.com',
+                'action' => 'activity_'.$i, 'target_type' => 'settings', 'occurred_at' => now()->subMinutes($i),
+            ]);
+        }
+        $response = $this->withSession($this->adminSession())->get(route('admin.dashboard', [
+            'tab' => 'settings', 'audit_per_page' => 5, 'audit_page' => 2,
+        ]))->assertOk();
+        $document = new \DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($document);
+        $footer = $xpath->query('//*[@id="pagination-audit_page"]')->item(0);
+        $this->assertNotNull($footer);
+        $this->assertSame('audit_page', $footer->getAttribute('data-admin-pagination'));
+        $this->assertSame('settings', $footer->getAttribute('data-pagination-tab'));
+        $table = $xpath->query('preceding-sibling::*[1]', $footer)->item(0);
+        $this->assertSame(1, $table->getElementsByTagName('table')->length);
+        $this->assertSame(0, $table->getElementsByTagName('form')->length);
+        $this->assertStringContainsString('activity_6', $table->textContent);
+        $this->assertStringNotContainsString('activity_1', $table->textContent);
+        $previous = $xpath->query('.//a[@rel="prev"]', $footer)->item(0);
+        $this->assertSame('pagination-audit_page', parse_url($previous->getAttribute('href'), PHP_URL_FRAGMENT));
+    }
+
     public function test_admin_dashboard_requires_login(): void
     {
         $response = $this->get(route('admin.dashboard'));

@@ -26,7 +26,7 @@ class CookieConsentController extends Controller
             'marketing' => $data['marketing'],
             'ip_hash' => PrivacySafeLogContext::fingerprint($request->ip()),
             'user_agent_hash' => PrivacySafeLogContext::fingerprint($request->userAgent()),
-            'occurred_at' => now(),
+            'occurred_at' => now()->format('Y-m-d H:i:s.u'),
         ]);
 
         return response()->noContent();

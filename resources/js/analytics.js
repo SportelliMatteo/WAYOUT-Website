@@ -164,6 +164,7 @@ if (configElement) {
         if (!config.enabled || !/^[a-z][a-z0-9_]{1,39}$/.test(eventName)) return;
         if (isDuplicate(options.dedupeKey, options.dedupeScope)) return;
         const safeParams = cleanParams(params);
+        delete safeParams.event_id;
         if (!consent) {
             pendingEvents.push([eventName, safeParams, options]);
             return;
@@ -185,7 +186,8 @@ if (configElement) {
                 waitlist_email_verified: 'Lead',
                 contact_submitted: 'Contact',
             }[eventName];
-            window.fbq(standard ? 'track' : 'trackCustom', standard || eventName, safeParams);
+            const eventId = options.eventId || params.event_id;
+            window.fbq(standard ? 'track' : 'trackCustom', standard || eventName, safeParams, eventId ? {eventID: eventId} : {});
             delivered = true;
         }
         if (delivered) markDelivered(options.dedupeKey, options.dedupeScope);
@@ -262,6 +264,7 @@ if (configElement) {
         try {
             const params = JSON.parse(element.dataset.analyticsParams || '{}');
             window.wayoutTrack(element.dataset.analyticsPageEvent, params, {
+                eventId: element.dataset.analyticsEventId,
                 dedupeKey: element.dataset.analyticsDedupe,
                 dedupeScope: element.dataset.analyticsDedupeScope,
             });

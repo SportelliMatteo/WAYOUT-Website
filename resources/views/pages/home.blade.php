@@ -210,7 +210,8 @@
         class="hidden"
         data-analytics-page-event="{{ $alreadyRegistered ? 'waitlist_returning_member' : 'waitlist_email_verified' }}"
         data-analytics-params='@json(['has_founder_pass' => (bool) $purchasedPlan, 'plan' => $purchasedPlan['code'] ?? ''])'
-        data-analytics-dedupe="{{ $alreadyRegistered ? 'waitlist_returning_member' : 'waitlist_email_verified' }}"
+        data-analytics-event-id="{{ \App\Support\MetaConversions::eventId('Lead', (string) session('waitlist_verified_entry_id')) }}"
+        data-analytics-dedupe="{{ $alreadyRegistered ? 'waitlist_returning_member' : \App\Support\MetaConversions::eventId('Lead', (string) session('waitlist_verified_entry_id')) }}"
     ></span>
     <span class="hidden" data-analytics-page-event="founder_offer_view" data-analytics-params='@json(['returning' => $alreadyRegistered])'></span>
     <div id="waitlist-offer" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-3 py-4 sm:px-4 sm:py-8">

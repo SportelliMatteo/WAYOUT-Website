@@ -7,6 +7,7 @@ use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use App\Support\FounderPromoCatalog;
 use App\Support\ItalianFiscalData;
+use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
 use App\Support\WayoutApiClient;
 use App\Support\WayoutIdentityService;
@@ -164,6 +165,8 @@ class WayoutCheckoutController extends Controller
                 'stripe_session_id' => data_get($checkout, 'data.session.id'),
                 'updated_at' => now(),
             ]);
+
+            app(MetaConversions::class)->rememberCheckout($request, $purchase);
 
             $request->session()->put('checkout_purchase_id', $purchaseId);
             $request->session()->put('checkout_plan', $plan);

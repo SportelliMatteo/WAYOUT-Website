@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\MetaConversions;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -48,6 +49,8 @@ class ProductionCheck extends Command
                 && config('services.recaptcha.minimum_score') >= 0.0
                 && config('services.recaptcha.minimum_score') <= 1.0],
             ['Segreto API benefici robusto', filled(config('benefits.server_auth.key')) && strlen((string) config('benefits.server_auth.secret')) >= 32],
+            ['Meta CAPI configurata', ! config('analytics.meta_capi.enabled') || app(MetaConversions::class)->enabled()],
+            ['Meta CAPI fuori dalla modalità test', ! config('analytics.meta_capi.enabled') || blank(config('analytics.meta_capi.test_event_code'))],
             ['Analytics debug disattivato', config('analytics.debug') === false],
             ['Artefatti Vite dev assenti', $this->developmentArtifactsAreAbsent()],
             ['Build frontend presente', $this->frontendBuildExists()],
@@ -137,6 +140,7 @@ class ProductionCheck extends Command
                 'consent_events',
                 'admin_users',
                 'cookie_consent_events',
+                'meta_conversion_events',
                 'data_retention_runs',
             ])->every(static fn (string $table): bool => Schema::hasTable($table));
         } catch (Throwable) {

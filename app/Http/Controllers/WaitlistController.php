@@ -6,6 +6,7 @@ use App\Mail\WaitlistVerificationMail;
 use App\Mail\WaitlistWelcomeMail;
 use App\Support\ConsentAuditService;
 use App\Support\DatabaseUuid;
+use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
 use App\Support\TransactionalEmailSender;
 use Illuminate\Database\QueryException;
@@ -202,6 +203,7 @@ class WaitlistController extends Controller
         }
 
         $entry = DB::table('waitlist_entries')->where('id', $result['entry_id'])->first();
+        app(MetaConversions::class)->lead($request, $entry);
         $this->sendWelcomeIfNeeded($entry, $emailSender);
 
         $request->session()->regenerate();

@@ -36,7 +36,7 @@
         <h3 class="mt-6 text-xl font-black text-slate-900">3.2 Analytics</h3>
         <p class="mt-3">Google Tag Manager e Google Analytics 4 vengono caricati soltanto dopo il consenso dell’utente alla categoria Analytics. La configurazione utilizza Google Consent Mode in modalità Basic: prima dell’interazione con il banner i tag Google restano bloccati e non vengono trasmessi dati a Google.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.3 Marketing e profilazione</h3>
-        <p class="mt-3">Meta Pixel lato browser viene attivato soltanto dopo il consenso alla categoria Marketing. Alla data di questa versione Advanced Matching e Conversions API sono disattivati. Eventuali future attivazioni richiederanno un aggiornamento preventivo della documentazione e, quando necessario, una nuova scelta dell’utente.</p>
+        <p class="mt-3">Meta Pixel lato browser viene attivato soltanto dopo il consenso alla categoria Marketing. Advanced Matching automatico del Pixel resta disattivato. La Conversions API può affiancare il Pixel dopo una nuova scelta relativa al consenso Marketing.</p>
     </section>
 
     <section>
@@ -175,7 +175,7 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">7. Meta Pixel</h2>
-        <p class="mt-3">Previo consenso Marketing, WAYOUT utilizza Meta Pixel esclusivamente lato browser per misurare visite e conversioni derivanti dalle campagne, comprendere l’efficacia della pubblicità, creare pubblici e svolgere eventuale remarketing. Meta può ricevere identificativi online, informazioni su browser e dispositivo, indirizzo IP, pagina visitata, referrer ed eventi compiuti sul sito, anche quando l’utente non possiede un account Facebook o Instagram o non vi è autenticato.</p>
+        <p class="mt-3">Previo consenso Marketing, WAYOUT utilizza Meta Pixel lato browser e, quando configurata, la Conversions API lato server per misurare visite e conversioni derivanti dalle campagne, comprendere l’efficacia della pubblicità, creare pubblici e svolgere eventuale remarketing. Meta può ricevere identificativi online, informazioni su browser e dispositivo, indirizzo IP, pagina visitata, referrer ed eventi compiuti sul sito, anche quando l’utente non possiede un account Facebook o Instagram o non vi è autenticato.</p>
         <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200">
             <table class="min-w-[900px] divide-y divide-slate-200 text-left text-sm">
                 <thead class="bg-slate-50 font-black text-slate-700">
@@ -233,4 +233,5 @@
         <p class="mt-3"><em><strong>Data di efficacia: dalla pubblicazione sul sito wayoutapp.it.</strong></em></p>
     </section>
 </div>
+<section class="meta-conversions-api mt-8"><h2 class="text-xl font-black">Conversions API di Meta</h2><p class="mt-3">Quando attivata nella configurazione del sito, la Conversions API invia a Meta gli eventi di conferma della waitlist e di acquisto confermato dal server, esclusivamente previo consenso Marketing valido, distinto dal consenso alle email promozionali. I dati possono comprendere email normalizzata e trasformata con SHA-256, indirizzo IP, user agent, identificativi dei cookie _fbp e _fbc se disponibili, nome, ora e identificativo dell’evento, pagina di origine senza token o parametri riservati e, per gli acquisti, valore e valuta. L’hashing dell’email non rende i dati anonimi. Pixel e server condividono un identificativo per evitare il doppio conteggio. I dati in attesa di invio sono conservati cifrati per un massimo di sette giorni e il contenuto dell’evento viene eliminato dopo l’invio; le verifiche e la pulizia avvengono tramite le attività pianificate del sito. Il consenso viene ricontrollato prima di ogni tentativo: la revoca dalle preferenze cookie impedisce gli invii successivi associati alla scelta revocata. Restano applicabili le finalità, i destinatari, i trasferimenti e i diritti descritti nella Privacy policy.</p></section>
 @endsection

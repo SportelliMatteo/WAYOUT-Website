@@ -898,15 +898,6 @@
             const legalTabs = [...document.querySelectorAll('[data-legal-tab]')];
             const legalPanels = [...document.querySelectorAll('[data-legal-panel]')];
 
-            document.querySelectorAll('[data-per-page]').forEach((select) => {
-                select.addEventListener('change', () => {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set(select.dataset.perPage, select.value);
-                    url.searchParams.delete(select.dataset.pageName);
-                    window.location.assign(url);
-                });
-            });
-
             const styleTab = (tab, active, dark = false) => {
                 tab.setAttribute('aria-selected', active ? 'true' : 'false');
                 tab.tabIndex = active ? 0 : -1;

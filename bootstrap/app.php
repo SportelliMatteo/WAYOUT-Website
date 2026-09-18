@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('meta:send-conversions')->everyMinute()->withoutOverlapping();
+
         $schedule->command('qonto:sync-invoices')
             ->everyTenMinutes()
             ->withoutOverlapping();
@@ -30,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->encryptCookies(except: ['wayout_cookie_consent', '_fbp', '_fbc']);
+
         $middleware->trustHosts(
             at: fn (): array => config('security.trusted_hosts', []),
             subdomains: false,

@@ -14,6 +14,7 @@
         class="hidden"
         data-analytics-page-event="purchase"
         data-analytics-params='@json($purchaseAnalytics)'
+        data-analytics-event-id="{{ $purchaseAnalytics['event_id'] }}"
         data-analytics-dedupe="purchase_{{ $purchaseAnalytics['transaction_id'] }}"
         data-analytics-dedupe-scope="local"
     ></span>

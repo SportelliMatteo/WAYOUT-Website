@@ -7,6 +7,7 @@ use App\Mail\PurchaseConfirmationMail;
 use App\Support\CheckoutFeatures;
 use App\Support\ConsentAuditService;
 use App\Support\FounderPromoCatalog;
+use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
 use App\Support\PurchasePdfService;
 use App\Support\QontoInvoiceService;
@@ -277,6 +278,8 @@ class SubscribeController extends Controller
         TransactionalEmailSender $emailSender,
     ): string {
         if ($purchase->status === 'succeeded') {
+            app(MetaConversions::class)->purchase($purchase);
+
             return 'confirmed';
         }
 
@@ -335,6 +338,8 @@ class SubscribeController extends Controller
             return 'pending';
         }
 
+        app(MetaConversions::class)->purchase($confirmed);
+
         $this->recordSuccessfulPurchaseConsent(
             $request,
             $audit,
@@ -356,6 +361,7 @@ class SubscribeController extends Controller
     private function purchaseAnalytics(object $purchase): array
     {
         return [
+            'event_id' => MetaConversions::eventId('Purchase', (string) ($purchase->order_reference ?: $purchase->id)),
             'transaction_id' => $purchase->order_reference ?: (string) $purchase->id,
             'plan' => $purchase->plan,
             'value' => ((int) $purchase->amount) / 100,

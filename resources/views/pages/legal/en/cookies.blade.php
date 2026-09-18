@@ -36,7 +36,7 @@
         <h3 class="mt-6 text-xl font-black text-slate-900">3.2 Analytics</h3>
         <p class="mt-3">Google Tag Manager and Google Analytics 4 are uploaded only after your consent to the Analytics category. The configuration uses Google Allow Mode in Basic mode: Before interacting with the banner Google tags remain blocked and data is not transmitted to Google.</p>
         <h3 class="mt-6 text-xl font-black text-slate-900">3.3 Marketing and profiling</h3>
-        <p class="mt-3">Meta Pixel browser side is activated only after consent to the Marketing category. At the date of this version Advanced Matching and Conversions API are disabled. Any future activations will require a prior update of the documentation and, when necessary, a new user choice.</p>
+        <p class="mt-3">Meta Pixel browser side is activated only after consent to the Marketing category. Automatic Pixel Advanced Matching remains disabled. The Conversions API may complement the Pixel following a renewed Marketing consent choice.</p>
     </section>
 
     <section>
@@ -175,7 +175,7 @@
 
     <section>
         <h2 class="text-2xl font-black text-slate-950">7. Meta Pixel</h2>
-        <p class="mt-3">After Marketing consent, WAYOUT uses Meta Pixel exclusively browser side to measure visits and conversions from campaigns, understand the effectiveness of advertising, create public and carry out any remarketing. Meta can receive online identifiers, browser and device information, IP address, page visited, referrer and events made on the site, even when you do not have a Facebook or Instagram account or are not authenticated.</p>
+        <p class="mt-3">After Marketing consent, WAYOUT uses Meta Pixel in the browser and, when configured, the server-side Conversions API to measure visits and conversions from campaigns, understand the effectiveness of advertising, create public and carry out any remarketing. Meta can receive online identifiers, browser and device information, IP address, page visited, referrer and events made on the site, even when you do not have a Facebook or Instagram account or are not authenticated.</p>
         <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200">
             <table class="min-w-[900px] divide-y divide-slate-200 text-left text-sm">
                 <thead class="bg-slate-50 font-black text-slate-700">
@@ -233,4 +233,5 @@
         <p class="mt-3"><em><strong>Effective date: from the publication on the website wayoutapp.it.</strong></em></p>
     </section>
 </div>
+<section class="meta-conversions-api mt-8"><h2 class="text-xl font-black">Meta Conversions API</h2><p class="mt-3">When enabled in the website configuration, the Conversions API sends verified waitlist registrations and server-confirmed purchases to Meta only with valid prior Marketing consent, separate from consent to promotional emails. Data may include a normalized SHA-256-hashed email, IP address, user agent, _fbp and _fbc cookie identifiers when available, event name, time and identifier, a source page without tokens or confidential parameters and, for purchases, value and currency. Hashing does not make the email anonymous. Pixel and server share an event identifier to prevent double counting. Pending data is stored encrypted for up to seven days and event payloads are removed after delivery; checks and cleanup run through the website scheduler. Consent is checked again before every attempt: withdrawal through cookie preferences prevents subsequent deliveries associated with that consent. The purposes, recipients, transfers and rights described in the Privacy policy also apply.</p></section>
 @endsection

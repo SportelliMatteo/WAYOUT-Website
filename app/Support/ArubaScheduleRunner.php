@@ -29,6 +29,11 @@ final class ArubaScheduleRunner
             ];
         }
 
+        $commands[] = [
+            'command' => 'meta:send-conversions',
+            'arguments' => ['--no-interaction' => true],
+        ];
+
         return $commands;
     }
 }

@@ -27,7 +27,12 @@ fi
 mkdir -p "$PRIVATE_DIR" "$DIST_DIR"
 
 for directory in app bootstrap config database lang resources routes; do
-    rsync -a "$PROJECT_DIR/$directory/" "$PRIVATE_DIR/$directory/"
+    if [[ "$directory" == "bootstrap" ]]; then
+        # Generated configuration can contain local paths and credentials.
+        rsync -a --exclude='/cache/*.php' "$PROJECT_DIR/$directory/" "$PRIVATE_DIR/$directory/"
+    else
+        rsync -a "$PROJECT_DIR/$directory/" "$PRIVATE_DIR/$directory/"
+    fi
 done
 
 cp "$PROJECT_DIR/artisan" "$PROJECT_DIR/composer.json" "$PROJECT_DIR/composer.lock" "$PRIVATE_DIR/"
@@ -75,6 +80,11 @@ chmod 0644 "$PRIVATE_DIR/RELEASE_ID"
 
 if find "$PUBLIC_DIR" -type f \( -name '.env' -o -name '.env.*' -o -name 'hot' -o -name 'fonts-manifest.dev.json' \) -print -quit | grep -q .; then
     echo "Pacchetto rifiutato: contiene configurazione o artefatti di sviluppo." >&2
+    exit 1
+fi
+
+if [[ -f "$PRIVATE_DIR/bootstrap/cache/config.php" ]]; then
+    echo "Pacchetto rifiutato: contiene la cache di configurazione." >&2
     exit 1
 fi
 
