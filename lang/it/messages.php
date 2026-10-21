@@ -103,7 +103,7 @@ return [
         'eyebrow' => 'Social clubbing, prima di tutto',
         'headline_a' => 'Hai voglia di uscire.',
         'headline_b' => 'Manca solo il gruppo giusto.',
-        'intro' => 'WAYOUT ti fa scoprire tavoli, serate e persone con la tua stessa vibe, per trasformare una voglia in un\'esperienza reale.',
+        'intro' => 'Trova una serata, unisciti a un tavolo o creane uno tuo. Conosci nuove persone e trova il gruppo giusto con cui uscire.',
         'early_access' => 'Accesso anticipato',
         'waitlist_open' => 'Entra gratis nella waitlist WAYOUT',
         'waitlist_full' => 'Waitlist al completo',

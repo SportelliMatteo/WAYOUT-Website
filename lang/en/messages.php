@@ -103,7 +103,7 @@ return [
         'eyebrow' => 'Social clubbing, before everyone else',
         'headline_a' => 'Find your table.',
         'headline_b' => 'Enter the night.',
-        'intro' => 'WAYOUT brings together people who have not met yet and helps them share clubs, tables, and private parties in the same city.',
+        'intro' => 'Find an evening out, join a table, or create your own. Meet new people and find the right group to go out with.',
         'early_access' => 'Early access',
         'waitlist_open' => 'Join the WAYOUT waitlist',
         'waitlist_full' => 'Waitlist is full',
