@@ -1,0 +1,22 @@
+Aggiornamento sicurezza WAYOUT — 22 ottobre 2026
+
+Laravel 13.38.0; compatibilità dipendenze risolta per PHP Aruba 8.4.27.
+Questa release contiene SKIP_DATABASE_MIGRATIONS=1: run-deploy.php NON esegue migrazioni, seed o ripristini DB. Non sono state aggiunte o modificate migrazioni.
+Lo ZIP non include .env, database o file dello storage esistente.
+
+Pubblicazione:
+1. Sospendere temporaneamente il Cron ricorrente run-schedule.php durante il deploy (esegue normalmente anche la retention dati).
+2. Caricare ZIP ed estrattore nella root del dominio, senza cancellare le directory esistenti. Non sostituire .env, APP_KEY o storage. Estrarre unendo le directory e sovrascrivendo soltanto i file del pacchetto.
+3. Aprire l’estrattore via HTTPS e inserire il token indicato sotto. Attiva automaticamente .maintenance e verifica SHA-256 prima dell’estrazione. In alternativa creare .maintenance ed estrarre dal File Manager.
+4. Eseguire il Cron PHP 8.4.27: /web/htdocs/www.wayoutapp.it/home/_wayout/run-deploy.php
+5. Controllare _wayout/storage/logs/deploy/deploy.log: deve riportare migrazioni disabilitate e Deploy completato con la nuova release.
+6. Dopo il successo eliminare .maintenance, ZIP ed estrattore dal server, provare home, accesso admin/OTP, iscrizione e checkout, quindi riattivare il Cron ricorrente.
+
+Non eseguire migrate:fresh, migrate:refresh, db:wipe, db:seed o key:generate. Non importare il backup sopra il database corrente per questo aggiornamento.
+Se il deploy fallisce, lasciare la manutenzione attiva e controllare il log prima di procedere.
+
+Dettagli tecnici:
+- Composer usa platform.php=8.4.27 per evitare dipendenze incompatibili con Aruba.
+- Frontend aggiornato entro i vincoli esistenti; override @grpc/grpc-js ^1.14.6 per correggere le vulnerabilità transitive di Firestore senza cambiare la versione principale di Firebase.
+- Verifiche applicative: 129 test PHP, 1.002 asserzioni; 5 test JavaScript.
+- Pint sui file PHP modificati superato. La scansione globale segnala formattazione preesistente in tests/Feature/SubscribeCheckoutTest.php, tests/Feature/WithdrawalTest.php, tools/aruba-meta-test/refresh-meta-config.php e un vecchio estrattore in dist; questi file non sono stati modificati.

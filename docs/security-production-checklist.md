@@ -25,7 +25,7 @@ Audit tecnico eseguito sul progetto Laravel, includendo rotte web/API, autentica
 
 ## Obblighi prima del go-live
 
-1. Attivare Hosting Linux Basic, database MySQL Aruba e PHP 8.4 aggiornato (almeno 8.4.1) con `pdo_mysql`, `curl`, `dom`, `fileinfo`, `mbstring` e `openssl`.
+1. Attivare Hosting Linux Basic, database MySQL Aruba e PHP 8.4 aggiornato (almeno 8.4.27) con `pdo_mysql`, `curl`, `dom`, `fileinfo`, `mbstring` e `openssl`.
 2. Usare l'albero generato dal builder: file pubblici nella root del dominio e applicazione in `_wayout`, protetta anche da `.htaccess`.
 3. Generare una nuova `APP_KEY` di produzione. Non cambiarla dopo il go-live senza una procedura di rotazione: cifra TOTP e sessioni.
 4. Creare credenziali MySQL dedicate, salvare una copia del DB prima di ogni migrazione e provare almeno un ripristino.

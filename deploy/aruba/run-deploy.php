@@ -114,9 +114,18 @@ if (is_file($marker)) {
     exit(0);
 }
 
+$migrationPolicyPath = __DIR__.'/SKIP_DATABASE_MIGRATIONS';
+$skipMigrations = is_file($migrationPolicyPath)
+    && trim((string) file_get_contents($migrationPolicyPath)) === '1';
+$output->writeln($skipMigrations
+    ? '<info>Release senza modifiche DB: migrazioni disabilitate.</info>'
+    : '<info>Migrazioni abilitate per questa release.</info>');
+
 $commands = [
-    ['migrate', ['--force' => true, '--no-interaction' => true]],
-    ['optimize:clear', ['--no-interaction' => true]],
+    ...($skipMigrations ? [] : [['migrate', ['--force' => true, '--no-interaction' => true]]]),
+    ['config:clear', ['--no-interaction' => true]],
+    ['route:clear', ['--no-interaction' => true]],
+    ['view:clear', ['--no-interaction' => true]],
     ['config:cache', ['--no-interaction' => true]],
     ['route:cache', ['--no-interaction' => true]],
     ['view:cache', ['--no-interaction' => true]],

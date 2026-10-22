@@ -8,6 +8,7 @@ PUBLIC_DIR="$BUILD_DIR/package"
 PRIVATE_DIR="$PUBLIC_DIR/_wayout"
 DIST_DIR="$PROJECT_DIR/dist"
 RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git -C "$PROJECT_DIR" rev-parse --short HEAD 2>/dev/null || echo local)"
+SKIP_DATABASE_MIGRATIONS="${SKIP_DATABASE_MIGRATIONS:-0}"
 
 cleanup() {
     rm -rf "$BUILD_DIR"
@@ -30,6 +31,8 @@ for directory in app bootstrap config database lang resources routes; do
     if [[ "$directory" == "bootstrap" ]]; then
         # Generated configuration can contain local paths and credentials.
         rsync -a --exclude='/cache/*.php' "$PROJECT_DIR/$directory/" "$PRIVATE_DIR/$directory/"
+    elif [[ "$directory" == "database" ]]; then
+        rsync -a --exclude='*.sqlite*' --exclude='*.sql' --exclude='*.sql.gz' "$PROJECT_DIR/$directory/" "$PRIVATE_DIR/$directory/"
     else
         rsync -a "$PROJECT_DIR/$directory/" "$PRIVATE_DIR/$directory/"
     fi
@@ -40,6 +43,12 @@ cp "$PROJECT_DIR/deploy/aruba/private.htaccess" "$PRIVATE_DIR/.htaccess"
 cp "$PROJECT_DIR/deploy/aruba/run-deploy.php" "$PRIVATE_DIR/run-deploy.php"
 cp "$PROJECT_DIR/deploy/aruba/run-schedule.php" "$PRIVATE_DIR/run-schedule.php"
 printf '%s\n' "$RELEASE_ID" > "$PRIVATE_DIR/RELEASE_ID"
+# Always overwrite the policy, including when migrations are enabled again.
+if [[ "$SKIP_DATABASE_MIGRATIONS" != "0" && "$SKIP_DATABASE_MIGRATIONS" != "1" ]]; then
+    echo "SKIP_DATABASE_MIGRATIONS deve essere 0 o 1." >&2
+    exit 1
+fi
+printf '%s\n' "$SKIP_DATABASE_MIGRATIONS" > "$PRIVATE_DIR/SKIP_DATABASE_MIGRATIONS"
 
 mkdir -p \
     "$PRIVATE_DIR/bootstrap/cache" \

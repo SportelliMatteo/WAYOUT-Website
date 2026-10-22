@@ -5,7 +5,7 @@ Questa procedura non richiede SSH e non espone comandi di manutenzione sul web. 
 ## 1. Preparazione Aruba
 
 1. Attiva Hosting Linux Basic e il database MySQL 8 associato all'hosting.
-2. Dal pannello seleziona PHP 8.4 aggiornato (almeno 8.4.1) e abilita `pdo_mysql`, `curl`, `dom`, `fileinfo`, `mbstring` e `openssl`.
+2. Dal pannello seleziona PHP 8.4 aggiornato (almeno 8.4.27) e abilita `pdo_mysql`, `curl`, `dom`, `fileinfo`, `mbstring` e `openssl`.
 3. Attiva il certificato SSL e il reindirizzamento HTTPS.
 4. Annota host, database, username e password MySQL forniti da Aruba. Non usare `localhost` se il pannello indica un hostname diverso.
 5. Esegui un export MySQL prima di ogni aggiornamento che contiene migrazioni.
@@ -42,7 +42,7 @@ Il file ZIP non contiene `.env`, password o chiavi API. Contiene già `vendor/` 
 8. Elimina il Cron di deploy dopo il successo. Il runner è idempotente: la stessa release non viene installata due volte.
 9. Crea il Cron ricorrente, ogni 10 minuti e in UTC, verso `/web/htdocs/www.wayoutapp.it/home/_wayout/run-schedule.php`. Questo singolo runner, compatibile con hosting che disabilitano `proc_open`, avvia direttamente gli invii Meta Conversions API, la sincronizzazione Qonto e la retention del database prevista ogni ora al minuto 20 di `Europe/Rome`. Le sole anomalie del runner vengono salvate in `_wayout/storage/logs/schedule/`, senza stack trace; le esecuzioni riuscite non producono log.
 
-Il runner di deploy esegue migrazioni, pulizia cache, cache configurazione/rotte/view e `app:production-check`. Entrambi i runner rifiutano l'esecuzione HTTP.
+Il runner di deploy esegue migrazioni, rigenerazione delle cache configurazione/rotte/view e `app:production-check`. Per aggiornamenti delle sole dipendenze, senza modifiche allo schema o ai dati, creare il pacchetto con `SKIP_DATABASE_MIGRATIONS=1 ./scripts/build-aruba-package.sh`: il runner salta tutte le migrazioni. Il file privato `SKIP_DATABASE_MIGRATIONS` contiene la scelta della release (0 oppure 1) e viene sovrascritto a ogni aggiornamento. Non viene svuotata la cache applicativa. Entrambi i runner rifiutano l'esecuzione HTTP.
 
 ## 4. Aggiornamenti successivi
 

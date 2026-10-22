@@ -29,7 +29,8 @@ class ProductionCheck extends Command
             ['Cookie sessione cifrato', config('session.encrypt') === true],
             ['Cookie sessione Secure', config('session.secure') === true],
             ['Cookie sessione HttpOnly', config('session.http_only') === true],
-            ['PHP 8.4.1 o successivo', version_compare(PHP_VERSION, '8.4.1', '>=')],
+            ['PHP con patch di sicurezza ottobre 2026', (PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 4 && version_compare(PHP_VERSION, '8.4.27', '>='))
+                || (PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 5 && version_compare(PHP_VERSION, '8.5.12', '>='))],
             ['Estensioni PHP richieste', $this->extensionsAreLoaded()],
             ['Database MySQL', config('database.default') === 'mysql'],
             ['MySQL Aruba configurato', $this->mysqlIsConfigured()],
