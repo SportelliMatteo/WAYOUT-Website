@@ -28,25 +28,13 @@ class WayoutCheckoutController extends Controller
         WayoutIdentityService $identities,
         WayoutApiClient $wayout,
     ) {
-        if (! $request->session()->get('waitlist_offer_access')) {
-            return response()->json(['error' => __('messages.messages.checkout_unauthorized')], 403);
-        }
-
-        $email = strtolower((string) $request->session()->get('waitlist_email', ''));
         $plan = (string) $request->input('plan');
-
-        if ($email === '') {
-            return response()->json(['error' => __('messages.messages.purchase_email_missing')], 403);
-        }
-
-        if (! in_array($plan, ['join', 'creator'], true)) {
-            return response()->json(['error' => __('messages.messages.invalid_pass')], 422);
-        }
 
         $legalEntityInvoiceEnabled = $checkoutFeatures->legalEntityInvoiceEnabled();
         $allowedBillingCustomerTypes = $legalEntityInvoiceEnabled ? ['individual', 'legal_entity'] : ['individual'];
         $validated = $request->validate([
-            'plan' => ['required', Rule::in(['join', 'creator'])],
+            'email' => ['required', 'email:rfc', 'max:255'],
+            'plan' => ['required', 'string', 'max:80'],
             'firebase_token' => ['required', 'string', 'max:10000'],
             'first_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'last_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
@@ -90,19 +78,12 @@ class WayoutCheckoutController extends Controller
             'pec' => [Rule::requiredIf($request->boolean('invoice_requested') && $request->input('billing_customer_type') === 'legal_entity'), 'nullable', 'email:rfc', 'max:255'],
         ]);
 
-        $waitlistEntry = DB::table('waitlist_entries')
-            ->where('id', $request->session()->get('waitlist_verified_entry_id'))
-            ->whereNotNull('email_verified_at')
-            ->first();
-
-        if (! $waitlistEntry || ! hash_equals(strtolower((string) $waitlistEntry->email), $email)) {
-            return response()->json(['error' => __('messages.messages.checkout_unauthorized')], 403);
-        }
+        $email = strtolower(trim($validated['email']));
 
         try {
             $package = $catalog->packageForPlan($plan, fresh: true);
 
-            if (! $package || ($package['free'] ?? true) !== false) {
+            if (! $package || ($package['free'] ?? true) !== false || (int) ($package['duration_days'] ?? 0) <= 0) {
                 return response()->json(['error' => __('messages.subscribe.package_unavailable')], 422);
             }
 
@@ -136,7 +117,7 @@ class WayoutCheckoutController extends Controller
                 $plan,
                 $package,
                 $identity['id'],
-                (string) $waitlistEntry->id,
+                null,
                 $customer,
                 $catalog,
                 app()->getLocale(),
@@ -168,9 +149,10 @@ class WayoutCheckoutController extends Controller
 
             app(MetaConversions::class)->rememberCheckout($request, $purchase);
 
+            $request->session()->put('purchase_confirmation_email', $email);
             $request->session()->put('checkout_purchase_id', $purchaseId);
             $request->session()->put('checkout_plan', $plan);
-            $request->session()->put('waitlist_profile', [
+            $request->session()->put('checkout_profile', [
                 'first_name' => $customer['first_name'],
                 'last_name' => $customer['last_name'],
                 'birth_date' => $customer['birth_date'],
@@ -208,8 +190,6 @@ class WayoutCheckoutController extends Controller
             ->where('status', 'pending')
             ->update(['status' => 'canceled', 'updated_at' => now()]);
 
-        $request->session()->flash('subscribe_entry_allowed', true);
-
         return redirect()->route('subscribe')->with('checkout_error', __('messages.subscribe.checkout_canceled'));
     }
 
@@ -246,7 +226,7 @@ class WayoutCheckoutController extends Controller
         string $plan,
         array $package,
         string $wayoutUserId,
-        string $waitlistEntryId,
+        ?string $waitlistEntryId,
         array $customer,
         FounderPromoCatalog $catalog,
         string $locale,
@@ -269,6 +249,10 @@ class WayoutCheckoutController extends Controller
                 'waitlist_entry_id' => $waitlistEntryId,
                 'wayout_user_id' => $wayoutUserId,
                 'promo_package_code' => $package['code'],
+                'package_name' => $package['name'] ?? $package['code'],
+                'package_start_at' => null,
+                'package_end_at' => null,
+                'package_duration_days' => $package['duration_days'] ?? null,
                 'email' => $email,
                 'locale' => in_array($locale, ['it', 'en'], true) ? $locale : 'it',
                 'first_name' => $customer['first_name'],

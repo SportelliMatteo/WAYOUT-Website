@@ -21,10 +21,10 @@ class AdminDashboardTest extends TestCase
     {
         $this->seedDashboardData();
         for ($i = 1; $i <= 6; $i++) {
-            $this->createVerifiedWaitlistEntry('pagination'.$i.'@example.com', 100 + $i);
+            DB::table('purchases')->insert(['id' => DatabaseUuid::new(), 'email' => 'pagination'.$i.'@example.com', 'plan' => 'join', 'amount' => 2900, 'currency' => 'eur', 'status' => 'succeeded', 'created_at' => now(), 'updated_at' => now()]);
         }
         $response = $this->withSession($this->adminSession())->get(route('admin.dashboard', [
-            'tab' => 'overview', 'waitlist_per_page' => 5, 'lang' => 'it',
+            'tab' => 'overview', 'customers_per_page' => 5, 'lang' => 'it',
         ]))->assertOk()->assertSee('Successiva')->assertSee('Risultati da')
             ->assertDontSee('Showing')->assertDontSee('pagination.previous');
         $document = new \DOMDocument;
@@ -35,10 +35,10 @@ class AdminDashboardTest extends TestCase
         $url = $links->item(0)->getAttribute('href');
         parse_str(parse_url($url, PHP_URL_QUERY), $query);
         $this->assertSame('users', $query['tab']);
-        $this->assertSame('2', $query['waitlist_page']);
-        $this->assertSame('5', $query['waitlist_per_page']);
+        $this->assertSame('2', $query['customers_page']);
+        $this->assertSame('5', $query['customers_per_page']);
         $this->get($url)->assertOk()->assertSee('data-admin-panel="users" class=""', false);
-        $this->get(route('admin.dashboard', ['tab' => 'users', 'waitlist_per_page' => 5, 'lang' => 'en']))
+        $this->get(route('admin.dashboard', ['tab' => 'users', 'customers_per_page' => 5, 'lang' => 'en']))
             ->assertOk()->assertSee('Next')->assertSee('Showing')->assertDontSee('Risultati da');
     }
 
@@ -101,7 +101,7 @@ class AdminDashboardTest extends TestCase
             ->get(route('admin.dashboard'));
 
         $response->assertOk()
-            ->assertSee('Waitlist e ordini')
+            ->assertSee('Clienti e ordini')
             ->assertSee('buyer@example.com')
             ->assertSee('Founder Creator 12M')
             ->assertSee('Marketing')
@@ -111,8 +111,7 @@ class AdminDashboardTest extends TestCase
             ->assertDontSee('Capienze Founder')
             ->assertSee('Utenti Founder Join 12M')
             ->assertSee('Utenti Founder Creator 12M')
-            ->assertSee('Verificata')
-            ->assertSee('In attesa di verifica');
+            ->assertDontSee('Persone in waitlist');
     }
 
     public function test_dashboard_lists_have_independent_page_sizes_and_reject_unsupported_sizes(): void
@@ -120,7 +119,7 @@ class AdminDashboardTest extends TestCase
         $session = $this->adminSession();
         $response = $this->withSession($session)
             ->get(route('admin.dashboard', [
-                'waitlist_per_page' => 5,
+                'customers_per_page' => 5,
                 'orders_per_page' => 20,
                 'consents_per_page' => 5,
                 'withdrawals_per_page' => 20,
@@ -135,7 +134,7 @@ class AdminDashboardTest extends TestCase
         $response->assertOk()
             ->assertSee('Righe per pagina');
 
-        $this->assertSame(5, $response->viewData('waitlistEntries')->perPage());
+        $this->assertSame(5, $response->viewData('customers')->perPage());
         $this->assertSame(20, $response->viewData('recentPurchases')->perPage());
         $this->assertSame(5, $response->viewData('recentConsentEvents')->perPage());
         $this->assertSame(20, $response->viewData('recentWithdrawals')->perPage());
@@ -182,8 +181,8 @@ class AdminDashboardTest extends TestCase
         $this->withSession($this->adminSession())
             ->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('1 / 500 pass')
-            ->assertSee('1 / 150 pass')
+            ->assertSee('0 / 500')
+            ->assertSee('0 / 150')
             ->assertDontSee('Capienze Founder');
     }
 
@@ -383,51 +382,24 @@ class AdminDashboardTest extends TestCase
             ->assertDontSee('lead@example.com');
     }
 
-    public function test_admin_dashboard_can_filter_users_eligible_for_free_waitlist_benefit(): void
+    public function test_customers_exclude_people_with_only_a_waitlist_entry(): void
     {
         $this->seedDashboardData();
-
-        $response = $this->withSession($this->adminSession())
-            ->get(route('admin.dashboard', [
-                'tab' => 'users',
-                'status' => 'benefit_eligible',
-            ]));
-
-        $response->assertOk()
-            ->assertSee('eligible@example.com')
-            ->assertSee('60 giorni');
-        $this->assertSame(
-            ['eligible@example.com'],
-            $response->viewData('waitlistEntries')->pluck('email')->all()
-        );
+        $response = $this->withSession($this->adminSession())->get(route('admin.dashboard', ['tab' => 'users']));
+        $response->assertOk();
+        $this->assertSame(['buyer@example.com'], $response->viewData('customers')->pluck('email')->all());
+        $this->assertSame(2, (int) $response->viewData('customers')->first()->orders_succeeded);
     }
 
-    public function test_admin_dashboard_displays_and_searches_prelaunch_identifiers(): void
+    public function test_customers_can_be_searched_by_email(): void
     {
         $this->seedDashboardData();
         $session = $this->adminSession();
-
-        $this->withSession($session)
-            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => '11111111']))
-            ->assertOk()
-            ->assertSee('buyer@example.com')
-            ->assertSee('11111111-1111-4111-8111-111111111111')
-            ->assertSee('Verificata')
-            ->assertSee('1 risultati');
-
-        $this->withSession($session)
-            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'buyer@example.com']))
-            ->assertOk()
-            ->assertSee('buyer@example.com')
-            ->assertSee('Posizione')
-            ->assertSee('1 risultati');
-
-        $this->withSession($session)
-            ->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'lead@example.com']))
-            ->assertOk()
-            ->assertSee('lead@example.com')
-            ->assertSee('In attesa di verifica')
-            ->assertSee('1 risultati');
+        $response = $this->withSession($session)->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'buyer@']));
+        $response->assertOk();
+        $this->assertSame(['buyer@example.com'], $response->viewData('customers')->pluck('email')->all());
+        $response = $this->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'lead@example.com']));
+        $this->assertSame(0, $response->viewData('customers')->total());
     }
 
     public function test_admin_dashboard_displays_utc_consent_timestamps_in_rome_timezone(): void

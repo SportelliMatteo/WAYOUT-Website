@@ -92,7 +92,7 @@ class EmailTemplateTest extends TestCase
 
         $html = $mail->render();
 
-        $this->assertStringContainsString('Founder Pass purchase confirmation', $html);
+        $this->assertStringContainsString('WAYOUT package purchase confirmation', $html);
         $this->assertStringContainsString('Order number', $html);
         $this->assertStringContainsString('?lang=en', $html);
         $this->assertStringNotContainsString('Numero d’ordine', $html);

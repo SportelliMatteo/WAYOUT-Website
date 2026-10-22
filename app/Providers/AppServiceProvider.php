@@ -2,13 +2,9 @@
 
 namespace App\Providers;
 
-use App\Exceptions\WayoutApiException;
-use App\Support\FounderAvailability;
-use App\Support\FounderPromoCatalog;
 use App\Support\LegalDocumentService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -77,31 +73,6 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(10)->by($route.'|'.$request->ip().'|'.$identity),
                 Limit::perHour(60)->by($route.'|'.$request->ip()),
             ];
-        });
-
-        View::composer(['pages.home', 'pages.subscribe'], function ($view) {
-            $availability = app(FounderAvailability::class)->summary();
-
-            $view->with('founderCapacities', $availability['capacities'])
-                ->with('founderAvailability', $availability);
-        });
-
-        View::composer('pages.home', function ($view) {
-            if (! session('waitlist_offer')) {
-                return;
-            }
-
-            try {
-                $view->with('founderPackages', app(FounderPromoCatalog::class)->founderPackages())
-                    ->with('founderCatalogError', null);
-            } catch (WayoutApiException $exception) {
-                Log::warning('Founder promo catalog unavailable in waitlist offer.', [
-                    ...$exception->logContext(),
-                ]);
-
-                $view->with('founderPackages', ['join' => null, 'creator' => null])
-                    ->with('founderCatalogError', __('messages.home.catalog_unavailable'));
-            }
         });
 
         View::composer(['pages.home', 'pages.subscribe', 'pages.contact'], function ($view) {

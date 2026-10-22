@@ -5,8 +5,11 @@
 @if (! empty($purchase['order_reference']))
 {{ __('messages.email.order_number') }}: {{ $purchase['order_reference'] }}
 @endif
-{{ __('messages.email.waitlist_email', ['email' => $purchase['email']]) }}
-{{ __('messages.email.purchase_summary') }}
+{{ __('experience.email_label', ['email' => $purchase['email']]) }}
+{{ __('experience.purchase_summary') }}
+@if(!empty($purchase['duration_days']))
+{{ __('experience.duration_label') }}: {{ __('experience.duration', ['days' => $purchase['duration_days']]) }}
+@endif
 @if (($purchase['attachment_kind'] ?? null) === 'order_summary')
 {{ __('messages.email.order_summary_attached') }}
 @elseif (! empty($purchase['invoice_requested']))

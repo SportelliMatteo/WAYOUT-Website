@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Mail\PurchaseConfirmationMail;
 use App\Support\DatabaseUuid;
+use App\Support\LegalDocumentService;
+use App\Support\PurchasePackage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +24,14 @@ class SubscribeCheckoutTest extends TestCase
         $this->get('/condizioni-di-vendita')->assertRedirect('/termini-di-vendita')->assertStatus(301);
     }
 
-    public function test_subscribe_page_requires_waitlist_banner_context(): void
+    public function test_plans_are_public_and_old_subscribe_url_redirects(): void
     {
-        $this->get(route('subscribe'))->assertRedirect(route('home'));
+        $this->fakeCatalog();
+        $this->get('/piani')->assertOk()->assertDontSee('Waitlist Pass');
+        $this->get('/subscribe')->assertRedirect('/piani')->assertStatus(301);
+        $this->get('/')->assertOk()->assertSee('Prossimamente')->assertDontSee('waitlist-join-form');
+        $this->post('/waitlist', ['email' => 'member@example.com'])->assertNotFound();
+        $this->post('/subscribe/access')->assertNotFound();
     }
 
     public function test_subscribe_page_uses_only_the_two_paid_founder_packages(): void
@@ -35,9 +42,9 @@ class SubscribeCheckoutTest extends TestCase
         $response = $this->withSession(['subscribe_entry_allowed' => true])->get(route('subscribe'));
 
         $response->assertOk()
-            ->assertSee('29,90 €')
-            ->assertSee('59,90 €')
-            ->assertSee('500 pass totali')
+            ->assertSee('29,90')
+            ->assertSee('59,90')
+            ->assertSee('37 disponibili')
             ->assertSee('name="gender"', false)
             ->assertSee('id="payment-phone-send"', false)
             ->assertSee('data-resend-seconds="60"', false)
@@ -48,20 +55,59 @@ class SubscribeCheckoutTest extends TestCase
             ->assertDontSee('js.stripe.com', false);
     }
 
-    public function test_subscribe_page_shows_the_updated_legal_faqs(): void
+    public function test_packages_explain_the_one_shot_offer_and_activation_duration(): void
     {
         $this->fakeCatalog();
+        $this->get(route('subscribe'))->assertOk()
+            ->assertSee('Pagamento unico')->assertSee('365 giorni')
+            ->assertSee('Nessun rinnovo automatico')->assertSee('Dall’acquisto/attivazione')
+            ->assertDontSee('Waitlist Pass')->assertDontSee('prima del lancio');
+    }
 
-        $response = $this->withSession(['subscribe_entry_allowed' => true])->get(route('subscribe'));
+    public function test_catalog_grid_supports_ten_arbitrary_packages_and_excludes_free_and_inactive_ones(): void
+    {
+        $packages = [];
+        for ($index = 1; $index <= 10; $index++) {
+            $packages[] = ['code' => 'WEB_'.$index, 'name' => 'Web package '.$index, 'price' => '19.99', 'currency' => 'EUR', 'duration_days' => 30 * $index, 'free' => false, 'available' => $index === 5 ? 0 : null];
+        }
+        $packages[] = ['code' => 'FREE_PACKAGE', 'free' => true];
+        $packages[] = ['code' => 'INACTIVE_PACKAGE', 'free' => false, 'active' => false];
+        Http::fake(['*/internal/promo-packages' => Http::response(['data' => $packages])]);
+        $response = $this->get(route('subscribe'))->assertOk()->assertSee('Web package 10')->assertSee('300 giorni')->assertSee('Esaurito')->assertDontSee('FREE_PACKAGE')->assertDontSee('INACTIVE_PACKAGE');
+        $this->assertSame(10, substr_count($response->getContent(), 'data-package-code='));
+    }
 
-        $response->assertOk()
-            ->assertSee('26. Dove trovo le condizioni complete e chi posso contattare?')
-            ->assertSee('sarà utilizzabile per 12 mesi dalla corretta attivazione individuale')
-            ->assertSee('l’utente non perde giorni tra go-live e propria attivazione')
-            ->assertSee('La fattura è gestita tramite Qonto')
-            ->assertDontSee('la scadenza resta calcolata dal go-live');
+    public function test_empty_catalog_has_a_distinct_empty_state(): void
+    {
+        Http::fake(['*/internal/promo-packages' => Http::response(['data' => []])]);
+        $this->get(route('subscribe'))->assertOk()->assertSee('Le prossime occasioni stanno arrivando.')->assertDontSee('data-package-code=', false);
+    }
 
-        $this->assertSame(26, substr_count($response->getContent(), 'data-legal-faq'));
+    public function test_checkout_accepts_arbitrary_catalog_codes_and_saves_the_package_snapshot(): void
+    {
+        $userId = '32131864-6d52-4b97-919d-99d4f2abc845';
+        Http::fake(function (Request $request) use ($userId) {
+            return match (parse_url($request->url(), PHP_URL_PATH)) {
+                '/api/v1/internal/promo-packages' => Http::response(['data' => [['code' => 'CITY_90', 'name' => 'City 90', 'price' => '79.00', 'currency' => 'EUR', 'duration_days' => 90, 'free' => false, 'available' => null]]]),
+                '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
+                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
+                '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_city', 'url' => 'https://checkout.stripe.test/city']]]),
+                default => Http::response([], 404),
+            };
+        });
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload('CITY_90'))->assertOk();
+        $this->assertDatabaseHas('purchases', ['plan' => 'CITY_90', 'promo_package_code' => 'CITY_90', 'package_name' => 'City 90', 'package_duration_days' => 90, 'amount' => 7900, 'package_start_at' => null]);
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/checkout-sessions') && $request['promo_package_code'] === 'CITY_90');
+        $this->assertSame('City 90', PurchasePackage::name(DB::table('purchases')->first()));
+    }
+
+    public function test_checkout_rejects_codes_not_in_the_catalog(): void
+    {
+        $this->fakeCatalog();
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload('NOT_IN_CATALOG'))->assertUnprocessable();
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/checkout-sessions'));
+        $this->assertDatabaseCount('purchases', 0);
     }
 
     public function test_catalog_failure_is_not_reported_as_sold_out(): void
@@ -73,19 +119,19 @@ class SubscribeCheckoutTest extends TestCase
         $this->withSession(['subscribe_entry_allowed' => true])
             ->get(route('subscribe'))
             ->assertOk()
-            ->assertSee('Il catalogo Founder non è temporaneamente disponibile.')
+            ->assertSee('Non riusciamo a caricare i pacchetti.')
             ->assertDontSee('I Founder Pass sono esauriti.');
     }
 
-    public function test_subscribe_access_keeps_the_verified_waitlist_flow(): void
+    public function test_checkout_requires_a_valid_email_without_waitlist_context(): void
     {
-        $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
-
-        $this->withSession(['waitlist_verified_entry_id' => $entry->id])
-            ->post(route('subscribe.access'))
-            ->assertRedirect(route('subscribe'))
-            ->assertSessionHas('waitlist_offer_access', true)
-            ->assertSessionHas('waitlist_email', 'founder@example.com');
+        Http::preventStrayRequests();
+        $payload = $this->checkoutPayload();
+        unset($payload['email']);
+        $this->postJson(route('subscribe.checkout'), $payload)->assertUnprocessable()->assertJsonStructure(['errors' => ['email']]);
+        $payload['email'] = 'invalid-address';
+        $this->postJson(route('subscribe.checkout'), $payload)->assertUnprocessable()->assertJsonStructure(['errors' => ['email']]);
+        $this->assertDatabaseCount('purchases', 0);
     }
 
     public function test_checkout_creates_backend_session_for_an_existing_wayout_user(): void
@@ -214,7 +260,7 @@ class SubscribeCheckoutTest extends TestCase
             "https://staging-app.wayoutapp.test/api/v1/internal/users/{$userId}/subscription" => Http::response([
                 'data' => [
                     'has_active_entitlement' => true,
-                    'subscription' => ['source' => 'STRIPE', 'stripe_subscription_id' => 'sub_123'],
+                    'subscription' => ['source' => 'STRIPE', 'stripe_subscription_id' => 'sub_123', 'start_at' => '2026-10-21T12:00:00Z', 'end_at' => '2027-10-21T12:00:00Z'],
                 ],
             ]),
         ]);
@@ -227,6 +273,8 @@ class SubscribeCheckoutTest extends TestCase
             'id' => $purchaseId,
             'status' => 'succeeded',
             'wayout_subscription_id' => 'sub_123',
+            'package_start_at' => '2026-10-21 12:00:00',
+            'package_end_at' => '2027-10-21 12:00:00',
         ]);
 
         $legalEvent = DB::table('consent_events')
@@ -242,7 +290,7 @@ class SubscribeCheckoutTest extends TestCase
 
         foreach (['sales', 'presale', 'passes', 'refunds', 'purchase_acceptance'] as $document) {
             $this->assertSame(
-                app(\App\Support\LegalDocumentService::class)->current($document, $legalEvent->locale)->version,
+                app(LegalDocumentService::class)->current($document, $legalEvent->locale)->version,
                 $versions[$document],
             );
             $this->assertSame(64, strlen($hashes[$document]));
@@ -281,16 +329,13 @@ class SubscribeCheckoutTest extends TestCase
 
     private function checkoutSession(object $entry): array
     {
-        return [
-            'waitlist_offer_access' => true,
-            'waitlist_email' => 'founder@example.com',
-            'waitlist_verified_entry_id' => $entry->id,
-        ];
+        return [];
     }
 
     private function checkoutPayload(string $plan = 'join'): array
     {
         return [
+            'email' => 'founder@example.com',
             'plan' => $plan,
             'firebase_token' => $this->firebaseToken('+393331234567'),
             'first_name' => 'Matteo',
@@ -312,8 +357,8 @@ class SubscribeCheckoutTest extends TestCase
     private function promoPackages(): array
     {
         return [
-            ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'max_available_quantity' => 500, 'free' => false],
-            ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'max_available_quantity' => -1, 'free' => false],
+            ['code' => 'FOUNDER_JOIN_12M_PASS', 'name' => 'Founder Join', 'price' => '29.90', 'currency' => 'EUR', 'available' => 37, 'max_available_quantity' => 500, 'duration_days' => 365, 'free' => false],
+            ['code' => 'FOUNDER_CREATOR_12M_PASS', 'name' => 'Founder Creator', 'price' => '59.90', 'currency' => 'EUR', 'available' => null, 'max_available_quantity' => -1, 'duration_days' => 365, 'free' => false],
             ['code' => 'WAITLIST_60D_PASS', 'name' => 'Waitlist', 'price' => '0.00', 'currency' => 'EUR', 'available' => null, 'max_available_quantity' => -1, 'free' => true],
         ];
     }

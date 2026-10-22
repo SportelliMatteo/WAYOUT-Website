@@ -13,7 +13,6 @@ use App\Support\LegalDocumentService;
 use App\Support\QontoInvoiceService;
 use App\Support\SitePreviewAccess;
 use App\Support\SiteVisibility;
-use App\Support\WaitlistBenefitService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +27,6 @@ class AdminController extends Controller
         SiteVisibility $siteVisibility,
         CheckoutFeatures $checkoutFeatures,
         FounderPromoCatalog $founderCatalog,
-        WaitlistBenefitService $waitlistBenefits,
         SitePreviewAccess $sitePreview,
         DataRetentionService $dataRetention,
     ) {
@@ -56,9 +54,6 @@ class AdminController extends Controller
             ->first();
 
         $stats = [
-            'waitlist_total' => DB::table('waitlist_entries')->whereNotNull('email_verified_at')->count(),
-            'waitlist_pending' => DB::table('waitlist_entries')->whereNull('email_verified_at')->count(),
-            'waitlist_benefits_eligible' => $waitlistBenefits->count(),
             'buyers_total' => DB::table('purchases')->where('status', 'succeeded')->distinct('email')->count('email'),
             'orders_total' => (int) ($purchaseSummary->total_orders ?? 0),
             'orders_succeeded' => (int) ($purchaseSummary->succeeded_orders ?? 0),
@@ -72,82 +67,33 @@ class AdminController extends Controller
         ];
 
         try {
-            $founderPackages = $founderCatalog->founderPackages();
+            $catalogPackages = $founderCatalog->packages();
         } catch (WayoutApiException $exception) {
             Log::warning('Founder promo catalog unavailable in admin dashboard.', [
                 ...$exception->logContext(),
             ]);
-            $founderPackages = ['join' => null, 'creator' => null];
+            $catalogPackages = [];
         }
 
-        $purchaseAggregate = DB::table('purchases')
-            ->select('waitlist_entry_id')
+        $customersQuery = DB::table('purchases')
+            ->select('email')
             ->selectRaw('COUNT(*) as orders_total')
             ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) as orders_succeeded")
             ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN amount ELSE 0 END) as revenue_total")
             ->selectRaw('MAX(created_at) as latest_purchase_at')
-            ->selectRaw($this->successfulPlansExpression())
-            ->whereNotNull('waitlist_entry_id')
-            ->groupBy('waitlist_entry_id');
-
-        $waitlistQuery = DB::table('waitlist_entries')
-            ->leftJoinSub($purchaseAggregate, 'purchase_totals', function ($join) {
-                $join->on('waitlist_entries.id', '=', 'purchase_totals.waitlist_entry_id');
-            })
-            ->select([
-                'waitlist_entries.id',
-                'waitlist_entries.benefit_id',
-                'waitlist_entries.email',
-                'waitlist_entries.waitlist_position',
-                'waitlist_entries.email_verified_at',
-                'waitlist_entries.marketing_consent',
-                'waitlist_entries.created_at',
-                'waitlist_entries.updated_at',
-                DB::raw('COALESCE(purchase_totals.orders_total, 0) as orders_total'),
-                DB::raw('COALESCE(purchase_totals.orders_succeeded, 0) as orders_succeeded'),
-                DB::raw('COALESCE(purchase_totals.revenue_total, 0) as revenue_total'),
-                'purchase_totals.latest_purchase_at',
-                'purchase_totals.plans',
-            ])
-            ->orderByDesc('waitlist_entries.created_at');
-
+            ->groupBy('email')->orderByDesc('latest_purchase_at');
         if ($filters['q'] !== '') {
-            $search = '%'.Str::lower($filters['q']).'%';
-            $uuidCast = DB::connection()->getDriverName() === 'mysql' ? 'CHAR' : 'TEXT';
-            $waitlistQuery->where(function ($query) use ($search, $uuidCast) {
-                $query->whereRaw('LOWER(waitlist_entries.email) LIKE ?', [$search])
-                    ->orWhereRaw("LOWER(CAST(waitlist_entries.id AS {$uuidCast})) LIKE ?", [$search])
-                    ->orWhereRaw("LOWER(CAST(waitlist_entries.benefit_id AS {$uuidCast})) LIKE ?", [$search]);
-            });
+            $customersQuery->whereRaw('LOWER(email) LIKE ?', ['%'.Str::lower($filters['q']).'%']);
         }
-
+        if ($filters['plan'] !== 'all') {
+            $customersQuery->where('plan', $filters['plan']);
+        }
         if ($filters['status'] === 'buyers') {
-            $waitlistQuery->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) > 0');
+            $customersQuery->havingRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) > 0");
         } elseif ($filters['status'] === 'no_purchase') {
-            $waitlistQuery->whereNotNull('waitlist_entries.email_verified_at')
-                ->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) = 0');
-        } elseif ($filters['status'] === 'pending') {
-            $waitlistQuery->whereNull('waitlist_entries.email_verified_at');
-        } elseif ($filters['status'] === 'benefit_eligible') {
-            $waitlistQuery->whereNotNull('waitlist_entries.email_verified_at')
-                ->whereNotNull('waitlist_entries.benefit_id')
-                ->whereNotNull('waitlist_entries.waitlist_position')
-                ->whereRaw('COALESCE(purchase_totals.orders_succeeded, 0) = 0');
+            $customersQuery->havingRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) = 0");
         }
-
-        if (in_array($filters['plan'], ['join', 'creator'], true)) {
-            $waitlistQuery->whereExists(function ($query) use ($filters) {
-                $query->selectRaw('1')
-                    ->from('purchases')
-                    ->whereColumn('purchases.waitlist_entry_id', 'waitlist_entries.id')
-                    ->where('purchases.status', 'succeeded')
-                    ->where('purchases.plan', $filters['plan']);
-            });
-        }
-
-        $waitlistEntries = $waitlistQuery
-            ->paginate($perPage('waitlist'), ['*'], 'waitlist_page')
-            ->withQueryString();
+        $customers = $customersQuery->paginate($perPage('customers'), ['*'], 'customers_page')->withQueryString();
 
         $recentPurchases = DB::table('purchases')
             ->orderByDesc('created_at')
@@ -194,14 +140,15 @@ class AdminController extends Controller
         return view('admin.dashboard', [
             'filters' => $filters,
             'stats' => $stats,
-            'founderPackages' => $founderPackages,
-            'waitlistEntries' => $waitlistEntries,
+            'catalogPackages' => $catalogPackages,
+            'packageSales' => DB::table('purchases')->where('status', 'succeeded')->select('promo_package_code')->selectRaw('COUNT(*) as orders, SUM(amount) as revenue')->groupBy('promo_package_code')->get()->keyBy('promo_package_code'),
+            'customers' => $customers,
             'recentPurchases' => $recentPurchases,
             'recentConsentEvents' => $recentConsentEvents,
             'recentWithdrawals' => $recentWithdrawals,
             'joinBuyers' => $joinBuyers,
             'creatorBuyers' => $creatorBuyers,
-            'planLabels' => $this->planLabels(),
+            'planLabels' => array_replace($this->planLabels(), DB::table('purchases')->whereNotNull('package_name')->pluck('package_name', 'plan')->all(), array_map(fn ($package) => $package['name'] ?? $package['code'], $catalogPackages)),
             'legalDocuments' => $currentLegalDocuments,
             'legalDocumentHistory' => $legalDocumentHistory,
             'adminUsers' => $adminUsers,

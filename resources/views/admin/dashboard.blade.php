@@ -1,5 +1,5 @@
 @php
-    $money = fn (?int $amount) => number_format(($amount ?? 0) / 100, 2, ',', '.') . '€';
+    $money = fn (?int $amount, string $currency = 'EUR') => number_format(($amount ?? 0) / 100, 2, ',', '.') . (strtoupper($currency) === 'EUR' ? '€' : ' '.strtoupper($currency));
     $number = fn (?int $value) => number_format($value ?? 0, 0, ',', '.');
     $packageMaximum = function (?array $package) use ($number) {
         $maximum = $package['max_available_quantity'] ?? null;
@@ -112,11 +112,6 @@
         <div id="admin-panel-overview" role="tabpanel" aria-labelledby="admin-tab-overview" data-admin-panel="overview" class="{{ $activeAdminTab === 'overview' ? '' : 'hidden' }}">
         <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Waitlist</p>
-                <p class="mt-3 text-3xl font-black">{{ $number($stats['waitlist_total']) }}</p>
-                <p class="mt-1 text-xs font-bold text-amber-700">{{ __('messages.admin.pending_count', ['count' => $number($stats['waitlist_pending'])]) }} · {{ __('messages.admin.waitlist_benefit_eligible_count', ['count' => $number($stats['waitlist_benefits_eligible'])]) }}</p>
-            </div>
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{{ __('messages.admin.buyers') }}</p>
                 <p class="mt-3 text-3xl font-black">{{ $stats['buyers_total'] }}</p>
                 <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.successful_purchase_emails') }}</p>
@@ -126,20 +121,16 @@
                 <p class="mt-3 text-3xl font-black">{{ $stats['orders_succeeded'] }}</p>
                 <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.total_orders_count', ['count' => $stats['orders_total']]) }}</p>
             </div>
+            @foreach($catalogPackages as $code => $package)
+            @php
+                $sales = $packageSales[$code] ?? null;
+            @endphp
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Join Pass</p>
-                <p class="mt-3 text-3xl font-black">{{ $money($stats['join_revenue']) }}</p>
-                <p class="mt-1 text-sm font-bold text-slate-500">
-                    {{ $number($stats['join_orders']) }}{{ ($maximum = $packageMaximum($founderPackages['join'] ?? null)) !== null ? ' / '.$maximum : '' }} pass
-                </p>
+                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{{ $package['name'] ?? $code }}</p>
+                <p class="mt-3 text-3xl font-black">{{ $money((int) ($sales->revenue ?? 0), $package['currency'] ?? 'EUR') }}</p>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ $number((int) ($sales->orders ?? 0)) }}{{ ($maximum = $packageMaximum($package)) !== null ? ' / '.$maximum : '' }} {{ __('messages.admin.orders') }}</p>
             </div>
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Creator Pass</p>
-                <p class="mt-3 text-3xl font-black">{{ $money($stats['creator_revenue']) }}</p>
-                <p class="mt-1 text-sm font-bold text-slate-500">
-                    {{ $number($stats['creator_orders']) }}{{ ($maximum = $packageMaximum($founderPackages['creator'] ?? null)) !== null ? ' / '.$maximum : '' }} pass
-                </p>
-            </div>
+            @endforeach
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{{ __('messages.admin.cookie_consents') }}</p>
                 <p class="mt-3 text-3xl font-black">{{ $number($stats['cookie_consent_updates']) }}</p>
@@ -556,16 +547,13 @@
                         <option value="all" @selected($filters['status'] === 'all')>{{ __('messages.admin.all') }}</option>
                         <option value="buyers" @selected($filters['status'] === 'buyers')>{{ __('messages.admin.bought') }}</option>
                         <option value="no_purchase" @selected($filters['status'] === 'no_purchase')>{{ __('messages.admin.no_purchase') }}</option>
-                        <option value="pending" @selected($filters['status'] === 'pending')>{{ __('messages.admin.pending_verification') }}</option>
-                        <option value="benefit_eligible" @selected($filters['status'] === 'benefit_eligible')>{{ __('messages.admin.waitlist_benefit_eligible') }}</option>
                     </select>
                 </div>
                 <div>
                     <label for="plan" class="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{{ __('messages.admin.pass') }}</label>
                     <select id="plan" name="plan" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 font-bold outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10">
                         <option value="all" @selected($filters['plan'] === 'all')>{{ __('messages.admin.all') }}</option>
-                        <option value="join" @selected($filters['plan'] === 'join')>Join</option>
-                        <option value="creator" @selected($filters['plan'] === 'creator')>Creator</option>
+                        @foreach($planLabels as $code => $label)<option value="{{ $code }}" @selected($filters['plan'] === $code)>{{ $label }}</option>@endforeach
                     </select>
                 </div>
                 <button type="submit" class="rounded-lg wayout-purple px-5 py-3 font-black text-white shadow-[0_14px_30px_rgba(124,35,245,0.25)]">
@@ -575,87 +563,20 @@
         </section>
 
         <section class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-1 border-b border-slate-200 p-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <h2 class="text-xl font-black">{{ __('messages.admin.waitlist_people') }}</h2>
-                    <p class="mt-1 text-sm font-bold text-slate-500">{{ __('messages.admin.results', ['count' => $waitlistEntries->total()]) }}</p>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
-                    <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3">ID</th>
-                            <th class="px-4 py-3">Benefit ID</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.email') }}</th>
-                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.waitlist_position') }}</th>
-                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.email_verification') }}</th>
-                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.marketing_consent') }}</th>
-                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.status') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.pass') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.waitlist_benefit') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.orders') }}</th>
-                            <th class="px-4 py-3">{{ __('messages.admin.total') }}</th>
-                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.signup') }}</th>
-                            <th class="whitespace-nowrap px-4 py-3">{{ __('messages.admin.latest_purchase') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse ($waitlistEntries as $entry)
-                            @php
-                                $plans = collect(explode(',', (string) $entry->plans))->filter()->map(fn ($plan) => $planName($plan))->join(', ');
-                            @endphp
-                            <tr class="hover:bg-violet-50/50">
-                                <td class="px-4 py-3 font-mono text-xs" title="{{ $entry->id }}">{{ Str::limit($entry->id, 13) }}</td>
-                                <td class="px-4 py-3 font-mono text-xs" title="{{ $entry->benefit_id }}">{{ Str::limit($entry->benefit_id, 13) }}</td>
-                                <td class="px-4 py-3 font-black">{{ $entry->email }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-black">{{ $entry->waitlist_position ?: '-' }}</td>
-                                <td class="whitespace-nowrap px-4 py-3">
-                                    <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-black leading-none {{ $entry->email_verified_at ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
-                                        {{ $entry->email_verified_at ? __('messages.admin.email_verified') : __('messages.admin.pending_verification') }}
-                                    </span>
-                                    @if($entry->email_verified_at)
-                                        <span class="mt-1 block text-xs font-bold text-slate-500">{{ $date($entry->email_verified_at) }}</span>
-                                    @endif
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-3">
-                                    @if ($entry->marketing_consent)
-                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-black leading-none text-emerald-800">{{ __('messages.admin.yes') }}</span>
-                                    @else
-                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-black leading-none text-slate-600">{{ __('messages.admin.no') }}</span>
-                                    @endif
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-3">
-                                    @if (! $entry->email_verified_at)
-                                        <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-black leading-none text-amber-800">{{ __('messages.admin.pending_verification') }}</span>
-                                    @elseif ((int) $entry->orders_succeeded > 0)
-                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-black leading-none text-emerald-800">{{ __('messages.admin.bought') }}</span>
-                                    @else
-                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-black leading-none text-slate-600">{{ __('messages.admin.in_waitlist') }}</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 font-bold text-slate-700">{{ $plans ?: __('messages.admin.no_pass') }}</td>
-                                <td class="px-4 py-3">
-                                    @if($entry->email_verified_at && (int) $entry->orders_succeeded === 0)
-                                        <span class="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">{{ __('messages.admin.waitlist_benefit_duration') }}</span>
-                                    @else
-                                        <span class="font-bold text-slate-400">{{ __('messages.admin.waitlist_benefit_not_eligible') }}</span>
-                                    @endif
-                                </td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ __('messages.admin.successful_over_total', ['successful' => (int) $entry->orders_succeeded, 'total' => (int) $entry->orders_total]) }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-black">{{ $money((int) $entry->revenue_total) }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $date($entry->created_at) }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $date($entry->latest_purchase_at) }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="13" class="px-4 py-10 text-center font-bold text-slate-500">{{ __('messages.admin.no_results') }}</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            @include('admin.partials.pagination', ['paginator' => $waitlistEntries, 'perPageName' => 'waitlist_per_page'])
+            <h2 class="p-4 text-xl font-black">{{ __('messages.admin.customers') }}</h2>
+            <div class="overflow-x-auto"><table class="w-full text-left text-sm">
+                <thead class="bg-slate-50"><tr>
+                    <th class="p-4">Email</th><th class="p-4">{{ __('messages.admin.orders') }}</th>
+                    <th class="p-4">{{ __('messages.admin.successful_orders') }}</th><th class="p-4">{{ __('messages.admin.total') }}</th>
+                    <th class="p-4">{{ __('messages.admin.latest_purchase') }}</th>
+                </tr></thead><tbody>
+                @forelse($customers as $customer)
+                    <tr class="border-t border-slate-100"><td class="p-4 font-bold">{{ $customer->email }}</td><td class="p-4">{{ $customer->orders_total }}</td><td class="p-4">{{ $customer->orders_succeeded }}</td><td class="p-4">{{ $money((int) $customer->revenue_total) }}</td><td class="p-4">{{ $date($customer->latest_purchase_at) }}</td></tr>
+                @empty
+                    <tr><td colspan="5" class="p-6">{{ __('messages.admin.no_results') }}</td></tr>
+                @endforelse
+                </tbody></table></div>
+            @include('admin.partials.pagination', ['paginator' => $customers, 'perPageName' => 'customers_per_page'])
         </section>
         </div>
 
@@ -688,7 +609,7 @@
                                 <td class="align-middle px-4 py-4 font-bold text-slate-700">{{ $purchase->first_name ?: '-' }}</td>
                                 <td class="align-middle px-4 py-4 font-bold text-slate-700">{{ $purchase->last_name ?: '-' }}</td>
                                 <td class="align-middle whitespace-nowrap px-4 py-4 font-bold text-slate-500">{{ $birthDate($purchase->birth_date) }}</td>
-                                <td class="align-middle px-4 py-4 font-bold">{{ $planName($purchase->plan) }}</td>
+                                <td class="align-middle px-4 py-4 font-bold">{{ \App\Support\PurchasePackage::name($purchase) }}</td>
                                 <td class="align-middle whitespace-nowrap px-4 py-4 font-black">{{ $money((int) $purchase->amount) }}</td>
                                 <td class="align-middle whitespace-nowrap px-4 py-4 font-bold">{{ $purchase->status }}</td>
                                 <td class="align-middle px-4 py-4 font-bold text-slate-700">

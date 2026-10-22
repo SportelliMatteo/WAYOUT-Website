@@ -33,13 +33,11 @@
                 @if($isConfirmed)
                 <div class="mt-6 max-w-2xl rounded-3xl bg-white/[0.08] p-5">
                     <p class="text-base font-bold leading-7 text-slate-100">
-                        {{ __('messages.checkout_success.pass_summary') }}
+                        {{ \App\Support\PurchasePackage::name($order) }}<br>{{ __('experience.purchase_summary') }}
+                        @if($order->package_duration_days)<br>{{ __('experience.duration', ['days' => $order->package_duration_days]) }}@endif
+                        @if($order->package_start_at && $order->package_end_at)<br>{{ __('experience.starts') }}: {{ \Illuminate\Support\Carbon::parse($order->package_start_at)->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }} · {{ __('experience.ends') }}: {{ \Illuminate\Support\Carbon::parse($order->package_end_at)->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}@endif
                     </p>
-                    @if($checkoutPlan === 'creator')
-                        <p class="mt-3 text-sm font-semibold leading-6 text-violet-100">
-                            {{ __('messages.checkout_success.creator_summary') }}
-                        </p>
-                    @endif
+
                 </div>
                 <div class="mt-6 max-w-2xl">
                     <p class="text-sm font-black uppercase tracking-[0.2em] text-violet-200">

@@ -16,14 +16,7 @@ class FounderPromoCatalog
     /** @return array{join: ?array, creator: ?array} */
     public function founderPackages(bool $fresh = false): array
     {
-        $loader = fn (): array => $this->load();
-        $packages = $fresh
-            ? $loader()
-            : Cache::remember(
-                'wayout:founder-promo-catalog:'.sha1((string) config('services.wayout.base_url')),
-                max(1, (int) config('services.wayout.catalog_cache_seconds', 60)),
-                $loader,
-            );
+        $packages = $this->packages($fresh);
 
         return [
             'join' => $packages[self::JOIN_CODE] ?? null,
@@ -31,13 +24,26 @@ class FounderPromoCatalog
         ];
     }
 
+    /** All paid packages exposed by the internal sales catalog, keyed by code. */
+    public function packages(bool $fresh = false): array
+    {
+        return $fresh ? $this->load() : Cache::remember(
+            'wayout:paid-promo-catalog:'.sha1((string) config('services.wayout.base_url')),
+            max(1, (int) config('services.wayout.catalog_cache_seconds', 60)),
+            fn (): array => $this->load(),
+        );
+    }
+
     public function packageForPlan(string $plan, bool $fresh = false): ?array
     {
-        if (! in_array($plan, ['join', 'creator'], true)) {
-            throw new InvalidArgumentException('Piano Founder non valido.');
-        }
+        // Keep existing orders and integrations compatible with the former aliases.
+        $code = match ($plan) {
+            'join' => self::JOIN_CODE,
+            'creator' => self::CREATOR_CODE,
+            default => $plan,
+        };
 
-        return $this->founderPackages($fresh)[$plan];
+        return $this->packages($fresh)[$code] ?? null;
     }
 
     public function amountInCents(array $package): int
@@ -57,13 +63,15 @@ class FounderPromoCatalog
     private function load(): array
     {
         $response = $this->client->internalGet('/api/v1/internal/promo-packages');
-        $allowedCodes = [self::JOIN_CODE, self::CREATOR_CODE];
         $packages = [];
 
         foreach (($response['data'] ?? []) as $package) {
             if (! is_array($package)
                 || ($package['free'] ?? true) !== false
-                || ! in_array($package['code'] ?? null, $allowedCodes, true)) {
+                || ! is_string($package['code'] ?? null)
+                || $package['code'] === ''
+                || strlen($package['code']) > 80
+                || ($package['active'] ?? true) !== true) {
                 continue;
             }
 

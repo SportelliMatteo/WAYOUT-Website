@@ -9,6 +9,7 @@ use App\Support\ConsentAuditService;
 use App\Support\FounderPromoCatalog;
 use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
+use App\Support\PurchasePackage;
 use App\Support\PurchasePdfService;
 use App\Support\QontoInvoiceService;
 use App\Support\TransactionalEmailSender;
@@ -28,45 +29,23 @@ class SubscribeController extends Controller
         CheckoutFeatures $checkoutFeatures,
         FounderPromoCatalog $catalog,
     ) {
-        if (! $request->session()->pull('subscribe_entry_allowed')) {
-            return redirect()->route('home');
-        }
-
         try {
-            $founderPackages = $catalog->founderPackages();
+            $packages = $catalog->packages();
             $catalogError = null;
         } catch (WayoutApiException $exception) {
             Log::warning('Founder promo catalog unavailable.', [
                 ...$exception->logContext(),
             ]);
-            $founderPackages = ['join' => null, 'creator' => null];
-            $catalogError = __('messages.subscribe.catalog_unavailable');
+            $packages = [];
+            $catalogError = __('experience.catalog_error');
         }
 
         return view('pages.subscribe', [
             'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
-            'founderPackages' => $founderPackages,
+            'packages' => $packages,
             'catalogError' => $catalogError,
             'firebaseConfig' => config('services.firebase.client'),
         ]);
-    }
-
-    public function access(Request $request)
-    {
-        $entryId = $request->session()->get('waitlist_verified_entry_id');
-        $waitlistEntry = $entryId
-            ? DB::table('waitlist_entries')->where('id', $entryId)->whereNotNull('email_verified_at')->first()
-            : null;
-
-        if (! $waitlistEntry) {
-            return redirect()->route('home')->with('waitlist_error', __('messages.messages.checkout_unauthorized'));
-        }
-
-        $request->session()->put('waitlist_offer_access', true);
-        $request->session()->put('waitlist_email', $waitlistEntry->email);
-        $request->session()->flash('subscribe_entry_allowed', true);
-
-        return redirect()->route('subscribe');
     }
 
     public function success(
@@ -94,7 +73,7 @@ class SubscribeController extends Controller
             : null;
         $statusUrl = URL::temporarySignedRoute('checkout.status', now()->addHour(), ['purchase' => $purchase]);
 
-        return view('pages.checkout-success', compact('checkoutState', 'purchaseAnalytics', 'statusUrl'));
+        return view('pages.checkout-success', compact('checkoutState', 'purchaseAnalytics', 'statusUrl', 'order'));
     }
 
     public function status(
@@ -129,8 +108,7 @@ class SubscribeController extends Controller
 
     public function resendPurchaseConfirmation(Request $request, TransactionalEmailSender $emailSender)
     {
-        $email = $request->session()->get('purchase_confirmation_email')
-            ?? $request->session()->get('waitlist_email');
+        $email = $request->session()->get('purchase_confirmation_email');
 
         if (! $email) {
             return $this->purchaseConfirmationResponse(
@@ -318,7 +296,7 @@ class SubscribeController extends Controller
             return 'pending';
         }
 
-        DB::transaction(function () use ($purchase, $stripeSubscriptionId): void {
+        DB::transaction(function () use ($purchase, $stripeSubscriptionId, $response): void {
             $locked = DB::table('purchases')->where('id', $purchase->id)->lockForUpdate()->first();
 
             if (! $locked || $locked->status === 'succeeded') {
@@ -327,6 +305,8 @@ class SubscribeController extends Controller
 
             DB::table('purchases')->where('id', $purchase->id)->update([
                 'status' => 'succeeded',
+                'package_start_at' => ($date = data_get($response, 'data.subscription.start_at')) ? Carbon::parse($date)->utc() : null,
+                'package_end_at' => ($date = data_get($response, 'data.subscription.end_at')) ? Carbon::parse($date)->utc() : null,
                 'wayout_subscription_id' => is_string($stripeSubscriptionId) ? $stripeSubscriptionId : null,
                 'updated_at' => now(),
             ]);
@@ -396,8 +376,7 @@ class SubscribeController extends Controller
             $source,
             ['sales', 'presale', 'passes', 'refunds', 'purchase_acceptance'],
             [
-                'waitlist_entry_id' => $waitlistEntryId
-                    ?? DB::table('waitlist_entries')->where('email', $email)->value('id'),
+                'waitlist_entry_id' => $waitlistEntryId,
                 'purchase_id' => $purchaseId,
             ],
             ['plan' => $plan],
@@ -433,23 +412,13 @@ class SubscribeController extends Controller
         return 'WO-'.now()->format('Y').'-'.strtoupper($purchaseId);
     }
 
-    private function planName(string $plan): string
-    {
-        return match ($plan) {
-            'creator' => 'Founder 12M Creator Pass',
-            default => 'Founder Join 12M Pass',
-        };
-    }
-
     private function purchasedPlanFlashData(string $email, object $purchase): array
     {
         return [
-            'waitlist_offer' => true,
-            'waitlist_status' => 'already_registered',
-            'waitlist_email' => $email,
+            'purchase_confirmation_email' => $email,
             'purchased_plan' => [
                 'code' => $purchase->plan,
-                'name' => $this->planName($purchase->plan),
+                'name' => PurchasePackage::name($purchase),
                 'amount' => $purchase->amount,
                 'currency' => $purchase->currency,
             ],
@@ -476,10 +445,7 @@ class SubscribeController extends Controller
         if ($email && $purchase) {
             $response->with($this->purchasedPlanFlashData($email, $purchase));
         } elseif ($email) {
-            $response
-                ->with('waitlist_offer', true)
-                ->with('waitlist_status', 'already_registered')
-                ->with('waitlist_email', $email);
+            $response->with('purchase_confirmation_email', $email);
         }
 
         return $response->with(
@@ -509,7 +475,10 @@ class SubscribeController extends Controller
         return (new PurchaseConfirmationMail([
             'order_reference' => $purchase->order_reference,
             'email' => $purchase->email,
-            'plan_name' => $this->planName($purchase->plan),
+            'plan_name' => PurchasePackage::name($purchase),
+            'duration_days' => $purchase->package_duration_days ?? null,
+            'start_at' => $purchase->package_start_at ?? null,
+            'end_at' => $purchase->package_end_at ?? null,
             'amount' => $purchase->amount,
             'currency' => $purchase->currency,
             'invoice_requested' => (bool) $purchase->invoice_requested,

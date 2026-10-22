@@ -12,9 +12,9 @@
     <link rel="shortcut icon" href="/favicon.jpg" type="image/jpeg" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="flex min-h-screen flex-col text-slate-950 antialiased">
-    <nav class="fixed left-0 top-0 z-30 w-full px-3 pt-3">
-        <div class="mx-auto flex max-w-screen-2xl items-center justify-between rounded-full border border-white/65 bg-white/[0.72] px-3 py-2 shadow-[0_18px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl lg:px-4">
+<body class="flex min-h-screen flex-col text-slate-950 antialiased {{ request()->routeIs('home') ? 'app-inspired-page' : '' }}">
+    <nav class="site-nav fixed left-0 top-0 z-30 w-full px-3 pt-3">
+        <div class="site-nav-shell mx-auto flex max-w-screen-2xl items-center justify-between rounded-full border border-white/65 bg-white/[0.72] px-3 py-2 shadow-[0_18px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl lg:px-4">
             <a href="{{ route('home') }}" class="inline-flex items-center rounded-full bg-white px-3 py-2 shadow-sm ring-1 ring-slate-950/5">
                 <img src="/logos/logo_black.png" class="h-7" alt="WAYOUT Logo" />
             </a>
@@ -26,19 +26,19 @@
                 </svg>
             </button>
 
-            <div class="hidden md:flex md:w-auto md:items-center">
-                <div class="flex w-auto flex-row gap-1 rounded-full border border-slate-950/5 bg-white/55 p-1 text-center text-sm font-black shadow-inner shadow-white/60">
+            <div class="site-desktop-nav hidden md:flex md:w-auto md:items-center">
+                <div class="site-menu flex w-auto flex-row gap-1 rounded-full border border-slate-950/5 bg-white/55 p-1 text-center text-sm font-black shadow-inner shadow-white/60">
                     <a href="{{ route('home') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('home') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.home') }}
                     </a>
-                    <a href="{{ route('about') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('about') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
+<a href="{{ route('subscribe') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('subscribe') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
+                        {{ __('messages.nav.plans') }}
+                    </a>
+<a href="{{ route('about') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('about') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.about') }}
                     </a>
-                    <a href="{{ route('contact') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('contact') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
-                        {{ __('messages.nav.contact') }}
-                    </a>
                 </div>
-                <div class="ml-2 flex rounded-full border border-slate-950/5 bg-white/55 p-1 text-xs font-black shadow-inner shadow-white/60">
+                <div class="site-languages ml-2 flex rounded-full border border-slate-950/5 bg-white/55 p-1 text-xs font-black shadow-inner shadow-white/60">
                     <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-3 py-2 transition {{ app()->getLocale() === 'it' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">IT</a>
                     <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full px-3 py-2 transition {{ app()->getLocale() === 'en' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">EN</a>
                 </div>
@@ -63,11 +63,11 @@
                 <a href="{{ route('home') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('home') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.home') }}
                 </a>
-                <a href="{{ route('about') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('about') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
-                    {{ __('messages.nav.about') }}
+<a href="{{ route('subscribe') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('subscribe') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
+                    {{ __('messages.nav.plans') }}
                 </a>
-                <a href="{{ route('contact') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('contact') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
-                    {{ __('messages.nav.contact') }}
+<a href="{{ route('about') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('about') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
+                    {{ __('messages.nav.about') }}
                 </a>
                 <div class="mx-auto mt-3 flex rounded-full border border-white/10 bg-white/10 p-1 text-sm font-black">
                     <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-4 py-2 {{ app()->getLocale() === 'it' ? 'bg-white text-slate-950' : 'text-white' }}">IT</a>
@@ -143,7 +143,9 @@
                             <p class="text-sm font-black uppercase tracking-[0.26em] text-violet-200">{{ __('messages.nav.navigation') }}</p>
                             <div class="mt-4 flex flex-col gap-2.5 text-base font-bold text-slate-300">
                                 <a href="{{ route('home') }}" class="transition hover:text-white">{{ __('messages.nav.home') }}</a>
-                                <a href="{{ route('about') }}" class="transition hover:text-white">{{ __('messages.nav.about') }}</a>
+                                <a href="{{ route('subscribe') }}" class="transition hover:text-white">{{ __('messages.nav.plans') }}</a>
+<a href="{{ route('subscribe') }}" class="transition hover:text-white">{{ __('messages.nav.plans') }}</a>
+<a href="{{ route('about') }}" class="transition hover:text-white">{{ __('messages.nav.about') }}</a>
                                 <a href="{{ route('contact') }}" class="transition hover:text-white">{{ __('messages.nav.contact') }}</a>
                             </div>
                         </div>

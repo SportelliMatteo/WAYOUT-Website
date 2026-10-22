@@ -343,9 +343,7 @@ class QontoInvoiceService
                 'iban' => config('services.qonto.iban'),
             ],
             'items' => [[
-                'title' => $purchase->plan === 'creator'
-                    ? 'Founder 12M Creator Pass'
-                    : 'Founder Join 12M Pass',
+                'title' => PurchasePackage::name($purchase),
                 'quantity' => '1',
                 'unit_price' => [
                     'value' => number_format($netAmount, 2, '.', ''),

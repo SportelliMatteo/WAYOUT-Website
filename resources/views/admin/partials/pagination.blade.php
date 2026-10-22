@@ -1,6 +1,6 @@
 @php
     $paginationTab = match ($perPageName) {
-        'waitlist_per_page', 'join_buyers_per_page', 'creator_buyers_per_page' => 'users',
+        'customers_per_page', 'join_buyers_per_page', 'creator_buyers_per_page' => 'users',
         'orders_per_page' => 'orders',
         'withdrawals_per_page' => 'withdrawals',
         'consents_per_page' => 'consents',

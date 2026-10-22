@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'app_stores' => [
+        'apple' => env('APP_STORE_URL'),
+        'google' => env('GOOGLE_PLAY_URL'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

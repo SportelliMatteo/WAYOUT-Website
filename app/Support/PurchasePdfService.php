@@ -16,9 +16,7 @@ class PurchasePdfService
 
             return Pdf::loadView('pdf.order-summary', [
                 'purchase' => $purchase,
-                'planName' => $purchase->plan === 'creator'
-                    ? 'Founder 12M Creator Pass'
-                    : 'Founder Join 12M Pass',
+                'planName' => PurchasePackage::name($purchase),
             ])->setPaper('a4')->output();
         } finally {
             App::setLocale($previousLocale);

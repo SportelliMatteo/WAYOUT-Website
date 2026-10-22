@@ -2,11 +2,11 @@
 <html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="utf-8">
-    <title>{{ __('messages.email.purchase_subject') }}</title>
+    <title>{{ __('experience.confirmation_subject') }}</title>
 </head>
 <body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;line-height:1.6">
 <div style="max-width:600px;margin:0 auto;padding:32px 20px">
-    <div style="background:#0f172a;color:#fff;border-radius:20px;padding:28px"><p style="margin:0 0 8px;color:#c4b5fd;font-size:12px;font-weight:bold;letter-spacing:.12em">WAYOUT</p><h1 style="margin:0;font-size:28px">{{ __('messages.email.purchase_subject') }}</h1></div>
+    <div style="background:#0f172a;color:#fff;border-radius:20px;padding:28px"><p style="margin:0 0 8px;color:#c4b5fd;font-size:12px;font-weight:bold;letter-spacing:.12em">WAYOUT</p><h1 style="margin:0;font-size:28px">{{ __('experience.confirmation_subject') }}</h1></div>
     <div style="background:#fff;border-radius:20px;padding:28px;margin-top:16px">
         <p>{{ __('messages.email.hello') }}</p>
         <p>{!! __('messages.email.purchase_confirmed', ['plan' => '<strong>'.e($purchase['plan_name']).'</strong>']) !!}</p>
@@ -14,8 +14,9 @@
         @if (! empty($purchase['order_reference']))
             <p>{{ __('messages.email.order_number') }}: <strong>{{ $purchase['order_reference'] }}</strong></p>
         @endif
-        <p>{!! __('messages.email.waitlist_email', ['email' => '<strong>'.e($purchase['email']).'</strong>']) !!}</p>
-        <p>{{ __('messages.email.purchase_summary') }}</p>
+        <p>{!! __('experience.email_label', ['email' => '<strong>'.e($purchase['email']).'</strong>']) !!}</p>
+        <p>{{ __('experience.purchase_summary') }}</p>
+        @if(!empty($purchase['duration_days']))<p>{{ __('experience.duration_label') }}: <strong>{{ __('experience.duration', ['days' => $purchase['duration_days']]) }}</strong></p>@endif
         @if (($purchase['attachment_kind'] ?? null) === 'order_summary')
             <p style="border-left:4px solid #7c3aed;background:#f5f3ff;padding:12px 14px">{{ __('messages.email.order_summary_attached') }}</p>
         @elseif (! empty($purchase['invoice_requested']))

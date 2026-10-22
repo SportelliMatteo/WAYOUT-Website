@@ -8,7 +8,6 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\SubscribeController;
-use App\Http\Controllers\WaitlistController;
 use App\Http\Controllers\WayoutCheckoutController;
 use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
@@ -33,18 +32,15 @@ Route::get('/recedere-dal-contratto/ricevuta/{token}', [WithdrawalController::cl
 Route::get('/recedere-dal-contratto/ricevuta/{token}/download', [WithdrawalController::class, 'download'])->where('token', '[A-Za-z0-9]{64}')->name('withdrawal.receipt.download');
 Route::redirect('/recesso-e-rimborso', '/recedere-dal-contratto', 301);
 Route::get('/note-legali', [LegalDocumentController::class, 'show'])->defaults('document', 'notice')->name('legal.notice');
-Route::get('/subscribe', [SubscribeController::class, 'show'])->name('subscribe');
+Route::get('/piani', [SubscribeController::class, 'show'])->name('subscribe');
+Route::redirect('/subscribe', '/piani', 301);
 Route::get('/checkout/success/{purchase}', [SubscribeController::class, 'success'])->middleware('signed')->name('checkout.success');
 Route::get('/checkout/status/{purchase}', [SubscribeController::class, 'status'])->middleware(['signed', 'throttle:checkout'])->name('checkout.status');
 Route::get('/checkout/cancel/{purchase}', [WayoutCheckoutController::class, 'cancel'])->middleware('signed')->name('checkout.cancel');
-Route::post('/subscribe/access', [SubscribeController::class, 'access'])->middleware(['throttle:waitlist', 'recaptcha:subscribe_access'])->name('subscribe.access');
 Route::post('/subscribe/checkout', [WayoutCheckoutController::class, 'store'])->middleware('throttle:checkout')->name('subscribe.checkout');
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware(['throttle:purchase-confirmation', 'recaptcha:purchase_confirmation'])->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware(['throttle:contact', 'recaptcha:contact'])->name('contact.store');
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->middleware('throttle:120,1')->name('cookie-consent.store');
-Route::post('/waitlist', [WaitlistController::class, 'store'])->middleware(['throttle:waitlist', 'recaptcha:waitlist'])->name('waitlist.store');
-Route::get('/waitlist/verifica/{token}', [WaitlistController::class, 'showVerification'])->where('token', '[A-Za-z0-9]{64}')->name('waitlist.verify.show');
-Route::post('/waitlist/verifica/{token}', [WaitlistController::class, 'verify'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:waitlist')->name('waitlist.verify');
 Route::get('/preferenze/marketing/{waitlist}', [ConsentController::class, 'showMarketingRevocation'])
     ->middleware('signed')
     ->name('consent.marketing.revoke.show');

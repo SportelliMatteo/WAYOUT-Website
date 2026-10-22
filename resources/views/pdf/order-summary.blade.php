@@ -34,6 +34,7 @@
             <tr><th>{{ __('messages.order_summary.customer') }}</th><td>{{ trim(($purchase->first_name ?? '').' '.($purchase->last_name ?? '')) }}</td></tr>
             <tr><th>Email</th><td>{{ $purchase->email }}</td></tr>
             <tr><th>{{ __('messages.order_summary.product') }}</th><td>{{ $planName }}</td></tr>
+            @if(!empty($purchase->package_duration_days))<tr><th>{{ __('experience.duration_label') }}</th><td>{{ __('experience.duration', ['days' => $purchase->package_duration_days]) }} · {{ __('experience.activation') }}</td></tr>@endif
             <tr><th>{{ __('messages.order_summary.payment_status') }}</th><td>{{ __('messages.order_summary.confirmed') }}</td></tr>
             <tr><th>{{ __('messages.order_summary.amount_paid') }}</th><td class="total">{{ number_format($purchase->amount / 100, 2, ',', '.') }} {{ strtoupper($purchase->currency) }}</td></tr>
         </table>
