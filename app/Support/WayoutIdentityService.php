@@ -13,7 +13,7 @@ class WayoutIdentityService
 
     /**
      * @param  array{first_name: string, last_name: string, email: string, date_of_birth: string, gender: string}  $profile
-     * @return array{id: string, created: bool, mobile_number: string}
+     * @return array{id: string, created: bool, mobile_number: string, access_token: string}
      */
     public function resolve(string $firebaseToken, array $profile): array
     {
@@ -87,7 +87,7 @@ class WayoutIdentityService
             );
         }
 
-        return ['id' => $id, 'created' => $created, 'mobile_number' => $mobileNumber];
+        return ['id' => $id, 'created' => $created, 'mobile_number' => $mobileNumber, 'access_token' => $accessToken];
     }
 
     private function accessToken(array $payload): ?string

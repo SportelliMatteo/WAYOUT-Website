@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminRefundController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ConsentController;
 use App\Http\Controllers\ContactController;
@@ -59,6 +60,7 @@ Route::get('/admin/otp/challenge', [AdminAuthController::class, 'showChallenge']
 Route::post('/admin/otp/challenge', [AdminAuthController::class, 'verifyChallenge'])->middleware('throttle:admin')->name('admin.otp.verify');
 
 Route::middleware('admin.auth')->group(function () {
+    Route::post('/admin/withdrawals/{withdrawal}/refund', [AdminRefundController::class, 'store'])->middleware('throttle:admin')->name('admin.withdrawals.refund');
     Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
     Route::get('/admin/recovery-codes', [AdminAuthController::class, 'recoveryCodes'])->name('admin.recovery-codes');
     Route::post('/admin/recovery-codes', [AdminAuthController::class, 'acknowledgeRecoveryCodes'])->name('admin.recovery-codes.acknowledge');

@@ -24,14 +24,16 @@ class FounderPromoCatalog
         ];
     }
 
-    /** All paid packages exposed by the internal sales catalog, keyed by code. */
-    public function packages(bool $fresh = false): array
+    /** Packages exposed by the internal sales catalog, keyed by code. */
+    public function packages(bool $fresh = false, bool $includeFree = false): array
     {
-        return $fresh ? $this->load() : Cache::remember(
-            'wayout:paid-promo-catalog:'.sha1((string) config('services.wayout.base_url')),
+        $packages = $fresh ? $this->load() : Cache::remember(
+            'wayout:all-promo-catalog:'.sha1((string) config('services.wayout.base_url')),
             max(1, (int) config('services.wayout.catalog_cache_seconds', 60)),
             fn (): array => $this->load(),
         );
+
+        return $includeFree ? $packages : array_filter($packages, fn (array $package): bool => ($package['free'] ?? true) === false);
     }
 
     public function packageForPlan(string $plan, bool $fresh = false): ?array
@@ -43,11 +45,15 @@ class FounderPromoCatalog
             default => $plan,
         };
 
-        return $this->packages($fresh)[$code] ?? null;
+        return $this->packages($fresh, includeFree: true)[$code] ?? null;
     }
 
     public function amountInCents(array $package): int
     {
+        if (($package['free'] ?? false) === true) {
+            return 0;
+        }
+
         $price = (string) ($package['price'] ?? '');
 
         if (preg_match('/^\d+(?:\.\d{2})$/', $price) !== 1) {
@@ -67,7 +73,6 @@ class FounderPromoCatalog
 
         foreach (($response['data'] ?? []) as $package) {
             if (! is_array($package)
-                || ($package['free'] ?? true) !== false
                 || ! is_string($package['code'] ?? null)
                 || $package['code'] === ''
                 || strlen($package['code']) > 80

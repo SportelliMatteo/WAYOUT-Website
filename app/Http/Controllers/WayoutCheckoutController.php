@@ -41,7 +41,8 @@ class WayoutCheckoutController extends Controller
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'gender' => ['required', Rule::in(['MALE', 'FEMALE', 'OTHER'])],
             'invoice_requested' => ['sometimes', 'boolean'],
-            'purchase_terms_accepted' => ['required', 'accepted'],
+            'purchase_terms_accepted' => [Rule::excludeIf($plan === '__plans'), 'required', 'accepted'],
+            'recurring_terms_accepted' => [Rule::excludeIf(! str_starts_with($plan, 'price_')), 'required', 'accepted'],
             'billing_customer_type' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', Rule::in($allowedBillingCustomerTypes)],
             'billing_address' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', 'string', 'max:255'],
             'billing_postal_code' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', 'string', 'max:20'],
@@ -81,9 +82,11 @@ class WayoutCheckoutController extends Controller
         $email = strtolower(trim($validated['email']));
 
         try {
-            $package = $catalog->packageForPlan($plan, fresh: true);
+            $isPlanCatalog = $plan === '__plans';
+            $isRecurring = str_starts_with($plan, 'price_');
+            $package = ($isPlanCatalog || $isRecurring) ? null : $catalog->packageForPlan($plan, fresh: true);
 
-            if (! $package || ($package['free'] ?? true) !== false || (int) ($package['duration_days'] ?? 0) <= 0) {
+            if (! $isPlanCatalog && ! $isRecurring && (! $package || (int) ($package['duration_days'] ?? 0) <= 0)) {
                 return response()->json(['error' => __('messages.subscribe.package_unavailable')], 422);
             }
 
@@ -99,15 +102,42 @@ class WayoutCheckoutController extends Controller
                 'gender' => $validated['gender'],
             ]);
 
+            if ($isPlanCatalog || $isRecurring) {
+                $plans = $wayout->bearerGet('/api/v1/plans', $identity['access_token']);
+                $offers = [];
+                foreach (($plans['data'] ?? []) as $offer) {
+                    if (! is_array($offer) || ($offer['active'] ?? false) !== true) {
+                        continue;
+                    }
+                    foreach (($offer['providers'] ?? []) as $provider) {
+                        if (($provider['provider'] ?? null) === 'STRIPE' && ($provider['active'] ?? false) === true
+                            && is_string($provider['external_price_id'] ?? null) && str_starts_with($provider['external_price_id'], 'price_')) {
+                            $offers[] = [...$offer, 'external_price_id' => $provider['external_price_id']];
+                        }
+                    }
+                }
+                if ($isPlanCatalog) {
+                    return response()->json(['plans' => $offers]);
+                }
+                $offer = collect($offers)->firstWhere('external_price_id', $plan);
+                if (! $offer) {
+                    return response()->json(['error' => __('messages.subscribe.package_unavailable')], 422);
+                }
+                $package = [...$offer, 'code' => $plan, 'free' => false, 'duration_days' => null];
+            }
+
+            $selection = $isRecurring ? ['external_price_id' => $plan] : ['promo_package_code' => $package['code']];
             $eligibility = $wayout->internalPost('/api/v1/internal/purchase-eligibility', [
                 'user' => ['id' => $identity['id']],
-                'promo_package_code' => $package['code'],
+                ...$selection,
             ]);
 
             if (data_get($eligibility, 'data.allowed') !== true) {
                 return response()->json([
                     'error' => data_get($eligibility, 'data.message') ?: __('messages.subscribe.package_unavailable'),
                     'reason' => data_get($eligibility, 'data.reason'),
+                    'until' => data_get($eligibility, 'data.until'),
+                    'available' => data_get($eligibility, 'data.available'),
                 ], 422);
             }
 
@@ -125,9 +155,22 @@ class WayoutCheckoutController extends Controller
             $purchase = DB::table('purchases')->where('id', $purchaseId)->first();
             $successUrl = URL::temporarySignedRoute('checkout.success', now()->addDay(), ['purchase' => $purchaseId]);
             $cancelUrl = URL::temporarySignedRoute('checkout.cancel', now()->addDay(), ['purchase' => $purchaseId]);
+            if (($package['free'] ?? false) === true) {
+                $activation = $wayout->internalPost('/api/v1/internal/promo-packages/activate', [
+                    'user' => ['id' => $identity['id']],
+                    'code' => $package['code'],
+                    'external_reference' => $purchase->order_reference,
+                ]);
+                if (! in_array(data_get($activation, 'data.result'), ['activated', 'duplicate'], true)) {
+                    throw new WayoutApiException('Attivazione del pacchetto non confermata.', 502, 'ACTIVATION_NOT_CONFIRMED');
+                }
+
+                return response()->json(['redirectUrl' => $successUrl, 'purchaseId' => $purchaseId]);
+            }
+
             $checkout = $wayout->internalPost('/api/v1/internal/checkout-sessions', [
                 'user' => ['id' => $identity['id']],
-                'promo_package_code' => $package['code'],
+                ...$selection,
                 'success_url' => $successUrl,
                 'cancel_url' => $cancelUrl,
                 'external_reference' => $purchase->order_reference,
@@ -239,7 +282,7 @@ class WayoutCheckoutController extends Controller
 
             $existing = DB::table('purchases')
                 ->where('wayout_user_id', $wayoutUserId)
-                ->where('promo_package_code', $package['code'])
+                ->where(isset($package['external_price_id']) ? 'external_price_id' : 'promo_package_code', $package['code'])
                 ->where('status', 'pending')
                 ->latest('created_at')
                 ->lockForUpdate()
@@ -248,7 +291,12 @@ class WayoutCheckoutController extends Controller
             $data = [
                 'waitlist_entry_id' => $waitlistEntryId,
                 'wayout_user_id' => $wayoutUserId,
-                'promo_package_code' => $package['code'],
+                'promo_package_code' => isset($package['external_price_id']) ? null : $package['code'],
+                'offer_type' => isset($package['external_price_id']) ? 'PLAN' : 'PROMO_PACKAGE',
+                'offer_id' => $package['id'] ?? null,
+                'external_price_id' => $package['external_price_id'] ?? null,
+                'billing_period' => $package['billing_period'] ?? null,
+                'auto_renew' => isset($package['external_price_id']),
                 'package_name' => $package['name'] ?? $package['code'],
                 'package_start_at' => null,
                 'package_end_at' => null,

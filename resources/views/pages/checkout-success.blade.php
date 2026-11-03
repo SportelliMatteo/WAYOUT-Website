@@ -34,6 +34,7 @@
                 <div class="mt-6 max-w-2xl rounded-3xl bg-white/[0.08] p-5">
                     <p class="text-base font-bold leading-7 text-slate-100">
                         {{ \App\Support\PurchasePackage::name($order) }}<br>{{ __('experience.purchase_summary') }}
+                        @if($order->auto_renew ?? false)<br>{{ __('experience.recurring_renewal') }} {{ __('experience.billing_periods.'.$order->billing_period) }}@else<br>{{ __('experience.no_renewal') }}@endif
                         @if($order->package_duration_days)<br>{{ __('experience.duration', ['days' => $order->package_duration_days]) }}@endif
                         @if($order->package_start_at && $order->package_end_at)<br>{{ __('experience.starts') }}: {{ \Illuminate\Support\Carbon::parse($order->package_start_at)->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }} · {{ __('experience.ends') }}: {{ \Illuminate\Support\Carbon::parse($order->package_end_at)->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}@endif
                     </p>

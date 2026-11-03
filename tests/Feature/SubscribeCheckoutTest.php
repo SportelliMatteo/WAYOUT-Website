@@ -34,7 +34,7 @@ class SubscribeCheckoutTest extends TestCase
         $this->post('/subscribe/access')->assertNotFound();
     }
 
-    public function test_subscribe_page_uses_only_the_two_paid_founder_packages(): void
+    public function test_subscribe_page_separates_paid_promos_and_subscriptions_and_hides_free_offers(): void
     {
         $this->fakeCatalog();
         config()->set('services.firebase.client.measurement_id', 'G-TEST123');
@@ -52,6 +52,10 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSee('id="payment-phone-verify"', false)
             ->assertSeeInOrder(['window.wayoutFirebaseConfig', 'measurementId', 'G-TEST123'], false)
             ->assertDontSee('WAITLIST_60D_PASS')
+            ->assertSee('id="promo-offers"', false)
+            ->assertSee('id="subscription-offers"', false)
+            ->assertSee('Pacchetti promo one shot')
+            ->assertSee('Scopri gli abbonamenti')
             ->assertDontSee('js.stripe.com', false);
     }
 
@@ -64,7 +68,7 @@ class SubscribeCheckoutTest extends TestCase
             ->assertDontSee('Waitlist Pass')->assertDontSee('prima del lancio');
     }
 
-    public function test_catalog_grid_supports_ten_arbitrary_packages_and_excludes_free_and_inactive_ones(): void
+    public function test_catalog_grid_supports_arbitrary_packages_including_free_and_excludes_inactive_ones(): void
     {
         $packages = [];
         for ($index = 1; $index <= 10; $index++) {
@@ -215,7 +219,7 @@ class SubscribeCheckoutTest extends TestCase
                 '/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
                 '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
                 '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
-                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => false, 'reason' => 'ALREADY_ACTIVE', 'message' => 'Promo non disponibile.']]),
+                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => false, 'reason' => 'ACTIVE_SUBSCRIPTION', 'message' => 'Promo non disponibile.']]),
                 default => Http::response([], 404),
             };
         });
@@ -223,7 +227,7 @@ class SubscribeCheckoutTest extends TestCase
         $this->withSession($this->checkoutSession($entry))
             ->postJson(route('subscribe.checkout'), $this->checkoutPayload())
             ->assertUnprocessable()
-            ->assertJson(['reason' => 'ALREADY_ACTIVE']);
+            ->assertJson(['reason' => 'ACTIVE_SUBSCRIPTION']);
 
         Http::assertNotSent(fn (Request $request): bool => str_ends_with($request->url(), '/checkout-sessions'));
         $this->assertDatabaseCount('purchases', 0);
@@ -297,6 +301,82 @@ class SubscribeCheckoutTest extends TestCase
             $this->assertNotEmpty($urls[$document]);
         }
 
+        Mail::assertSent(PurchaseConfirmationMail::class);
+    }
+
+    public function test_free_package_is_activated_without_a_stripe_checkout(): void
+    {
+        Http::fake(function (Request $request) {
+            return match (parse_url($request->url(), PHP_URL_PATH)) {
+                '/api/v1/internal/promo-packages' => Http::response(['data' => [['code' => 'FREE60', 'free' => true, 'duration_days' => 60, 'price' => null]]]),
+                '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/users/me' => Http::response(['data' => ['id' => '32131864-6d52-4b97-919d-99d4f2abc845']]),
+                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
+                '/api/v1/internal/promo-packages/activate' => Http::response(['data' => ['result' => 'activated']]),
+                default => Http::response([], 404),
+            };
+        });
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload('FREE60'))->assertOk()->assertJsonStructure(['redirectUrl', 'purchaseId']);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/checkout-sessions'));
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/promo-packages/activate') && $request['code'] === 'FREE60' && ! empty($request['external_reference']));
+        $this->assertDatabaseHas('purchases', ['plan' => 'FREE60', 'amount' => 0, 'offer_type' => 'PROMO_PACKAGE']);
+    }
+
+    public function test_recurring_catalog_uses_bearer_and_checkout_uses_external_price_id(): void
+    {
+        Http::fake(function (Request $request) {
+            return match (parse_url($request->url(), PHP_URL_PATH)) {
+                '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/users/me' => Http::response(['data' => ['id' => '32131864-6d52-4b97-919d-99d4f2abc845']]),
+                '/api/v1/plans' => Http::response(['data' => [
+                    ['id' => '32131864-6d52-4b97-919d-99d4f2abc846', 'name' => 'Mensile', 'active' => true, 'price' => '12.00', 'currency' => 'EUR', 'billing_period' => 'MONTHLY', 'providers' => [['provider' => 'STRIPE', 'active' => true, 'external_price_id' => 'price_monthly']]],
+                    ['name' => 'Solo Apple', 'active' => true, 'providers' => [['provider' => 'APPLE', 'active' => true]]],
+                ]]),
+                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
+                '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_monthly', 'url' => 'https://checkout.stripe.test/monthly']]]),
+                default => Http::response([], 404),
+            };
+        });
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload('__plans'))
+            ->assertOk()->assertJsonCount(1, 'plans')->assertDontSee('existing-token');
+        $this->assertDatabaseCount('purchases', 0);
+        $this->postJson(route('subscribe.checkout'), [...$this->checkoutPayload('price_monthly'), 'recurring_terms_accepted' => true])
+            ->assertOk()->assertJson(['redirectUrl' => 'https://checkout.stripe.test/monthly']);
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/api/v1/plans') && $request->hasHeader('Authorization', 'Bearer existing-token') && ! $request->hasHeader('X-Wayout-Signature'));
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/checkout-sessions') && $request['external_price_id'] === 'price_monthly' && ! isset($request['promo_package_code']));
+        $this->assertDatabaseHas('purchases', ['external_price_id' => 'price_monthly', 'offer_type' => 'PLAN', 'auto_renew' => true, 'billing_period' => 'MONTHLY', 'amount' => 1200]);
+    }
+
+    public function test_recurring_purchase_requires_explicit_renewal_consent(): void
+    {
+        Http::fake();
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload('price_monthly'))
+            ->assertUnprocessable()->assertJsonValidationErrors('recurring_terms_accepted');
+        Http::assertNothingSent();
+    }
+
+    public function test_confirmation_waits_for_the_selected_offer_then_accepts_a_free_entitlement(): void
+    {
+        Mail::fake();
+        $purchaseId = DatabaseUuid::new();
+        $userId = '32131864-6d52-4b97-919d-99d4f2abc845';
+        $offerId = '32131864-6d52-4b97-919d-99d4f2abc846';
+        DB::table('purchases')->insert([
+            'id' => $purchaseId, 'wayout_user_id' => $userId, 'offer_id' => $offerId,
+            'offer_type' => 'PROMO_PACKAGE', 'promo_package_code' => 'FREE60', 'plan' => 'FREE60',
+            'email' => 'founder@example.com', 'first_name' => 'Matteo', 'last_name' => 'Sportelli',
+            'amount' => 0, 'currency' => 'eur', 'status' => 'pending', 'package_duration_days' => 60,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        Http::fake(['*/internal/users/*/subscription' => Http::sequence()
+            ->push(['data' => ['has_active_entitlement' => false]])
+            ->push(['data' => ['has_active_entitlement' => true, 'offer' => ['id' => 'other-offer'], 'subscription' => ['source' => 'PROMO']]])
+            ->push(['data' => ['has_active_entitlement' => true, 'offer' => ['id' => $offerId], 'subscription' => ['source' => 'PROMO', 'start_at' => '2026-11-03T12:00:00Z', 'end_at' => '2027-01-02T12:00:00Z']]])]);
+        $statusUrl = URL::temporarySignedRoute('checkout.status', now()->addMinute(), ['purchase' => $purchaseId]);
+        $this->getJson($statusUrl)->assertOk()->assertJson(['state' => 'pending']);
+        $this->getJson($statusUrl)->assertOk()->assertJson(['state' => 'pending']);
+        $this->getJson($statusUrl)->assertOk()->assertJson(['state' => 'confirmed']);
+        $this->assertDatabaseHas('purchases', ['id' => $purchaseId, 'status' => 'succeeded', 'package_end_at' => '2027-01-02 12:00:00']);
         Mail::assertSent(PurchaseConfirmationMail::class);
     }
 

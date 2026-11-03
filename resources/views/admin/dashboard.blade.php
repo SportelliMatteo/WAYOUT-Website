@@ -708,7 +708,15 @@
                                 <td class="px-4 py-3 font-bold">{{ $withdrawal->purchase_email }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->order_reference }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->status }}</td>
-                                <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->refund_status }}</td>
+                                <td class="whitespace-nowrap px-4 py-3 font-bold">
+                                    {{ $withdrawal->refund_status }}
+                                    @if($withdrawal->purchase_id && $withdrawal->refund_status !== 'succeeded')
+                                        <form method="POST" action="{{ route('admin.withdrawals.refund', $withdrawal->id) }}" class="mt-2">
+                                            @csrf
+                                            <button type="submit" class="rounded-lg bg-slate-950 px-3 py-2 text-white">{{ __('experience.refund_action') }}</button>
+                                        </form>
+                                    @endif
+                                </td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold">{{ $withdrawal->receipt_email_sent_at ? __('messages.admin.sent') : __('messages.admin.not_sent') }}</td>
                                 <td class="whitespace-nowrap px-4 py-3 font-bold text-slate-500">{{ $date($withdrawal->submitted_at) }}</td>
                             </tr>

@@ -7,6 +7,11 @@
 @endif
 {{ __('experience.email_label', ['email' => $purchase['email']]) }}
 {{ __('experience.purchase_summary') }}
+@if(!empty($purchase['auto_renew']))
+{{ __('experience.recurring_renewal') }} {{ __('experience.billing_periods.'.$purchase['billing_period']) }}
+@else
+{{ __('experience.no_renewal') }}
+@endif
 @if(!empty($purchase['duration_days']))
 {{ __('experience.duration_label') }}: {{ __('experience.duration', ['days' => $purchase['duration_days']]) }}
 @endif

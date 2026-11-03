@@ -261,7 +261,7 @@ class SubscribeController extends Controller
             return 'confirmed';
         }
 
-        if (in_array($purchase->status, ['failed', 'canceled', 'expired', 'overbooked'], true)) {
+        if (in_array($purchase->status, ['failed', 'canceled', 'expired', 'overbooked', 'refunded'], true)) {
             return 'review';
         }
 
@@ -284,10 +284,14 @@ class SubscribeController extends Controller
             return 'pending';
         }
 
+        if (! empty($purchase->offer_id) && data_get($response, 'data.offer.id') !== $purchase->offer_id) {
+            return 'pending';
+        }
+
         $stripeSubscriptionId = data_get($response, 'data.subscription.stripe_subscription_id');
         $source = data_get($response, 'data.subscription.source');
 
-        if ($source !== 'STRIPE') {
+        if ($source !== 'STRIPE' && ! ($source === 'PROMO' && (int) $purchase->amount === 0)) {
             Log::warning('Wayout confirmation returned a non-Stripe entitlement.', [
                 'purchase_id' => $purchase->id,
                 'source' => $source,
@@ -299,7 +303,7 @@ class SubscribeController extends Controller
         DB::transaction(function () use ($purchase, $stripeSubscriptionId, $response): void {
             $locked = DB::table('purchases')->where('id', $purchase->id)->lockForUpdate()->first();
 
-            if (! $locked || $locked->status === 'succeeded') {
+            if (! $locked || $locked->status !== 'pending') {
                 return;
             }
 
@@ -330,7 +334,9 @@ class SubscribeController extends Controller
             $confirmed->waitlist_entry_id,
         );
 
-        $qontoInvoices->sendForPurchase($confirmed->id);
+        if ((int) $confirmed->amount > 0) {
+            $qontoInvoices->sendForPurchase($confirmed->id);
+        }
         $this->sendAutomaticPurchaseConfirmation($confirmed->id, $emailSender);
         $request->session()->put('checkout_plan', $confirmed->plan);
         $request->session()->put('purchase_confirmation_email', $confirmed->email);
@@ -379,7 +385,11 @@ class SubscribeController extends Controller
                 'waitlist_entry_id' => $waitlistEntryId,
                 'purchase_id' => $purchaseId,
             ],
-            ['plan' => $plan],
+            [
+                'plan' => $plan,
+                'offer' => (array) DB::table('purchases')->where('id', $purchaseId)
+                    ->first(['offer_type', 'offer_id', 'external_price_id', 'billing_period', 'auto_renew', 'amount', 'currency']),
+            ],
         );
     }
 
@@ -477,6 +487,8 @@ class SubscribeController extends Controller
             'email' => $purchase->email,
             'plan_name' => PurchasePackage::name($purchase),
             'duration_days' => $purchase->package_duration_days ?? null,
+            'billing_period' => $purchase->billing_period ?? null,
+            'auto_renew' => (bool) ($purchase->auto_renew ?? false),
             'start_at' => $purchase->package_start_at ?? null,
             'end_at' => $purchase->package_end_at ?? null,
             'amount' => $purchase->amount,

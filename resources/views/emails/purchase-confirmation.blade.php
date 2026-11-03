@@ -16,6 +16,7 @@
         @endif
         <p>{!! __('experience.email_label', ['email' => '<strong>'.e($purchase['email']).'</strong>']) !!}</p>
         <p>{{ __('experience.purchase_summary') }}</p>
+        <p>@if(!empty($purchase['auto_renew'])){{ __('experience.recurring_renewal') }} {{ __('experience.billing_periods.'.$purchase['billing_period']) }}@else{{ __('experience.no_renewal') }}@endif</p>
         @if(!empty($purchase['duration_days']))<p>{{ __('experience.duration_label') }}: <strong>{{ __('experience.duration', ['days' => $purchase['duration_days']]) }}</strong></p>@endif
         @if (($purchase['attachment_kind'] ?? null) === 'order_summary')
             <p style="border-left:4px solid #7c3aed;background:#f5f3ff;padding:12px 14px">{{ __('messages.email.order_summary_attached') }}</p>

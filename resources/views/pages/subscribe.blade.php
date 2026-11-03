@@ -41,8 +41,18 @@
             <p class="experience-kicker">{{ __('experience.plans_label') }}</p>
             <h1>{{ __('experience.plans_headline') }}<br><span>{{ __('experience.plans_highlight') }}</span></h1>
             <p>{{ __('experience.plans_intro') }}</p>
-            <div class="exclusive-tags">@foreach(__('experience.exclusive_tags') as $tag)<span>✓ {{ $tag }}</span>@endforeach</div>
+            <div class="exclusive-tags">@foreach(__('experience.sales_tags') as $tag)<span>✓ {{ $tag }}</span>@endforeach</div>
         </header>
+        <nav class="offer-navigation" aria-label="{{ __('experience.offer_navigation') }}">
+            <a href="#promo-offers"><span>{{ __('experience.promo_title') }}</span><small>{{ __('experience.no_renewal') }}</small></a>
+            <a href="#subscription-offers"><span>{{ __('experience.recurring_title') }}</span><small>{{ __('experience.recurring_renewal') }}</small></a>
+        </nav>
+        <section id="promo-offers" class="offer-section offer-section-promo" aria-labelledby="promo-title">
+            <header class="offer-section-heading">
+                <span class="offer-kind">{{ __('experience.one_shot') }}</span>
+                <h2 id="promo-title">{{ __('experience.promo_title') }}</h2>
+                <p>{{ __('experience.promo_intro') }}</p>
+            </header>
         @if(session('checkout_error'))<p class="mt-8 rounded-2xl bg-rose-50 p-4 text-center font-bold text-rose-800" role="alert">{{ session('checkout_error') }}</p>@endif
         @if($catalogError)
             <div class="packages-empty" role="alert"><h2>{{ __('experience.catalog_error') }}</h2><a href="{{ route('subscribe', ['lang' => app()->getLocale()]) }}" class="experience-cta">{{ __('experience.retry') }} ↗</a></div>
@@ -57,17 +67,17 @@
                         $canPurchase = !$soldOut && $duration > 0;
                         $inputId = 'package-'.$loop->index;
                         $currency = strtoupper($package['currency'] ?? 'EUR');
-                        $price = number_format((float) $package['price'], 2, app()->getLocale() === 'it' ? ',' : '.', app()->getLocale() === 'it' ? '.' : ',');
+                        $price = number_format((float) ($package['price'] ?? 0), 2, app()->getLocale() === 'it' ? ',' : '.', app()->getLocale() === 'it' ? '.' : ',');
                         $permissions = collect(data_get($package, 'tier.permissions', []))->filter(fn ($permission) =>
                             !empty($permission['description']) && (($permission['value_type'] ?? null) === 'BOOL' ? ($permission['value'] ?? false) === true : is_numeric($permission['value'] ?? null) && (int) $permission['value'] !== 0)
                         );
                     @endphp
                     <article class="package-card" data-package-code="{{ $package['code'] }}">
-                        <div class="package-badges"><span>{{ __('experience.one_shot') }}</span>@if($soldOut)<span>{{ __('experience.sold_out') }}</span>@elseif(is_numeric($package['available'] ?? null))<span class="stock-badge">{{ __('experience.remaining', ['count' => $package['available']]) }}</span>@endif</div>
+                        <div class="package-badges"><span>{{ ($package['free'] ?? false) ? __('experience.free') : __('experience.one_shot') }}</span>@if($soldOut)<span>{{ __('experience.sold_out') }}</span>@elseif(is_numeric($package['available'] ?? null))<span class="stock-badge">{{ __('experience.remaining', ['count' => $package['available']]) }}</span>@endif</div>
                         <h2>{{ $package['name'] ?? $package['code'] }}</h2>
                         @if(!empty($package['description']))<p class="package-description">{{ $package['description'] }}</p>@endif
                         <p class="package-price">{{ $price }}<small>{{ $currency === 'EUR' ? '€' : $currency }}</small></p>
-                        <p class="package-price-note">{{ __('experience.exclusive_price') }} · {{ __('experience.one_shot') }}</p>
+                        <p class="package-price-note">{{ ($package['free'] ?? false) ? __('experience.free') : __('experience.exclusive_price').' · '.__('experience.one_shot') }}</p>
                         <div class="package-period"><strong>{{ $duration > 0 ? __('experience.duration', ['days' => $duration]) : __('experience.validity_pending') }}</strong><span>{{ __('experience.activation') }}</span></div>
                         @if($permissions->isNotEmpty())
                             <ul class="package-permissions" aria-label="{{ __('experience.included') }}">
@@ -77,13 +87,27 @@
                         <div class="package-purchase">
                             <p>{{ $duration > 0 ? __('experience.validity', ['days' => $duration]) : __('experience.validity_pending') }}</p>
                             <p>✓ {{ __('experience.no_renewal') }}</p>
-                            <input id="{{ $inputId }}" class="sr-only" type="radio" name="plan" value="{{ $package['code'] }}" data-price="{{ $package['price'] }}" data-currency="{{ $currency }}" tabindex="-1" aria-hidden="true" @disabled(!$canPurchase)>
-                            <button type="button" data-package-checkout="{{ $inputId }}" data-summary="{{ ($package['name'] ?? $package['code']).' · '.$price.' '.$currency.' · '.__('experience.duration', ['days' => $duration]) }}" @disabled(!$canPurchase)><span>{{ $soldOut ? __('experience.sold_out') : __('experience.buy') }}</span><span aria-hidden="true">↗</span></button>
+                            <input id="{{ $inputId }}" class="sr-only" type="radio" name="plan" value="{{ $package['code'] }}" data-free="{{ ($package['free'] ?? false) ? 'true' : 'false' }}" data-price="{{ $package['price'] ?? '0.00' }}" data-currency="{{ $currency }}" tabindex="-1" aria-hidden="true" @disabled(!$canPurchase)>
+                            <button type="button" data-package-checkout="{{ $inputId }}" data-summary="{{ ($package['name'] ?? $package['code']).' · '.$price.' '.$currency.' · '.__('experience.duration', ['days' => $duration]) }}" @disabled(!$canPurchase)><span>{{ $soldOut ? __('experience.sold_out') : (($package['free'] ?? false) ? __('experience.activate') : __('experience.buy')) }}</span><span aria-hidden="true">↗</span></button>
                         </div>
                     </article>
                 @endforeach
             </div>
         @endif
+        </section>
+        <section id="subscription-offers" class="offer-section offer-section-recurring" aria-labelledby="subscriptions-title">
+            <header class="offer-section-heading">
+                <span class="offer-kind">{{ __('experience.recurring_badge') }}</span>
+                <h2 id="subscriptions-title">{{ __('experience.recurring_title') }}</h2>
+                <p>{{ __('experience.recurring_description') }}</p>
+            </header>
+            <div id="recurring-catalog-intro" class="recurring-catalog-intro">
+                <p>{{ __('experience.recurring_intro') }}</p>
+            <input id="recurring-catalog" type="radio" name="plan" value="__plans" class="sr-only" tabindex="-1">
+            <button type="button" class="experience-cta mt-4" data-package-checkout="recurring-catalog" data-summary="{{ __('experience.recurring_title') }}">{{ __('experience.recurring_browse') }} <span aria-hidden="true">↗</span></button>
+            </div>
+            <div id="recurring-plans" class="packages-grid recurring-plans-grid" aria-live="polite"></div>
+        </section>
         <p class="packages-difference">{{ __('experience.plans_difference') }}</p>
         <section class="packages-faq"><h2>{{ __('experience.faq_title') }}</h2>@foreach(__('experience.faqs') as $faq)<details><summary>{{ $faq['question'] }}</summary><p>{{ $faq['answer'] }}</p></details>@endforeach</section>
     </div>
@@ -153,7 +177,7 @@
                 <div id="payment-phone-recaptcha"></div>
                 <p id="payment-phone-status" class="hidden rounded-2xl px-4 py-3 text-sm font-bold" role="status" aria-live="polite"></p>
             </section>
-            <label class="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
+            <label id="invoice-option" class="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
                 <input id="invoice-requested" type="checkbox" name="invoice_requested" value="true" class="mt-1 h-5 w-5 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
                 <span>
                     <span class="block text-sm font-black text-slate-950">{{ __('messages.subscribe.invoice_requested') }}</span>
@@ -228,11 +252,15 @@
                 </div>
                 @endif
             </section>
-            <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+            <label id="purchase-terms" class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
                 <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
                 <span class="text-sm font-semibold leading-6 text-slate-700 [&_a]:font-black [&_a]:text-violet-700 [&_a]:underline [&_a]:underline-offset-4">
                     {!! $legalDocumentsHtml['purchase_acceptance'] !!}
                 </span>
+            </label>
+            <label id="recurring-terms" class="hidden flex items-start gap-3 rounded-2xl bg-violet-50 p-4">
+                <input id="recurring-terms-accepted" type="checkbox" name="recurring_terms_accepted" class="mt-1 h-5 w-5">
+                <span>{{ __('experience.recurring_consent') }}</span>
             </label>
             <p id="payment-details-error" role="alert" class="hidden whitespace-pre-line rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"></p>
             <button id="payment-details-submit" type="submit" disabled class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-60">
@@ -249,6 +277,7 @@
     let button = null;
     let originalButtonText = '';
     let previousFocus = null;
+    let submitLabel = @json(__('messages.subscribe.confirm_and_pay'));
     const paymentModal = document.getElementById('payment-details-modal');
     const paymentForm = document.getElementById('payment-details-form');
     const paymentError = document.getElementById('payment-details-error');
@@ -390,21 +419,35 @@
         previousFocus?.focus();
     }
 
-    document.querySelectorAll('[data-package-checkout]').forEach((checkoutButton) => {
-        checkoutButton.addEventListener('click', () => {
+    document.addEventListener('click', (event) => {
+            const checkoutButton = event.target.closest('[data-package-checkout]');
+            if (!checkoutButton) return;
             button = checkoutButton;
             originalButtonText = button.textContent;
             previousFocus = document.activeElement;
             const selectedPlan = document.getElementById(button.dataset.packageCheckout);
             if (!selectedPlan || button.disabled) return;
             selectedPlan.checked = true;
+            const recurring = selectedPlan.value.startsWith('price_');
+            const browsing = selectedPlan.value === '__plans';
+            const free = selectedPlan.dataset.free === 'true';
+            document.getElementById('purchase-terms').classList.toggle('hidden', browsing);
+            document.getElementById('purchase-terms-accepted').required = !browsing;
+            document.getElementById('invoice-option').classList.toggle('hidden', browsing || free);
+            if (browsing || free) { invoiceCheckbox.checked = false; updateInvoiceFields(); }
+            document.getElementById('recurring-terms').classList.toggle('hidden', !recurring);
+            document.getElementById('recurring-terms-accepted').required = recurring;
+            document.getElementById('recurring-terms-accepted').checked = false;
+            submitLabel = selectedPlan.value === '__plans' ? @json(__('experience.recurring_browse'))
+                : selectedPlan.dataset.free === 'true' ? @json(__('experience.activate'))
+                : @json(__('messages.subscribe.confirm_and_pay'));
+            if (paymentSubmitText) paymentSubmitText.textContent = submitLabel;
             document.getElementById('selected-package-summary').textContent = button.dataset.summary;
             paymentError?.classList.add('hidden');
             paymentModal?.classList.remove('hidden');
             paymentModal?.classList.add('flex');
             document.body.style.overflow = 'hidden';
             document.getElementById('payment-details-close')?.focus();
-        });
     });
     paymentModal?.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') closePaymentModal();
@@ -461,6 +504,7 @@
         const formData = new FormData(paymentForm);
         const payload = {
             plan: selectedPlan,
+            ...(selectedPlan.startsWith('price_') ? { recurring_terms_accepted: formData.get('recurring_terms_accepted') === 'on' } : {}),
             email: formData.get('email'),
             firebase_token: formData.get('firebase_token'),
             first_name: formData.get('first_name'),
@@ -503,6 +547,61 @@
                 return;
             }
 
+            if (Array.isArray(data.plans)) {
+                let catalog = document.getElementById('recurring-plans');
+                if (!catalog) {
+                    catalog = document.createElement('div');
+                    catalog.id = 'recurring-plans';
+                    catalog.className = 'packages-grid mt-6';
+                    document.getElementById('recurring-catalog').parentElement.append(catalog);
+                }
+                catalog.replaceChildren();
+                const periods = @json(__('experience.billing_periods'));
+                data.plans.forEach((plan, index) => {
+                    const card = document.createElement('article');
+                    card.className = 'package-card recurring-plan-card';
+                    const badges = document.createElement('div'); badges.className = 'package-badges';
+                    const badge = document.createElement('span'); badge.textContent = @json(__('experience.recurring_badge'));
+                    badges.append(badge);
+                    const title = document.createElement('h2');
+                    title.textContent = plan.name;
+                    const price = document.createElement('p');
+                    price.className = 'package-price';
+                    price.textContent = new Intl.NumberFormat(@json(app()->getLocale()), { style: 'currency', currency: plan.currency }).format(Number(plan.price));
+                    const period = document.createElement('p'); period.className = 'package-price-note';
+                    period.textContent = periods[plan.billing_period] || plan.billing_period;
+                    const renewal = document.createElement('p');
+                    renewal.textContent = @json(__('experience.recurring_renewal'));
+                    const permissions = document.createElement('ul');
+                    permissions.className = 'package-permissions';
+                    (plan.tier?.permissions || []).forEach((permission) => {
+                        if (!permission.description || permission.value == null || permission.value === false || permission.value === 0) return;
+                        const item = document.createElement('li');
+                        item.textContent = permission.description + (permission.value_type === 'INT' ? ` · ${permission.value}` : '');
+                        permissions.append(item);
+                    });
+                    const input = document.createElement('input');
+                    input.type = 'radio'; input.name = 'plan'; input.className = 'sr-only';
+                    input.id = `recurring-plan-${index}`; input.value = plan.external_price_id;
+                    input.dataset.price = plan.price; input.dataset.currency = plan.currency;
+                    const select = document.createElement('button');
+                    select.type = 'button'; select.className = 'experience-cta mt-4';
+                    select.dataset.packageCheckout = input.id;
+                    select.dataset.summary = `${plan.name} · ${price.textContent} · ${period.textContent} · ${renewal.textContent}`;
+                    select.textContent = @json(__('experience.buy'));
+                    const purchase = document.createElement('div'); purchase.className = 'package-purchase';
+                    purchase.append(renewal, input, select);
+                    card.append(badges, title, price, period, permissions, purchase);
+                    catalog.append(card);
+                });
+                document.getElementById('recurring-catalog-intro').classList.toggle('hidden', data.plans.length > 0);
+                if (!data.plans.length) catalog.textContent = @json(__('experience.empty_text'));
+                button.disabled = false; button.textContent = originalButtonText;
+                setPaymentLoading(false);
+                closePaymentModal();
+                catalog.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            }
             if (!data.redirectUrl) throw new Error('Missing checkout URL');
             window.location.assign(data.redirectUrl);
         } catch (error) {
