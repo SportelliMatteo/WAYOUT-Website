@@ -8,6 +8,7 @@
     data-ga4-id="{{ config('analytics.ga4_id') }}"
     data-meta-pixel-id="{{ config('analytics.meta_pixel_id') }}"
     data-debug="{{ config('analytics.debug') ? '1' : '0' }}"
+    data-lead-endpoint="{{ route('analytics.lead') }}"
     data-consent-endpoint="{{ route('cookie-consent.store') }}"
 ></div>
 

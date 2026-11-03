@@ -8,6 +8,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\SubscribeController;
+use App\Http\Controllers\WaitlistController;
 use App\Http\Controllers\WayoutCheckoutController;
 use App\Http\Controllers\WithdrawalController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,7 @@ Route::get('/checkout/cancel/{purchase}', [WayoutCheckoutController::class, 'can
 Route::post('/subscribe/checkout', [WayoutCheckoutController::class, 'store'])->middleware('throttle:checkout')->name('subscribe.checkout');
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware(['throttle:purchase-confirmation', 'recaptcha:purchase_confirmation'])->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware(['throttle:contact', 'recaptcha:contact'])->name('contact.store');
+Route::post('/analytics/lead', [WaitlistController::class, 'trackLead'])->middleware('throttle:30,1')->name('analytics.lead');
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->middleware('throttle:120,1')->name('cookie-consent.store');
 Route::get('/preferenze/marketing/{waitlist}', [ConsentController::class, 'showMarketingRevocation'])
     ->middleware('signed')
