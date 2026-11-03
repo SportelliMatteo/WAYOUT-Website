@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\WithdrawalReceiptMail;
+use App\Support\LegalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -62,7 +63,7 @@ class WithdrawalTest extends TestCase
 
         $this->assertSame('en', $withdrawal->locale);
         $this->assertSame(
-            app(\App\Support\LegalDocumentService::class)->current('withdrawal_info', 'en')->version,
+            app(LegalDocumentService::class)->current('withdrawal_info', 'en')->version,
             json_decode($withdrawal->document_versions, true)['withdrawal_info'],
         );
 

@@ -1,5 +1,8 @@
 <?php
 
+use Illuminate\Contracts\Console\Kernel;
+use Symfony\Component\Console\Output\BufferedOutput;
+
 // Upload this file directly into _wayout, beside artisan.
 // It rebuilds the configuration from the server's existing .env.
 // Run again after clearing META_CAPI_TEST_EVENT_CODE to end the test.
@@ -29,11 +32,11 @@ try {
     require __DIR__.'/vendor/autoload.php';
     $app = require __DIR__.'/bootstrap/app.php';
     $app->usePublicPath(dirname(__DIR__));
-    $kernel = $app->make(\Illuminate\Contracts\Console\Kernel::class);
+    $kernel = $app->make(Kernel::class);
     $kernel->bootstrap();
-    $output = new \Symfony\Component\Console\Output\BufferedOutput;
+    $output = new BufferedOutput;
     if ($kernel->call('config:cache', ['--no-interaction' => true], $output) !== 0) {
-        throw new \RuntimeException('Configuration rebuild failed');
+        throw new RuntimeException('Configuration rebuild failed');
     }
     // Read the newly generated cache, not the old in-memory configuration.
     $cached = require $app->getCachedConfigPath();
@@ -51,7 +54,7 @@ try {
     if (! $ready) {
         exit(1);
     }
-} catch (\Throwable $exception) {
+} catch (Throwable $exception) {
     // Exception messages and console output can contain credentials: omit them.
     $write('ERRORE: cache non verificata. Classe: '.get_class($exception).'. Controllare la configurazione del server.');
     exit(1);

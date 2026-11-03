@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\PurchaseConfirmationMail;
 use App\Support\DatabaseUuid;
+use App\Support\LegalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -242,7 +243,7 @@ class SubscribeCheckoutTest extends TestCase
 
         foreach (['sales', 'presale', 'passes', 'refunds', 'purchase_acceptance'] as $document) {
             $this->assertSame(
-                app(\App\Support\LegalDocumentService::class)->current($document, $legalEvent->locale)->version,
+                app(LegalDocumentService::class)->current($document, $legalEvent->locale)->version,
                 $versions[$document],
             );
             $this->assertSame(64, strlen($hashes[$document]));
