@@ -119,6 +119,11 @@ class WaitlistController extends Controller
                 ]);
             });
 
+            app(MetaConversions::class)->rememberVerification(
+                $request, $email, hash('sha256', $rawToken),
+                now()->addMinutes(max(1, (int) config('benefits.magic_link_minutes', 30)))->timestamp,
+            );
+
             if (! $emailSender->send($email, new WaitlistVerificationMail(
                 route('waitlist.verify.show', ['token' => $rawToken]),
             ))) {
@@ -154,7 +159,7 @@ class WaitlistController extends Controller
     public function verify(Request $request, string $token, TransactionalEmailSender $emailSender)
     {
         try {
-            $result = DB::transaction(function () use ($token): array {
+            $result = DB::transaction(function () use ($token, $request): array {
                 $verification = DB::table('waitlist_email_verifications')
                     ->where('token_hash', hash('sha256', $token))
                     ->lockForUpdate()
@@ -169,7 +174,8 @@ class WaitlistController extends Controller
                     return ['valid' => false];
                 }
 
-                if (! $entry->email_verified_at) {
+                $firstVerification = ! $entry->email_verified_at;
+                if ($firstVerification) {
                     $capacity = (int) (DB::table('founder_settings')->where('key', 'waitlist_capacity')
                         ->lockForUpdate()->value('value') ?? config('founder.default_capacities.waitlist_capacity'));
                     $verifiedCount = DB::table('waitlist_entries')->whereNotNull('email_verified_at')->count();
@@ -185,9 +191,14 @@ class WaitlistController extends Controller
                     ]);
                 }
 
-                DB::table('waitlist_email_verifications')->where('id', $verification->id)->update(['consumed_at' => now()]);
+                if ($firstVerification) {
+                    $verifiedEntry = DB::table('waitlist_entries')->where('id', $entry->id)->first();
+                    app(MetaConversions::class)->lead($request, $verifiedEntry, app(MetaConversions::class)->verificationContext($verification->token_hash));
+                }
+                DB::table('waitlist_email_verifications')->where('id', $verification->id)
+                    ->update(['consumed_at' => now()]);
 
-                return ['valid' => true, 'full' => false, 'entry_id' => $entry->id];
+                return ['valid' => true, 'full' => false, 'entry_id' => $entry->id, 'event_id' => $firstVerification ? MetaConversions::eventId('Lead', (string) $entry->id) : null];
             });
         } catch (QueryException $exception) {
             Log::error('Waitlist email verification failed.', PrivacySafeLogContext::exception($exception));
@@ -202,13 +213,31 @@ class WaitlistController extends Controller
             return redirect()->route('home')->with('waitlist_error', __('messages.messages.waitlist_closed'));
         }
 
+        app(MetaConversions::class)->forgetVerification(hash('sha256', $token));
         $entry = DB::table('waitlist_entries')->where('id', $result['entry_id'])->first();
-        app(MetaConversions::class)->lead($request, $entry);
+        if ($result['event_id']) {
+            $request->session()->flash('meta_lead_event_id', $result['event_id']);
+            $request->session()->put('meta_verified_lead_id', $result['event_id']);
+        }
         $this->sendWelcomeIfNeeded($entry, $emailSender);
 
         $request->session()->regenerate();
 
         return $this->redirectToOffer($request, $entry, alreadyRegistered: false);
+    }
+
+    public function trackLead(Request $request)
+    {
+        $data = $request->validate(['event_id' => ['required', 'string', 'max:80']]);
+        $entryId = $request->session()->get('waitlist_verified_entry_id');
+        abort_unless(is_string($entryId)
+            && $request->session()->get('meta_verified_lead_id') === $data['event_id']
+            && MetaConversions::eventId('Lead', $entryId) === $data['event_id'], 403);
+        $entry = DB::table('waitlist_entries')->where('id', $entryId)->whereNotNull('email_verified_at')->first();
+        abort_unless($entry, 403);
+        app(MetaConversions::class)->lead($request, $entry);
+
+        return response()->noContent();
     }
 
     private function verificationFor(string $token): ?object

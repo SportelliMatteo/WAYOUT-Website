@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -60,16 +61,54 @@ class MetaConversions
             }
         }
 
+        // Only a genuine click identifier may be used to build fbc.
+        $clickId = $request->query('fbclid');
+        if (is_string($clickId) && strlen($clickId) <= 450 && preg_match('/^[A-Za-z0-9_-]+$/', $clickId)
+            && ! str_ends_with($context['user_data']['fbc'] ?? '', '.'.$clickId)) {
+            $context['user_data']['fbc'] = 'fb.1.'.now()->getTimestampMs().'.'.$clickId;
+        }
+
         return Crypt::encryptString(json_encode($context, JSON_THROW_ON_ERROR));
     }
 
-    public function lead(Request $request, object $entry): void
+    public function rememberVerification(Request $request, string $email, string $tokenHash, int $expiresAt): void
     {
-        $this->safely(function () use ($request, $entry): void {
-            $context = $this->capture($request, $entry->email);
+        $this->safely(function () use ($request, $email, $tokenHash, $expiresAt): void {
+            $context = $this->capture($request, $email);
             if ($context) {
-                $this->enqueue($context, 'Lead', (string) $entry->id, Carbon::parse($entry->email_verified_at)->timestamp, route('home'));
+                Cache::store(config('analytics.meta_capi.context_store', 'meta_attribution'))
+                    ->put('verification:'.$tokenHash, $context, max(1, min(604800, $expiresAt - now()->timestamp)));
             }
+        });
+    }
+
+    public function verificationContext(string $tokenHash): ?string
+    {
+        return $this->safely(fn () => Cache::store(config('analytics.meta_capi.context_store', 'meta_attribution'))->get('verification:'.$tokenHash));
+    }
+
+    public function forgetVerification(string $tokenHash): void
+    {
+        $this->safely(fn () => Cache::store(config('analytics.meta_capi.context_store', 'meta_attribution'))->forget('verification:'.$tokenHash));
+    }
+
+    public function lead(Request $request, object $entry, ?string $savedContext = null): ?string
+    {
+        return $this->safely(function () use ($request, $entry, $savedContext): ?string {
+            if (! $this->enabled() || ! $entry->email_verified_at) {
+                return null;
+            }
+            // An explicit refusal in this browser takes precedence over saved attribution.
+            $consent = json_decode((string) $request->cookie('wayout_cookie_consent'), true);
+            if (is_array($consent) && ($consent['marketing'] ?? null) === false) {
+                return null;
+            }
+            $context = $savedContext ?: $this->capture($request, $entry->email);
+            if (! $context) {
+                return null;
+            }
+
+            return $this->enqueue($context, 'Lead', (string) $entry->id, Carbon::parse($entry->email_verified_at)->timestamp, route('home'));
         });
     }
 
@@ -100,11 +139,11 @@ class MetaConversions
         });
     }
 
-    private function enqueue(string $encryptedContext, string $name, string $reference, int $time, string $url, array $customData = []): void
+    private function enqueue(string $encryptedContext, string $name, string $reference, int $time, string $url, array $customData = []): ?string
     {
         $context = json_decode(Crypt::decryptString($encryptedContext), true, flags: JSON_THROW_ON_ERROR);
         if (! $this->consentAllows($context) || $time < now()->subDays(7)->timestamp) {
-            return;
+            return null;
         }
         $eventId = self::eventId($name, $reference);
         $payload = [
@@ -126,6 +165,8 @@ class MetaConversions
             'available_at' => now(),
             'created_at' => now(),
         ]);
+
+        return $eventId;
     }
 
     private function consentAllows(array $context): bool
@@ -144,6 +185,15 @@ class MetaConversions
     /** Returns the number of failed deliveries. No tokens, payloads or response bodies enter logs. */
     public function sendPending(): int
     {
+        // File cache entries expire logically at token expiry; remove unread remnants within seven days.
+        $directory = config('cache.stores.meta_attribution.path');
+        if (is_string($directory) && File::isDirectory($directory)) {
+            foreach (File::allFiles($directory) as $file) {
+                if ($file->getMTime() <= now()->subDays(7)->timestamp) {
+                    File::delete($file->getPathname());
+                }
+            }
+        }
         DB::table('meta_conversion_events')->where('created_at', '<', now()->subDays(7))->delete();
         DB::table('purchases')->whereNotNull('meta_conversion_context')->where('created_at', '<', now()->subDays(7))
             ->update(['meta_conversion_context' => null]);
@@ -213,12 +263,14 @@ class MetaConversions
         Log::warning('Meta conversion delivery deferred.', ['event_id' => $id, 'error_code' => $code]);
     }
 
-    private function safely(callable $operation): void
+    private function safely(callable $operation): mixed
     {
         try {
-            $operation();
+            return $operation();
         } catch (Throwable) {
             Log::warning('Meta conversion could not be recorded.');
+
+            return null;
         }
     }
 }

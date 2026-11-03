@@ -10,7 +10,7 @@ Il sito mostra un CMP proprietario prima di caricare qualsiasi strumento facolta
 
 La scelta viene salvata nel cookie necessario `wayout_cookie_consent` per 180 giorni. Ogni aggiornamento viene registrato in `cookie_consent_events` con un identificativo pseudonimo e hash di IP/user-agent, senza conservare questi ultimi in chiaro. Il totale degli aggiornamenti è visibile nella dashboard Laravel. Il pulsante “Gestisci preferenze cookie” nel footer permette di modificare o revocare il consenso. Alla revoca il sito elimina i cookie Google/Meta conosciuti e ricarica la pagina.
 
-Non vengono inviati ai fornitori dati dei form, email, telefono, nome, codice fiscale, benefit ID o altri identificativi personali. Il backend e la dashboard Laravel restano la fonte dei dati operativi; Analytics serve solo a misurare il funnel aggregato.
+Gli eventi browser non includono dati dei form, email, telefono, nome, codice fiscale o benefit ID. Quando CAPI è abilitata, il server invia a Meta l’email normalizzata con SHA-256, IP, user agent e identificativi `_fbp`/`_fbc` disponibili, esclusivamente con consenso Marketing valido e registrato. Il backend e la dashboard Laravel restano la fonte dei dati operativi; Analytics serve solo a misurare il funnel aggregato.
 
 ## Eventi del funnel
 
@@ -75,3 +75,25 @@ Quando GTM è configurato ha la precedenza sul caricamento GA4 diretto. Non inse
 7. In produzione impostare `ANALYTICS_DEBUG=false`, quindi eseguire `php artisan optimize:clear`, `php artisan config:cache` e `npm run build` durante il deploy.
 
 Se cambia la struttura dei fornitori, delle finalità o dei tempi di conservazione, incrementare `ANALYTICS_CONSENT_VERSION`: il sito richiederà nuovamente il consenso. Prima del go-live verificare anche che Cookie Policy e Privacy Policy pubblicate descrivano gli strumenti realmente attivati.
+
+
+## Correzione CAPI del 3 novembre 2026
+
+La correzione non richiede migrazioni, backfill o modifiche allo schema del database. Gli eventi continuano a utilizzare le tabelle già esistenti. Non vengono reinviati eventi storici.
+
+Dopo il consenso Marketing, il browser conserva il `fbclid` reale nel cookie `_fbc` per 90 giorni, mantenendo il timestamp del clic già registrato. Il server utilizza il cookie o un `fbclid` valido presente nella richiesta; non genera identificativi per traffico organico.
+
+Il contesto iniziale della verifica waitlist è cifrato e conservato nella cache **su file** dedicata `storage/framework/cache/meta-attribution`, mai nella cache database. La chiave deriva dall’hash del token, senza email in chiaro. Il contesto scade insieme al link, viene rimosso dopo la verifica e gli eventuali residui vengono eliminati dal sender dopo sette giorni. La cache deve essere scrivibile e condivisa fra gli eventuali nodi web. La perdita della cache comporta soltanto la perdita dell’attribuzione iniziale; la verifica email resta funzionante.
+
+Alla prima verifica valida il Lead server viene accodato nella stessa transazione della conferma. Il consenso iniziale viene ricontrollato prima dell’accodamento e della consegna; un rifiuto esplicito nel browser della conferma impedisce l’utilizzo del contesto. Il pixel usa lo stesso ID del Lead server. Se il consenso viene concesso sulla pagina di ritorno, il browser attende la registrazione del consenso e richiede l’accodamento del Lead tramite un endpoint protetto da sessione, CSRF e limite di richieste; l’endpoint accetta soltanto il Lead verificato nella stessa sessione. Le conferme ripetute non creano nuovi Lead.
+
+Nel branch `app_live` le rotte pubbliche waitlist restano disabilitate. Nel branch `waitlist` la correzione si applica al modulo esistente.
+
+Verifiche dopo il deploy:
+
+1. Eseguire `php artisan meta:status`: è un comando di sola lettura, mostra configurazione, eventi consegnati, in coda, da riprovare e scartati negli ultimi sette giorni, senza token o dati personali.
+2. Verificare che il cron esegua `php artisan schedule:run` ogni minuto. Il sender `meta:send-conversions` è già pianificato ogni minuto. Non eseguirlo manualmente come controllo di sola lettura: invia davvero gli eventi in attesa.
+3. In Meta Test Events verificare una registrazione con consenso Marketing e un clic reale: stesso nome `Lead`, stesso `event_id` browser/server, `fbc` presente nel server. Verificare anche conferma in un altro browser, rifiuto e revoca.
+4. Confrontare la copertura Lead in Gestione eventi sullo stesso intervallo temporale; gli avvisi storici non attestano da soli lo stato della versione appena pubblicata.
+
+Per il deploy usare il normale processo di build degli asset; questa correzione non richiede `php artisan migrate`.

@@ -41,6 +41,7 @@ Route::post('/subscribe/access', [SubscribeController::class, 'access'])->middle
 Route::post('/subscribe/checkout', [WayoutCheckoutController::class, 'store'])->middleware('throttle:checkout')->name('subscribe.checkout');
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware(['throttle:purchase-confirmation', 'recaptcha:purchase_confirmation'])->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware(['throttle:contact', 'recaptcha:contact'])->name('contact.store');
+Route::post('/analytics/lead', [WaitlistController::class, 'trackLead'])->middleware('throttle:30,1')->name('analytics.lead');
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->middleware('throttle:120,1')->name('cookie-consent.store');
 Route::post('/waitlist', [WaitlistController::class, 'store'])->middleware(['throttle:waitlist', 'recaptcha:waitlist'])->name('waitlist.store');
 Route::get('/waitlist/verifica/{token}', [WaitlistController::class, 'showVerification'])->where('token', '[A-Za-z0-9]{64}')->name('waitlist.verify.show');

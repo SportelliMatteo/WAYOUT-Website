@@ -47,6 +47,11 @@ return [
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
         ],
 
+        'meta_attribution' => [
+            'driver' => 'file',
+            'path' => storage_path('framework/cache/meta-attribution'),
+        ],
+
         'file' => [
             'driver' => 'file',
             'path' => storage_path('framework/cache/data'),

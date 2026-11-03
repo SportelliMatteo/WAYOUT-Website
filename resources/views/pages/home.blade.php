@@ -206,13 +206,11 @@
         $alreadyRegistered = session('waitlist_status') === 'already_registered';
         $purchasedPlan = session('purchased_plan');
     @endphp
-    <span
-        class="hidden"
-        data-analytics-page-event="{{ $alreadyRegistered ? 'waitlist_returning_member' : 'waitlist_email_verified' }}"
-        data-analytics-params='@json(['has_founder_pass' => (bool) $purchasedPlan, 'plan' => $purchasedPlan['code'] ?? ''])'
-        data-analytics-event-id="{{ \App\Support\MetaConversions::eventId('Lead', (string) session('waitlist_verified_entry_id')) }}"
-        data-analytics-dedupe="{{ $alreadyRegistered ? 'waitlist_returning_member' : \App\Support\MetaConversions::eventId('Lead', (string) session('waitlist_verified_entry_id')) }}"
-    ></span>
+    @if($alreadyRegistered)
+        <span class="hidden" data-analytics-page-event="waitlist_returning_member"
+              data-analytics-params='@json(['has_founder_pass' => (bool) $purchasedPlan, 'plan' => $purchasedPlan['code'] ?? ''])'
+              data-analytics-dedupe="waitlist_returning_member"></span>
+    @endif
     <span class="hidden" data-analytics-page-event="founder_offer_view" data-analytics-params='@json(['returning' => $alreadyRegistered])'></span>
     <div id="waitlist-offer" data-show="1" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-3 py-4 sm:px-4 sm:py-8">
         <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-md" aria-hidden="true"></div>

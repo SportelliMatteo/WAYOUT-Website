@@ -10,12 +10,25 @@ if (configElement) {
         metaPixelId: configElement.dataset.metaPixelId || '',
         debug: configElement.dataset.debug === '1',
         consentEndpoint: configElement.dataset.consentEndpoint || '',
+        leadEndpoint: configElement.dataset.leadEndpoint || '',
     };
     const cookieName = 'wayout_cookie_consent';
     let consent = null;
     let googleLoaded = false;
     let metaLoaded = false;
     let pendingEvents = [];
+    let consentRecorded = Promise.resolve();
+    const landingTime = Date.now();
+    const landingClickId = new URLSearchParams(location.search).get('fbclid');
+    const rememberMetaClick = () => {
+        if (!config.enabled || !consent?.marketing || !landingClickId
+            || !/^[A-Za-z0-9_-]+$/.test(landingClickId) || landingClickId.length > 450) return;
+        let existing = '';
+        try { existing = decodeURIComponent(readCookie('_fbc') || ''); } catch (_) {}
+        if (existing.split('.').slice(3).join('.') === landingClickId) return;
+        const secure = location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `_fbc=fb.1.${landingTime}.${landingClickId}; Path=/; Max-Age=7776000; SameSite=Lax${secure}`;
+    };
 
     const log = (...values) => config.debug && console.info('[WAYOUT analytics]', ...values);
     const readCookie = (name) => document.cookie.split('; ').find((row) => row.startsWith(`${name}=`))?.split('=').slice(1).join('=');
@@ -45,7 +58,7 @@ if (configElement) {
     const recordConsent = (value) => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         if (!config.consentEndpoint || !csrfToken) return;
-        fetch(config.consentEndpoint, {
+        return fetch(config.consentEndpoint, {
             method: 'POST',
             credentials: 'same-origin',
             keepalive: true,
@@ -118,6 +131,7 @@ if (configElement) {
     };
     const loadMeta = () => {
         if (metaLoaded || !config.enabled || !consent?.marketing || !/^\d{5,30}$/.test(config.metaPixelId)) return;
+        rememberMetaClick();
         metaLoaded = true;
         if (!window.fbq) {
             const fbq = window.fbq = function(){ fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments); };
@@ -160,13 +174,25 @@ if (configElement) {
             // Tracking still works when browser storage is unavailable.
         }
     };
+    const syncLead = async (eventId) => {
+        if (!eventId || !config.leadEndpoint) return;
+        await consentRecorded;
+        if (!consent?.marketing) return;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!csrfToken) return;
+        await fetch(config.leadEndpoint, {
+            method: 'POST', credentials: 'same-origin', keepalive: true,
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken},
+            body: JSON.stringify({event_id: eventId}),
+        }).catch(() => {});
+    };
     window.wayoutTrack = (eventName, params = {}, options = {}) => {
         if (!config.enabled || !/^[a-z][a-z0-9_]{1,39}$/.test(eventName)) return;
         if (isDuplicate(options.dedupeKey, options.dedupeScope)) return;
         const safeParams = cleanParams(params);
         delete safeParams.event_id;
         if (!consent) {
-            pendingEvents.push([eventName, safeParams, options]);
+            pendingEvents.push([eventName, safeParams, {...options, eventId: options.eventId || params.event_id}]);
             return;
         }
         let delivered = false;
@@ -187,6 +213,7 @@ if (configElement) {
                 contact_submitted: 'Contact',
             }[eventName];
             const eventId = options.eventId || params.event_id;
+            if (standard === 'Lead') syncLead(eventId);
             window.fbq(standard ? 'track' : 'trackCustom', standard || eventName, safeParams, eventId ? {eventID: eventId} : {});
             delivered = true;
         }
@@ -215,7 +242,7 @@ if (configElement) {
         const mustReload = (consent?.analytics && !analytics) || (consent?.marketing && !marketing);
         consent = {consentId: consentId(), version: config.consentVersion, necessary: true, analytics, marketing, updatedAt: new Date().toISOString()};
         writeConsent(consent);
-        recordConsent(consent);
+        consentRecorded = recordConsent(consent);
         banner?.remove();
         closePreferences();
         applyConsent();

@@ -206,6 +206,12 @@
             </div>
         </div>
     </footer>
+    @if (session('meta_lead_event_id'))
+        <span hidden data-analytics-page-event="waitlist_email_verified"
+              data-analytics-event-id="{{ session('meta_lead_event_id') }}"
+              data-analytics-dedupe="{{ session('meta_lead_event_id') }}"
+              data-analytics-dedupe-scope="local"></span>
+    @endif
     @include('partials.analytics-consent')
 </body>
 </html>
