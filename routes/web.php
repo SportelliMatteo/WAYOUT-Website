@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'pages.home')->name('home');
 Route::view('/chi-siamo', 'pages.about')->name('about');
 Route::view('/contatti', 'pages.contact')->name('contact');
+Route::view('/richiesta-cancellazione-account-e-dati-associati', 'pages.account-deletion')->name('account-deletion');
 Route::view('/api/docs', 'api-docs')->name('api.docs');
 Route::get('/privacy-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'privacy')->name('legal.privacy');
 Route::get('/cookie-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'cookies')->name('legal.cookies');
