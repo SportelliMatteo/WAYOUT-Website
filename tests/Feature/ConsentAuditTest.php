@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Support\LegalDocumentService;
+use App\Support\LocalLegalDocumentArchive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -118,7 +119,7 @@ class ConsentAuditTest extends TestCase
     {
         Mail::fake();
 
-        app(LegalDocumentService::class)->publish(
+        app(LocalLegalDocumentArchive::class)->publish(
             'privacy',
             'it',
             '2026-07-15.1',

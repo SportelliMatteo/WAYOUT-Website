@@ -21,6 +21,41 @@ use Throwable;
 
 class WayoutCheckoutController extends Controller
 {
+    private function offers(WayoutApiClient $wayout, bool $includeAppOnly = false): array
+    {
+        $plans = $wayout->get('/api/v1/plans');
+        $offers = [];
+        foreach (($plans['data'] ?? []) as $offer) {
+            if (! is_array($offer) || ($offer['active'] ?? false) !== true) {
+                continue;
+            }
+            $hasWebProvider = false;
+            foreach (($offer['providers'] ?? []) as $provider) {
+                if (($provider['provider'] ?? null) === 'STRIPE' && ($provider['active'] ?? false) === true
+                    && is_string($provider['external_price_id'] ?? null) && str_starts_with($provider['external_price_id'], 'price_')) {
+                    $offers[] = [...$offer, 'external_price_id' => $provider['external_price_id']];
+                    $hasWebProvider = true;
+                }
+            }
+            if ($includeAppOnly && ! $hasWebProvider) {
+                $offers[] = [...$offer, 'external_price_id' => null];
+            }
+        }
+
+        return $offers;
+    }
+
+    public function plans(WayoutApiClient $wayout)
+    {
+        try {
+            return response()->json(['plans' => $this->offers($wayout, includeAppOnly: true)]);
+        } catch (WayoutApiException $exception) {
+            Log::warning('Subscription catalog unavailable.', $exception->logContext());
+
+            return response()->json(['error' => __('experience.catalog_error')], 503);
+        }
+    }
+
     public function store(
         Request $request,
         CheckoutFeatures $checkoutFeatures,
@@ -29,6 +64,9 @@ class WayoutCheckoutController extends Controller
         WayoutApiClient $wayout,
     ) {
         $plan = (string) $request->input('plan');
+        if ($plan === '__plans') {
+            return $this->plans($wayout);
+        }
 
         $legalEntityInvoiceEnabled = $checkoutFeatures->legalEntityInvoiceEnabled();
         $allowedBillingCustomerTypes = $legalEntityInvoiceEnabled ? ['individual', 'legal_entity'] : ['individual'];
@@ -103,19 +141,7 @@ class WayoutCheckoutController extends Controller
             ]);
 
             if ($isPlanCatalog || $isRecurring) {
-                $plans = $wayout->bearerGet('/api/v1/plans', $identity['access_token']);
-                $offers = [];
-                foreach (($plans['data'] ?? []) as $offer) {
-                    if (! is_array($offer) || ($offer['active'] ?? false) !== true) {
-                        continue;
-                    }
-                    foreach (($offer['providers'] ?? []) as $provider) {
-                        if (($provider['provider'] ?? null) === 'STRIPE' && ($provider['active'] ?? false) === true
-                            && is_string($provider['external_price_id'] ?? null) && str_starts_with($provider['external_price_id'], 'price_')) {
-                            $offers[] = [...$offer, 'external_price_id' => $provider['external_price_id']];
-                        }
-                    }
-                }
+                $offers = $this->offers($wayout);
                 if ($isPlanCatalog) {
                     return response()->json(['plans' => $offers]);
                 }

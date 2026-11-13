@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\LegalDocumentService;
+use App\Support\LocalLegalDocumentArchive as LegalDocumentService;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration

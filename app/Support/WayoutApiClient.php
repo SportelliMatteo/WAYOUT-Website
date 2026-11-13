@@ -55,12 +55,19 @@ class WayoutApiClient
         return $response;
     }
 
-    public function bearerGet(string $path, string $accessToken): array
+    public function get(string $path, array $headers = []): array
+    {
+        return $this->bearerGet($path, '', $headers);
+    }
+
+    public function bearerGet(string $path, string $accessToken, array $headers = []): array
     {
         try {
-            $response = $this->request()
-                ->withToken($accessToken)
-                ->get($path);
+            $request = $this->request()->withHeaders($headers);
+            if ($accessToken !== '') {
+                $request->withToken($accessToken);
+            }
+            $response = $request->get($path);
         } catch (WayoutApiException $exception) {
             throw $exception->withRequest('GET', $path);
         } catch (ConnectionException $exception) {

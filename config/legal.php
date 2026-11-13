@@ -2,9 +2,25 @@
 
 return [
     /*
-     * Questi valori servono solo per la prima importazione nel database.
-     * Dopo l'importazione, testi e versioni correnti sono gestiti dalla dashboard admin.
+     * I testi locali in documents sono conservati solo per le migrazioni storiche.
+     * Il sito legge i documenti pubblicati dal backend tramite i codici SITE.
      */
+    // Public SITE codes, independently configurable for each document.
+    'backend_codes' => [
+        'privacy' => env('LEGAL_CODE_PRIVACY', 'PRIVACY'),
+        'cookies' => env('LEGAL_CODE_COOKIES', 'COOKIES'),
+        'terms' => env('LEGAL_CODE_TERMS', 'TERMS'),
+        'passes' => env('LEGAL_CODE_PASSES', 'PASSES'),
+        'sales' => env('LEGAL_CODE_SALES', 'SALES'),
+        'presale' => env('LEGAL_CODE_PRESALE', 'PRESALE'),
+        'refunds' => env('LEGAL_CODE_REFUNDS', 'REFUNDS'),
+        'withdrawal_info' => env('LEGAL_CODE_WITHDRAWAL_INFO', 'WITHDRAWAL_INFO'),
+        'notice' => env('LEGAL_CODE_NOTICE', 'NOTICE'),
+        'marketing' => env('LEGAL_CODE_MARKETING', 'MARKETING'),
+        'waitlist_acceptance' => env('LEGAL_CODE_WAITLIST_ACCEPTANCE', 'WAITLIST_ACCEPTANCE'),
+        'contact_acceptance' => env('LEGAL_CODE_CONTACT_ACCEPTANCE', 'CONTACT_ACCEPTANCE'),
+        'purchase_acceptance' => env('LEGAL_CODE_PURCHASE_ACCEPTANCE', 'PURCHASE_ACCEPTANCE'),
+    ],
     'documents' => [
         'privacy' => [
             'group' => 'policies',

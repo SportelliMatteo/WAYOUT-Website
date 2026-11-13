@@ -1,7 +1,7 @@
 <div class="store-downloads">
     @foreach(['apple' => 'App Store', 'google' => 'Google Play'] as $store => $label)
         @php
-            $storeUrl = config('services.app_stores.'.$store);
+            $storeUrl = $appStoreLinks[$store] ?? null;
         @endphp
         <{{ $storeUrl ? 'a' : 'button' }} @if($storeUrl) href="{{ $storeUrl }}" @else type="button" disabled @endif class="store-button">
             @if($store === 'apple')

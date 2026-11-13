@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\AdminRefundController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\ConsentController;
 use App\Http\Controllers\ContactController;
@@ -18,6 +17,10 @@ Route::view('/', 'pages.home')->name('home');
 Route::view('/chi-siamo', 'pages.about')->name('about');
 Route::view('/contatti', 'pages.contact')->name('contact');
 Route::view('/api/docs', 'api-docs')->name('api.docs');
+Route::get('/documenti-legali', [LegalDocumentController::class, 'index'])->name('legal.index');
+Route::get('/documenti-legali/{document}', [LegalDocumentController::class, 'show'])->name('legal.document');
+Route::get('/documenti-legali/{document}/versioni', [LegalDocumentController::class, 'history'])->name('legal.history');
+Route::get('/documenti-legali/{document}/versioni/{version}', [LegalDocumentController::class, 'version'])->whereUuid('version')->name('legal.version');
 Route::get('/privacy-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'privacy')->name('legal.privacy');
 Route::get('/cookie-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'cookies')->name('legal.cookies');
 Route::get('/termini-e-condizioni', [LegalDocumentController::class, 'show'])->defaults('document', 'terms')->name('legal.terms');
@@ -39,6 +42,7 @@ Route::redirect('/subscribe', '/piani', 301);
 Route::get('/checkout/success/{purchase}', [SubscribeController::class, 'success'])->middleware('signed')->name('checkout.success');
 Route::get('/checkout/status/{purchase}', [SubscribeController::class, 'status'])->middleware(['signed', 'throttle:checkout'])->name('checkout.status');
 Route::get('/checkout/cancel/{purchase}', [WayoutCheckoutController::class, 'cancel'])->middleware('signed')->name('checkout.cancel');
+Route::get('/subscribe/plans', [WayoutCheckoutController::class, 'plans'])->middleware('throttle:checkout')->name('subscribe.plans');
 Route::post('/subscribe/checkout', [WayoutCheckoutController::class, 'store'])->middleware('throttle:checkout')->name('subscribe.checkout');
 Route::post('/purchase/confirmation', [SubscribeController::class, 'resendPurchaseConfirmation'])->middleware(['throttle:purchase-confirmation', 'recaptcha:purchase_confirmation'])->name('purchase.confirmation.resend');
 Route::post('/contatti', [ContactController::class, 'store'])->middleware(['throttle:contact', 'recaptcha:contact'])->name('contact.store');
@@ -60,7 +64,6 @@ Route::get('/admin/otp/challenge', [AdminAuthController::class, 'showChallenge']
 Route::post('/admin/otp/challenge', [AdminAuthController::class, 'verifyChallenge'])->middleware('throttle:admin')->name('admin.otp.verify');
 
 Route::middleware('admin.auth')->group(function () {
-    Route::post('/admin/withdrawals/{withdrawal}/refund', [AdminRefundController::class, 'store'])->middleware('throttle:admin')->name('admin.withdrawals.refund');
     Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
     Route::get('/admin/recovery-codes', [AdminAuthController::class, 'recoveryCodes'])->name('admin.recovery-codes');
     Route::post('/admin/recovery-codes', [AdminAuthController::class, 'acknowledgeRecoveryCodes'])->name('admin.recovery-codes.acknowledge');
@@ -70,9 +73,7 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/admin/site-visibility', [AdminController::class, 'updateSiteVisibility'])->name('admin.site-visibility.update');
     Route::post('/admin/site-preview', [AdminController::class, 'enableSitePreview'])->middleware('throttle:admin')->name('admin.site-preview.enable');
     Route::delete('/admin/site-preview', [AdminController::class, 'disableSitePreview'])->middleware('throttle:admin')->name('admin.site-preview.disable');
+    Route::post('/admin/app-store-links', [AdminController::class, 'updateAppStoreLinks'])->name('admin.app-store-links.update');
     Route::post('/admin/checkout-settings', [AdminController::class, 'updateCheckoutSettings'])->name('admin.checkout-settings.update');
-    Route::post('/admin/purchases/{purchase}/invoice/retry', [AdminController::class, 'retryInvoice'])->name('admin.purchases.invoice.retry');
-    Route::post('/admin/purchases/{purchase}/invoice/sync', [AdminController::class, 'syncInvoice'])->name('admin.purchases.invoice.sync');
-    Route::post('/admin/legal-documents/{document}', [AdminController::class, 'publishLegalDocument'])->name('admin.legal-documents.publish');
     Route::get('/admin', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 });

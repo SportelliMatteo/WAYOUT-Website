@@ -2,165 +2,60 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\WayoutApiException;
 use App\Models\AdminUser;
 use App\Support\AdminAuditService;
+use App\Support\AppStoreLinks;
 use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use App\Support\DataRetentionService;
-use App\Support\FounderPromoCatalog;
-use App\Support\LegalDocumentService;
-use App\Support\QontoInvoiceService;
 use App\Support\SitePreviewAccess;
 use App\Support\SiteVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
     public function dashboard(
         Request $request,
-        LegalDocumentService $legalDocuments,
         SiteVisibility $siteVisibility,
         CheckoutFeatures $checkoutFeatures,
-        FounderPromoCatalog $founderCatalog,
         SitePreviewAccess $sitePreview,
         DataRetentionService $dataRetention,
+        AppStoreLinks $storeLinks,
     ) {
         if (! $this->isAuthenticated($request)) {
             return redirect()->route('admin.login');
         }
-
-        $filters = [
-            'q' => trim((string) $request->query('q', '')),
-            'status' => $request->query('status', 'all'),
-            'plan' => $request->query('plan', 'all'),
-        ];
         $perPage = fn (string $name): int => in_array((int) $request->query($name.'_per_page', 10), [5, 10, 20], true)
-            ? (int) $request->query($name.'_per_page', 10)
-            : 10;
-
-        $purchaseSummary = DB::table('purchases')
-            ->selectRaw('COUNT(*) as total_orders')
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) as succeeded_orders")
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN amount ELSE 0 END) as succeeded_revenue")
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' AND plan = 'join' THEN 1 ELSE 0 END) as join_orders")
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' AND plan = 'join' THEN amount ELSE 0 END) as join_revenue")
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' AND plan = 'creator' THEN 1 ELSE 0 END) as creator_orders")
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' AND plan = 'creator' THEN amount ELSE 0 END) as creator_revenue")
-            ->first();
-
-        $stats = [
-            'buyers_total' => DB::table('purchases')->where('status', 'succeeded')->distinct('email')->count('email'),
-            'orders_total' => (int) ($purchaseSummary->total_orders ?? 0),
-            'orders_succeeded' => (int) ($purchaseSummary->succeeded_orders ?? 0),
-            'revenue_total' => (int) ($purchaseSummary->succeeded_revenue ?? 0),
-            'join_orders' => (int) ($purchaseSummary->join_orders ?? 0),
-            'join_revenue' => (int) ($purchaseSummary->join_revenue ?? 0),
-            'creator_orders' => (int) ($purchaseSummary->creator_orders ?? 0),
-            'creator_revenue' => (int) ($purchaseSummary->creator_revenue ?? 0),
-            'cookie_consent_updates' => Schema::hasTable('cookie_consent_events') ? DB::table('cookie_consent_events')->count() : 0,
-            'cookie_consent_all' => Schema::hasTable('cookie_consent_events') ? DB::table('cookie_consent_events')->where('analytics', true)->where('marketing', true)->count() : 0,
-        ];
-
-        try {
-            $catalogPackages = $founderCatalog->packages();
-        } catch (WayoutApiException $exception) {
-            Log::warning('Founder promo catalog unavailable in admin dashboard.', [
-                ...$exception->logContext(),
-            ]);
-            $catalogPackages = [];
-        }
-
-        $customersQuery = DB::table('purchases')
-            ->select('email')
-            ->selectRaw('COUNT(*) as orders_total')
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) as orders_succeeded")
-            ->selectRaw("SUM(CASE WHEN status = 'succeeded' THEN amount ELSE 0 END) as revenue_total")
-            ->selectRaw('MAX(created_at) as latest_purchase_at')
-            ->groupBy('email')->orderByDesc('latest_purchase_at');
-        if ($filters['q'] !== '') {
-            $customersQuery->whereRaw('LOWER(email) LIKE ?', ['%'.Str::lower($filters['q']).'%']);
-        }
-        if ($filters['plan'] !== 'all') {
-            $customersQuery->where('plan', $filters['plan']);
-        }
-        if ($filters['status'] === 'buyers') {
-            $customersQuery->havingRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) > 0");
-        } elseif ($filters['status'] === 'no_purchase') {
-            $customersQuery->havingRaw("SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) = 0");
-        }
-        $customers = $customersQuery->paginate($perPage('customers'), ['*'], 'customers_page')->withQueryString();
-
-        $recentPurchases = DB::table('purchases')
-            ->orderByDesc('created_at')
-            ->paginate($perPage('orders'), ['*'], 'orders_page')
-            ->withQueryString();
-
-        $recentConsentEvents = DB::table('consent_events')
-            ->orderByDesc('occurred_at')
-            ->orderByDesc('id')
-            ->paginate($perPage('consents'), ['*'], 'consents_page')
-            ->withQueryString();
-
-        $recentWithdrawals = Schema::hasTable('withdrawal_requests')
-            ? DB::table('withdrawal_requests')
-                ->orderByDesc('submitted_at')
-                ->paginate($perPage('withdrawals'), ['*'], 'withdrawals_page')
-                ->withQueryString()
-            : collect();
-
-        $joinBuyers = $this->buyersForPlan('join', $perPage('join_buyers'), 'join_buyers_page');
-        $creatorBuyers = $this->buyersForPlan('creator', $perPage('creator_buyers'), 'creator_buyers_page');
-        $currentLegalDocuments = $legalDocuments->allCurrent();
-        $legalDocumentHistory = $legalDocuments->paginatedHistory(
-            fn (string $document): int => $perPage('legal_'.$document),
-        );
-        $adminUsers = AdminUser::query()
-            ->orderBy('name')
-            ->paginate($perPage('admins'), ['*'], 'admins_page')
-            ->withQueryString();
-        $recentAdminAuditEvents = Schema::hasTable('admin_audit_events')
-            ? DB::table('admin_audit_events')
-                ->orderByDesc('occurred_at')
-                ->orderByDesc('id')
-                ->paginate($perPage('audit'), ['*'], 'audit_page')
-                ->withQueryString()
-            : collect();
-        $sitePreviewExpiresAt = $sitePreview->expiresAt($request);
-        $retentionPreview = $dataRetention->preview();
-        $retentionRuns = DB::table('data_retention_runs')
-            ->orderByDesc('started_at')
-            ->paginate($perPage('retention'), ['*'], 'retention_page')
-            ->withQueryString();
+            ? (int) $request->query($name.'_per_page', 10) : 10;
 
         return view('admin.dashboard', [
-            'filters' => $filters,
-            'stats' => $stats,
-            'catalogPackages' => $catalogPackages,
-            'packageSales' => DB::table('purchases')->where('status', 'succeeded')->select('promo_package_code')->selectRaw('COUNT(*) as orders, SUM(amount) as revenue')->groupBy('promo_package_code')->get()->keyBy('promo_package_code'),
-            'customers' => $customers,
-            'recentPurchases' => $recentPurchases,
-            'recentConsentEvents' => $recentConsentEvents,
-            'recentWithdrawals' => $recentWithdrawals,
-            'joinBuyers' => $joinBuyers,
-            'creatorBuyers' => $creatorBuyers,
-            'planLabels' => array_replace($this->planLabels(), DB::table('purchases')->whereNotNull('package_name')->pluck('package_name', 'plan')->all(), array_map(fn ($package) => $package['name'] ?? $package['code'], $catalogPackages)),
-            'legalDocuments' => $currentLegalDocuments,
-            'legalDocumentHistory' => $legalDocumentHistory,
-            'adminUsers' => $adminUsers,
+            'appStoreLinks' => $storeLinks->all(),
+            'adminUsers' => AdminUser::query()->orderBy('name')->paginate($perPage('admins'), ['*'], 'admins_page')->withQueryString(),
             'currentAdmin' => $request->attributes->get('admin_user'),
-            'recentAdminAuditEvents' => $recentAdminAuditEvents,
+            'recentAdminAuditEvents' => DB::table('admin_audit_events')->whereIn('target_type', ['site_settings', 'checkout_settings', 'admin_user', 'settings'])->orderByDesc('occurred_at')->orderByDesc('id')->paginate($perPage('audit'), ['*'], 'audit_page')->withQueryString(),
             'siteVisibilityMode' => $siteVisibility->mode(),
-            'sitePreviewExpiresAt' => $sitePreviewExpiresAt,
+            'sitePreviewExpiresAt' => $sitePreview->expiresAt($request),
             'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
-            'retentionPreview' => $retentionPreview,
-            'retentionRuns' => $retentionRuns,
+            'retentionPreview' => $dataRetention->preview(),
+            'retentionRuns' => DB::table('data_retention_runs')->orderByDesc('started_at')->paginate($perPage('retention'), ['*'], 'retention_page')->withQueryString(),
             'nextRetentionRunAt' => $dataRetention->nextRunAt(),
         ]);
+    }
+
+    public function updateAppStoreLinks(Request $request, AppStoreLinks $storeLinks, AdminAuditService $audit)
+    {
+        $validated = $request->validate([
+            'apple' => ['nullable', 'string', 'url:https', 'max:2048'],
+            'google' => ['nullable', 'string', 'url:https', 'max:2048'],
+        ]);
+        DB::transaction(function () use ($request, $validated, $storeLinks, $audit) {
+            $previous = $storeLinks->all();
+            $storeLinks->save($validated);
+            $audit->record($request, 'app_store_links.updated', 'site_settings', targetLabel: 'App Store / Google Play', oldValues: $previous, newValues: $storeLinks->all());
+        });
+
+        return redirect()->route('admin.dashboard', ['tab' => 'settings'])->with('admin_success', __('experience.store_links_saved'));
     }
 
     public function enableSitePreview(
@@ -195,70 +90,6 @@ class AdminController extends Controller
 
         return redirect()->route('admin.dashboard', ['tab' => 'settings'])
             ->with('admin_success', __('messages.admin.site_preview_disabled'));
-    }
-
-    public function publishLegalDocument(
-        Request $request,
-        string $document,
-        LegalDocumentService $legalDocuments,
-        AdminAuditService $audit,
-    ) {
-        if (! $this->isAuthenticated($request)) {
-            return redirect()->route('admin.login');
-        }
-
-        abort_unless(in_array($document, $legalDocuments->keys(), true), 404);
-
-        $validated = $request->validate([
-            'locale' => ['required', 'in:it,en'],
-            'version' => ['required', 'date_format:Y-m-d'],
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:1000'],
-            'content_html' => ['required', 'string', 'max:200000'],
-        ]);
-
-        $published = DB::transaction(function () use ($request, $document, $validated, $legalDocuments, $audit) {
-            $previous = $legalDocuments->current($document, $validated['locale']);
-            $published = $legalDocuments->publish(
-                $document,
-                $validated['locale'],
-                $validated['version'],
-                $validated['title'],
-                $validated['description'],
-                $validated['content_html'],
-            );
-
-            $audit->record(
-                $request,
-                'legal_document.published',
-                'legal_document',
-                $published->version_id,
-                $document.' · '.$validated['locale'],
-                [
-                    'version' => $previous->version,
-                    'title' => $previous->title,
-                    'content_hash' => $previous->content_hash,
-                ],
-                [
-                    'version' => $published->version,
-                    'title' => $published->title,
-                    'content_hash' => $published->content_hash,
-                ],
-            );
-
-            return $published;
-        });
-
-        return redirect()
-            ->to(route('admin.dashboard', [
-                'lang' => $validated['locale'],
-                'tab' => 'legal',
-                'legal_group' => config('legal.documents.'.$document.'.group', 'policies'),
-            ]).'#legal-documents')
-            ->with('admin_success', __('messages.admin.legal_published', [
-                'document' => $validated['title'],
-                'version' => $published->version,
-            ]));
     }
 
     public function updateSiteVisibility(
@@ -348,126 +179,8 @@ class AdminController extends Controller
             ->with('admin_success', __('messages.admin.checkout_settings_updated'));
     }
 
-    public function retryInvoice(
-        Request $request,
-        string $purchase,
-        QontoInvoiceService $invoices,
-        AdminAuditService $audit,
-    ) {
-        $record = DB::table('purchases')->where('id', $purchase)->first();
-        abort_unless($record, 404);
-
-        if (! $record->invoice_requested || $record->status !== 'succeeded') {
-            return redirect()->route('admin.dashboard', ['tab' => 'orders'])
-                ->withErrors(['invoice' => __('messages.admin.invoice_not_retryable')]);
-        }
-
-        $previous = $this->invoiceAuditValues($record);
-        $successful = $invoices->sendForPurchase($purchase);
-        $updated = DB::table('purchases')->where('id', $purchase)->first();
-
-        $audit->record(
-            $request,
-            'qonto_invoice.retried',
-            'purchase',
-            $purchase,
-            $record->order_reference,
-            $previous,
-            $this->invoiceAuditValues($updated),
-        );
-
-        $response = redirect()->to(route('admin.dashboard', ['tab' => 'orders']).'#orders');
-
-        return $successful
-            ? $response->with('admin_success', __('messages.admin.invoice_retry_success'))
-            : $response->withErrors(['invoice' => $updated->qonto_invoice_error ?: __('messages.admin.invoice_retry_failed')]);
-    }
-
-    public function syncInvoice(
-        Request $request,
-        string $purchase,
-        QontoInvoiceService $invoices,
-        AdminAuditService $audit,
-    ) {
-        $record = DB::table('purchases')->where('id', $purchase)->first();
-        abort_unless($record, 404);
-
-        if (! $record->qonto_invoice_id) {
-            return redirect()->route('admin.dashboard', ['tab' => 'orders'])
-                ->withErrors(['invoice' => __('messages.admin.invoice_not_created')]);
-        }
-
-        $previous = $this->invoiceAuditValues($record);
-        $successful = $invoices->syncForPurchase($purchase);
-        $updated = DB::table('purchases')->where('id', $purchase)->first();
-
-        $audit->record(
-            $request,
-            'qonto_invoice.synchronized',
-            'purchase',
-            $purchase,
-            $record->order_reference,
-            $previous,
-            $this->invoiceAuditValues($updated),
-        );
-
-        $response = redirect()->to(route('admin.dashboard', ['tab' => 'orders']).'#orders');
-
-        return $successful
-            ? $response->with('admin_success', __('messages.admin.invoice_sync_success'))
-            : $response->withErrors(['invoice' => $updated->qonto_invoice_error ?: __('messages.admin.invoice_sync_failed')]);
-    }
-
-    private function buyersForPlan(string $plan, int $perPage, string $pageName)
-    {
-        return DB::table('purchases')
-            ->select('email')
-            ->selectRaw('MAX(first_name) as first_name')
-            ->selectRaw('MAX(last_name) as last_name')
-            ->selectRaw('COUNT(*) as orders_total')
-            ->selectRaw('SUM(amount) as revenue_total')
-            ->selectRaw('MAX(created_at) as latest_purchase_at')
-            ->where('status', 'succeeded')
-            ->where('plan', $plan)
-            ->groupBy('email')
-            ->orderByDesc('latest_purchase_at')
-            ->paginate($perPage, ['*'], $pageName)
-            ->withQueryString();
-    }
-
-    /** @return array<string, mixed> */
-    private function invoiceAuditValues(object $purchase): array
-    {
-        return [
-            'electronic_invoice_status' => $purchase->electronic_invoice_status,
-            'qonto_invoice_id' => $purchase->qonto_invoice_id,
-            'qonto_invoice_number' => $purchase->qonto_invoice_number,
-            'qonto_invoice_status' => $purchase->qonto_invoice_status,
-            'qonto_einvoicing_status' => $purchase->qonto_einvoicing_status,
-            'qonto_invoice_error' => $purchase->qonto_invoice_error,
-            'qonto_invoice_synced_at' => $purchase->qonto_invoice_synced_at,
-        ];
-    }
-
     private function isAuthenticated(Request $request): bool
     {
         return $request->session()->has('admin_authenticated');
-    }
-
-    private function planLabels(): array
-    {
-        return [
-            'join' => 'Founder Join 12M',
-            'creator' => 'Founder Creator 12M',
-        ];
-    }
-
-    private function successfulPlansExpression(): string
-    {
-        if (in_array(DB::connection()->getDriverName(), ['sqlite', 'mysql'], true)) {
-            return "GROUP_CONCAT(DISTINCT CASE WHEN status = 'succeeded' THEN plan END) as plans";
-        }
-
-        return "STRING_AGG(DISTINCT CASE WHEN status = 'succeeded' THEN plan END, ',') as plans";
     }
 }

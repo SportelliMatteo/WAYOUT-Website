@@ -1,0 +1,74 @@
+# Documenti legali del sito
+
+La fonte dei documenti correnti è il backend WAYOUT configurato in
+`services.wayout.base_url`. Le richieste sono GET pubbliche, senza token;
+il footer richiede l’elenco senza scope per mostrare separatamente APP e SITE.
+Dettaglio e storico richiedono sempre lo scope del documento scelto.
+Il sito inserisce `current.content_html` così come ricevuto dal backend.
+Invia `Accept-Language` con la lingua selezionata; la lingua del contenuto
+restituito resta gestita dal backend.
+
+## Pagine pubbliche
+
+- `/documenti-legali`: elenco dei documenti pubblicati, diviso tra sito e app.
+  Il parametro `?scope=SITE` oppure `?scope=APP` limita l’elenco.
+- `/documenti-legali/{code}`: documento pubblicato, anche senza template locale.
+- `/documenti-legali/{document}/versioni`: versioni precedentemente pubblicate.
+- `/documenti-legali/{document}/versioni/{uuid}`: HTML della versione precisa.
+
+I vecchi URL pubblici rimangono collegati ai codici in `config/legal.php`.
+Lo storico ricevuto dal backend include anche la versione corrente: l'elenco
+"Versioni precedenti" la esclude. Prima di leggere una versione per UUID, il
+sito verifica l'appartenenza allo storico del documento SITE e controlla
+`data.document.code` e `data.document.scope` nella risposta.
+
+## Codici predefiniti
+
+| Chiave sito | Codice backend | Variabile di configurazione |
+| --- | --- | --- |
+| privacy | PRIVACY | LEGAL_CODE_PRIVACY |
+| cookies | COOKIES | LEGAL_CODE_COOKIES |
+| terms | TERMS | LEGAL_CODE_TERMS |
+| passes | PASSES | LEGAL_CODE_PASSES |
+| sales | SALES | LEGAL_CODE_SALES |
+| presale | PRESALE | LEGAL_CODE_PRESALE |
+| refunds | REFUNDS | LEGAL_CODE_REFUNDS |
+| withdrawal_info | WITHDRAWAL_INFO | LEGAL_CODE_WITHDRAWAL_INFO |
+| notice | NOTICE | LEGAL_CODE_NOTICE |
+| marketing | MARKETING | LEGAL_CODE_MARKETING |
+| waitlist_acceptance | WAITLIST_ACCEPTANCE | LEGAL_CODE_WAITLIST_ACCEPTANCE |
+| contact_acceptance | CONTACT_ACCEPTANCE | LEGAL_CODE_CONTACT_ACCEPTANCE |
+| purchase_acceptance | PURCHASE_ACCEPTANCE | LEGAL_CODE_PURCHASE_ACCEPTANCE |
+
+Cambiare la relativa variabile se il backend usa un codice diverso. In presenza
+di configurazione Laravel memorizzata, rigenerarla dopo la modifica.
+
+## Consensi e indisponibilità
+
+Le ricevute dei consensi usano versione e SHA-256 dell'HTML restituito dal backend;
+il collegamento registrato identifica l'esatto UUID, anziché il testo corrente.
+Un documento mancante o una risposta priva di HTML non recupera vecchi testi locali:
+la pagina segnala indisponibilità con HTTP 503. Contatti e catalogo rimangono
+consultabili se manca il testo della relativa checkbox, ma l'invio viene disabilitato.
+
+Le vecchie versioni nel database non vengono eliminate. `LocalLegalDocumentArchive`
+è riservato alle migrazioni storiche; non viene usato come fonte dalle pagine pubbliche.
+Il backoffice del sito contiene le configurazioni, con sicurezza amministratori,
+retention e relativo registro delle attività. I consensi cookie continuano a essere
+registrati dal sito, senza un tab di consultazione in dashboard. Le rotte amministrative per rimborsi,
+fatture e pubblicazione legale non sono più registrate.
+
+
+## Footer e pulsanti degli store
+
+Il footer e la navigazione legale mostrano solo i documenti restituiti dall’API,
+separati per `scope`; il codice da solo non identifica univocamente un documento.
+Tutti i link a documento, storico e versione mantengono `scope=APP` o `scope=SITE`.
+I consensi di acquisto e contatto continuano a riferirsi ai documenti SITE.
+
+La dashboard permette di impostare i link HTTPS per App Store e Google Play.
+Sono salvati nella nuova tabella `site_settings` (migrazione
+`2026_11_13_000001_create_site_settings_table`). Prima del primo salvataggio
+valgono i link configurati in `services.app_stores`; dopo il salvataggio,
+un campo vuoto disabilita il relativo pulsante anche se esiste un valore nell’ambiente.
+I pulsanti nella home e nel footer usano la stessa configurazione.

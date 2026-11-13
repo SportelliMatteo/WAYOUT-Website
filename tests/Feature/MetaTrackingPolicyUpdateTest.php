@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Support\LegalDocumentService;
+use App\Support\LocalLegalDocumentArchive as LegalDocumentService;
 use App\Support\MetaTrackingPolicyUpdate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;

@@ -5,6 +5,8 @@
 
 @section('content')
 @php
+    $hasPromos = !empty($packages);
+    $permissionLabels = __('experience.permission_labels');
     $checkoutProfile = session('checkout_profile', []);
     $adultMaxDate = now()->subYears(18)->toDateString();
     $phonePrefixes = [
@@ -43,11 +45,16 @@
             <p>{{ __('experience.plans_intro') }}</p>
             <div class="exclusive-tags">@foreach(__('experience.sales_tags') as $tag)<span>✓ {{ $tag }}</span>@endforeach</div>
         </header>
-        <nav class="offer-navigation" aria-label="{{ __('experience.offer_navigation') }}">
-            <a href="#promo-offers"><span>{{ __('experience.promo_title') }}</span><small>{{ __('experience.no_renewal') }}</small></a>
-            <a href="#subscription-offers"><span>{{ __('experience.recurring_title') }}</span><small>{{ __('experience.recurring_renewal') }}</small></a>
-        </nav>
-        <section id="promo-offers" class="offer-section offer-section-promo" aria-labelledby="promo-title">
+        <div class="offer-switch" role="tablist" aria-label="{{ __('experience.offer_navigation') }}">
+            <button type="button" id="promo-tab" role="tab" aria-selected="{{ $hasPromos ? 'true' : 'false' }}" aria-controls="promo-offers" tabindex="{{ $hasPromos ? 0 : -1 }}" data-offer-tab="promo-offers">
+                <span>{{ __('experience.promo_short') }}</span><small>{{ __('experience.one_shot') }}</small>
+            </button>
+            <button type="button" id="subscriptions-tab" role="tab" aria-selected="{{ $hasPromos ? 'false' : 'true' }}" aria-controls="subscription-offers" tabindex="{{ $hasPromos ? -1 : 0 }}" data-offer-tab="subscription-offers">
+                <span>{{ __('experience.recurring_short') }}</span><small>{{ __('experience.recurring_badge') }}</small>
+            </button>
+        </div>
+        <div class="offer-comparison">
+        <section id="promo-offers" class="offer-section offer-section-promo" role="tabpanel" aria-labelledby="promo-tab" tabindex="0" @if(!$hasPromos) hidden @endif>
             <header class="offer-section-heading">
                 <span class="offer-kind">{{ __('experience.one_shot') }}</span>
                 <h2 id="promo-title">{{ __('experience.promo_title') }}</h2>
@@ -69,7 +76,7 @@
                         $currency = strtoupper($package['currency'] ?? 'EUR');
                         $price = number_format((float) ($package['price'] ?? 0), 2, app()->getLocale() === 'it' ? ',' : '.', app()->getLocale() === 'it' ? '.' : ',');
                         $permissions = collect(data_get($package, 'tier.permissions', []))->filter(fn ($permission) =>
-                            !empty($permission['description']) && (($permission['value_type'] ?? null) === 'BOOL' ? ($permission['value'] ?? false) === true : is_numeric($permission['value'] ?? null) && (int) $permission['value'] !== 0)
+                            (!empty($permissionLabels[$permission['key'] ?? '']) || !empty($permission['description'])) && (($permission['value_type'] ?? null) === 'BOOL' ? ($permission['value'] ?? false) === true : is_numeric($permission['value'] ?? null) && (int) $permission['value'] !== 0)
                         );
                     @endphp
                     <article class="package-card" data-package-code="{{ $package['code'] }}">
@@ -80,8 +87,18 @@
                         <p class="package-price-note">{{ ($package['free'] ?? false) ? __('experience.free') : __('experience.exclusive_price').' · '.__('experience.one_shot') }}</p>
                         <div class="package-period"><strong>{{ $duration > 0 ? __('experience.duration', ['days' => $duration]) : __('experience.validity_pending') }}</strong><span>{{ __('experience.activation') }}</span></div>
                         @if($permissions->isNotEmpty())
-                            <ul class="package-permissions" aria-label="{{ __('experience.included') }}">
-                                @foreach($permissions as $permission)<li><b aria-hidden="true">✓</b><span>{{ $permission['description'] }}@if(($permission['value_type'] ?? null) === 'INT' && (int) $permission['value'] > 0) · {{ $permission['value'] }}@endif</span></li>@endforeach
+                            <p class="package-benefits-heading">{{ __('experience.included') }}</p>
+                            <ul class="package-permissions package-benefits" aria-label="{{ __('experience.included') }}">
+                                @foreach($permissions as $permission)
+                                    @php
+                                        $label = $permissionLabels[$permission['key'] ?? ''] ?? null;
+                                        $parts = $label !== null && str_contains($label, ':count') ? explode(':count', $label, 2) : null;
+                                    @endphp
+                                    <li>
+                                        <span class="package-benefit-check" aria-hidden="true">✓</span>
+                                        <span class="package-benefit-text">@if($parts){{ $parts[0] }}<strong>{{ $permission['value'] }}</strong>{{ $parts[1] }}@else{{ $label ?? ($permission['description'].(($permission['value_type'] ?? null) === 'INT' ? ' · '.$permission['value'] : '')) }}@endif</span>
+                                    </li>
+                                @endforeach
                             </ul>
                         @endif
                         <div class="package-purchase">
@@ -95,20 +112,20 @@
             </div>
         @endif
         </section>
-        <section id="subscription-offers" class="offer-section offer-section-recurring" aria-labelledby="subscriptions-title">
+        <section id="subscription-offers" class="offer-section offer-section-recurring" role="tabpanel" aria-labelledby="subscriptions-tab" tabindex="0" @if($hasPromos) hidden @endif>
             <header class="offer-section-heading">
                 <span class="offer-kind">{{ __('experience.recurring_badge') }}</span>
                 <h2 id="subscriptions-title">{{ __('experience.recurring_title') }}</h2>
                 <p>{{ __('experience.recurring_description') }}</p>
             </header>
-            <div id="recurring-catalog-intro" class="recurring-catalog-intro">
-                <p>{{ __('experience.recurring_intro') }}</p>
+            <div id="recurring-catalog-intro" class="recurring-catalog-intro" role="status">
+                <p id="recurring-catalog-status">{{ __('experience.loading_plans') }}</p>
             <input id="recurring-catalog" type="radio" name="plan" value="__plans" class="sr-only" tabindex="-1">
-            <button type="button" class="experience-cta mt-4" data-package-checkout="recurring-catalog" data-summary="{{ __('experience.recurring_title') }}">{{ __('experience.recurring_browse') }} <span aria-hidden="true">↗</span></button>
+            <button type="button" class="experience-cta mt-4 hidden" id="recurring-retry" data-package-checkout="recurring-catalog" data-summary="{{ __('experience.recurring_title') }}">{{ __('experience.retry') }} <span aria-hidden="true">↗</span></button>
             </div>
             <div id="recurring-plans" class="packages-grid recurring-plans-grid" aria-live="polite"></div>
         </section>
-        <p class="packages-difference">{{ __('experience.plans_difference') }}</p>
+        </div>
         <section class="packages-faq"><h2>{{ __('experience.faq_title') }}</h2>@foreach(__('experience.faqs') as $faq)<details><summary>{{ $faq['question'] }}</summary><p>{{ $faq['answer'] }}</p></details>@endforeach</section>
     </div>
 </section>
@@ -127,7 +144,7 @@
         </div>
         <p class="mt-4 text-sm text-slate-600">{{ __('messages.subscribe.seller_phone') }} <a class="font-bold text-violet-700" href="tel:+393522164100">+393522164100</a></p>
         <div id="selected-package-summary" class="selected-package-summary" aria-live="polite"></div>
-        <form id="payment-details-form" class="mt-5 space-y-4">
+        <form data-legal-unavailable="{{ $legalContentUnavailable ? 'true' : 'false' }}" id="payment-details-form" class="mt-5 space-y-4">
             <input id="payment-firebase-token" type="hidden" name="firebase_token" value="" />
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block sm:col-span-2">
@@ -255,7 +272,11 @@
             <label id="purchase-terms" class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
                 <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
                 <span class="text-sm font-semibold leading-6 text-slate-700 [&_a]:font-black [&_a]:text-violet-700 [&_a]:underline [&_a]:underline-offset-4">
-                    {!! $legalDocumentsHtml['purchase_acceptance'] !!}
+                    @if($legalContentUnavailable)
+                        {{ __('experience.legal_unavailable') }}
+                    @else
+                        {!! $legalDocumentsHtml['purchase_acceptance'] !!}
+                    @endif
                 </span>
             </label>
             <label id="recurring-terms" class="hidden flex items-start gap-3 rounded-2xl bg-violet-50 p-4">
@@ -318,7 +339,7 @@
     function setPaymentLoading(isLoading) {
         if (!paymentSubmit) return;
 
-        paymentSubmit.disabled = isLoading || !document.getElementById('payment-firebase-token')?.value;
+        paymentSubmit.disabled = @json($legalContentUnavailable) || isLoading || !document.getElementById('payment-firebase-token')?.value;
         paymentSubmitText?.classList.toggle('hidden', isLoading);
         paymentSubmitLoader?.classList.toggle('hidden', !isLoading);
     }
@@ -419,7 +440,142 @@
         previousFocus?.focus();
     }
 
-    document.addEventListener('click', (event) => {
+    function renderPlans(data) {
+        let catalog = document.getElementById('recurring-plans');
+        if (!catalog) {
+            catalog = document.createElement('div');
+            catalog.id = 'recurring-plans';
+            catalog.className = 'packages-grid mt-6';
+            document.getElementById('recurring-catalog').parentElement.append(catalog);
+        }
+        catalog.replaceChildren();
+        const periods = @json(__('experience.billing_periods'));
+        const permissionLabels = @json($permissionLabels);
+        data.plans.forEach((plan, index) => {
+            const card = document.createElement('article');
+            card.className = 'package-card recurring-plan-card';
+            const badges = document.createElement('div'); badges.className = 'package-badges';
+            const badge = document.createElement('span'); badge.textContent = @json(__('experience.recurring_badge'));
+            badges.append(badge);
+            const title = document.createElement('h2');
+            title.textContent = plan.name;
+            const price = document.createElement('p');
+            price.className = 'package-price';
+            price.textContent = new Intl.NumberFormat(@json(app()->getLocale()), { style: 'currency', currency: plan.currency }).format(Number(plan.price));
+            const period = document.createElement('p'); period.className = 'package-price-note';
+            period.textContent = periods[plan.billing_period] || plan.billing_period;
+            const renewal = document.createElement('p');
+            renewal.textContent = @json(__('experience.recurring_renewal'));
+            const permissions = document.createElement('ul');
+            permissions.className = 'package-permissions package-benefits';
+            permissions.setAttribute('aria-label', @json(__('experience.included')));
+            (plan.tier?.permissions || []).forEach((permission) => {
+                const label = permissionLabels[permission.key];
+                const enabled = permission.value_type === 'BOOL' ? permission.value === true
+                    : permission.value != null && Number.isFinite(Number(permission.value)) && Number(permission.value) !== 0;
+                if ((!label && !permission.description) || !enabled) return;
+                const item = document.createElement('li');
+                const check = document.createElement('span');
+                check.className = 'package-benefit-check';
+                check.setAttribute('aria-hidden', 'true');
+                check.textContent = '✓';
+                const text = document.createElement('span');
+                text.className = 'package-benefit-text';
+                if (label && label.includes(':count')) {
+                    const [before, after] = label.split(':count');
+                    const count = document.createElement('strong');
+                    count.textContent = String(permission.value);
+                    text.append(before, count, after);
+                } else {
+                    text.textContent = label || permission.description + (permission.value_type === 'INT' ? ` · ${permission.value}` : '');
+                }
+                item.append(check, text);
+                permissions.append(item);
+            });
+            const input = document.createElement('input');
+            input.type = 'radio'; input.name = 'plan'; input.className = 'sr-only';
+            input.id = `recurring-plan-${index}`; input.value = plan.external_price_id;
+            input.dataset.price = plan.price; input.dataset.currency = plan.currency;
+            const select = document.createElement('button');
+            select.type = 'button'; select.className = 'experience-cta mt-4';
+            const webAvailable = typeof plan.external_price_id === 'string' && plan.external_price_id.startsWith('price_');
+            if (webAvailable) select.dataset.packageCheckout = input.id;
+            select.disabled = !webAvailable;
+            input.disabled = !webAvailable;
+            select.dataset.summary = `${plan.name} · ${price.textContent} · ${period.textContent} · ${renewal.textContent}`;
+            select.textContent = webAvailable ? @json(__('experience.buy_plan')) : @json(__('experience.app_only_plan'));
+            const purchase = document.createElement('div'); purchase.className = 'package-purchase';
+            purchase.append(renewal, input, select);
+            const included = document.createElement('p');
+            included.className = 'package-benefits-heading';
+            included.textContent = @json(__('experience.included'));
+            card.append(badges, title, price, period);
+            if (permissions.childElementCount) card.append(included, permissions);
+            card.append(purchase);
+            catalog.append(card);
+        });
+        document.getElementById('recurring-catalog-intro').classList.toggle('hidden', data.plans.length > 0);
+        if (!data.plans.length) {
+            catalog.textContent = @json(__('experience.empty_plans'));
+            document.getElementById('recurring-catalog-intro').classList.add('hidden');
+        }
+    }
+
+    const offerTabs = [...document.querySelectorAll('[data-offer-tab]')];
+    function selectOfferTab(tab, updateHash = true) {
+        offerTabs.forEach((item) => {
+            const active = item === tab;
+            item.setAttribute('aria-selected', String(active));
+            item.tabIndex = active ? 0 : -1;
+            document.getElementById(item.dataset.offerTab).hidden = !active;
+        });
+        if (updateHash) history.replaceState(null, '', `#${tab.dataset.offerTab}`);
+    }
+    offerTabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => selectOfferTab(tab));
+        tab.addEventListener('keydown', (event) => {
+            let next;
+            if (event.key === 'ArrowRight') next = (index + 1) % offerTabs.length;
+            if (event.key === 'ArrowLeft') next = (index + offerTabs.length - 1) % offerTabs.length;
+            if (event.key === 'Home') next = 0;
+            if (event.key === 'End') next = offerTabs.length - 1;
+            if (next === undefined) return;
+            event.preventDefault();
+            selectOfferTab(offerTabs[next]);
+            offerTabs[next].focus();
+        });
+    });
+    function syncOfferHash() {
+        const tab = offerTabs.find((item) => `#${item.dataset.offerTab}` === location.hash);
+        if (tab) selectOfferTab(tab, false);
+    }
+    syncOfferHash();
+    window.addEventListener('hashchange', syncOfferHash);
+
+    async function loadPlans() {
+        const retry = document.getElementById('recurring-retry');
+        const status = document.getElementById('recurring-catalog-status');
+        const catalog = document.getElementById('recurring-plans');
+        retry.disabled = true;
+        retry.classList.add('hidden');
+        status.textContent = @json(__('experience.loading_plans'));
+        catalog.setAttribute('aria-busy', 'true');
+        try {
+            const response = await fetch("{{ route('subscribe.plans') }}", { headers: { Accept: 'application/json' } });
+            const data = await response.json();
+            if (!response.ok || !Array.isArray(data.plans)) throw new Error('Catalog unavailable');
+            renderPlans(data);
+        } catch (error) {
+            status.textContent = @json(__('experience.plans_load_error'));
+            retry.classList.remove('hidden');
+        } finally {
+            retry.disabled = false;
+            catalog.setAttribute('aria-busy', 'false');
+        }
+    }
+    loadPlans();
+
+    document.addEventListener('click', async (event) => {
             const checkoutButton = event.target.closest('[data-package-checkout]');
             if (!checkoutButton) return;
             button = checkoutButton;
@@ -427,6 +583,10 @@
             previousFocus = document.activeElement;
             const selectedPlan = document.getElementById(button.dataset.packageCheckout);
             if (!selectedPlan || button.disabled) return;
+            if (selectedPlan.value === '__plans') {
+                await loadPlans();
+                return;
+            }
             selectedPlan.checked = true;
             const recurring = selectedPlan.value.startsWith('price_');
             const browsing = selectedPlan.value === '__plans';
@@ -473,6 +633,12 @@
     paymentForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
         paymentError?.classList.add('hidden');
+
+        if (@json($legalContentUnavailable)) {
+            paymentError.textContent = @json(__('experience.legal_unavailable'));
+            paymentError.classList.remove('hidden');
+            return;
+        }
 
         if (!validatePaymentFields()) {
             paymentForm.reportValidity();
@@ -548,54 +714,7 @@
             }
 
             if (Array.isArray(data.plans)) {
-                let catalog = document.getElementById('recurring-plans');
-                if (!catalog) {
-                    catalog = document.createElement('div');
-                    catalog.id = 'recurring-plans';
-                    catalog.className = 'packages-grid mt-6';
-                    document.getElementById('recurring-catalog').parentElement.append(catalog);
-                }
-                catalog.replaceChildren();
-                const periods = @json(__('experience.billing_periods'));
-                data.plans.forEach((plan, index) => {
-                    const card = document.createElement('article');
-                    card.className = 'package-card recurring-plan-card';
-                    const badges = document.createElement('div'); badges.className = 'package-badges';
-                    const badge = document.createElement('span'); badge.textContent = @json(__('experience.recurring_badge'));
-                    badges.append(badge);
-                    const title = document.createElement('h2');
-                    title.textContent = plan.name;
-                    const price = document.createElement('p');
-                    price.className = 'package-price';
-                    price.textContent = new Intl.NumberFormat(@json(app()->getLocale()), { style: 'currency', currency: plan.currency }).format(Number(plan.price));
-                    const period = document.createElement('p'); period.className = 'package-price-note';
-                    period.textContent = periods[plan.billing_period] || plan.billing_period;
-                    const renewal = document.createElement('p');
-                    renewal.textContent = @json(__('experience.recurring_renewal'));
-                    const permissions = document.createElement('ul');
-                    permissions.className = 'package-permissions';
-                    (plan.tier?.permissions || []).forEach((permission) => {
-                        if (!permission.description || permission.value == null || permission.value === false || permission.value === 0) return;
-                        const item = document.createElement('li');
-                        item.textContent = permission.description + (permission.value_type === 'INT' ? ` · ${permission.value}` : '');
-                        permissions.append(item);
-                    });
-                    const input = document.createElement('input');
-                    input.type = 'radio'; input.name = 'plan'; input.className = 'sr-only';
-                    input.id = `recurring-plan-${index}`; input.value = plan.external_price_id;
-                    input.dataset.price = plan.price; input.dataset.currency = plan.currency;
-                    const select = document.createElement('button');
-                    select.type = 'button'; select.className = 'experience-cta mt-4';
-                    select.dataset.packageCheckout = input.id;
-                    select.dataset.summary = `${plan.name} · ${price.textContent} · ${period.textContent} · ${renewal.textContent}`;
-                    select.textContent = @json(__('experience.buy'));
-                    const purchase = document.createElement('div'); purchase.className = 'package-purchase';
-                    purchase.append(renewal, input, select);
-                    card.append(badges, title, price, period, permissions, purchase);
-                    catalog.append(card);
-                });
-                document.getElementById('recurring-catalog-intro').classList.toggle('hidden', data.plans.length > 0);
-                if (!data.plans.length) catalog.textContent = @json(__('experience.empty_text'));
+                renderPlans(data);
                 button.disabled = false; button.textContent = originalButtonText;
                 setPaymentLoading(false);
                 closePaymentModal();

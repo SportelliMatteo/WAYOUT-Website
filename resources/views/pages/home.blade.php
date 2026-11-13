@@ -11,7 +11,7 @@
             @include('partials.app-downloads')
             <a href="#scopri-wayout" class="app-explore-link">{{ __('experience.home_explore') }} <span aria-hidden="true">↓</span></a>
         </div>
-        <div class="app-hero-footer wayout-shell" aria-hidden="true"><img src="/images/app/wordmark-white.png" alt="" width="168" height="51"><span>01 — WAYOUT APP</span></div>
+        <div class="app-hero-footer wayout-shell" aria-hidden="true"><span>01 — WAYOUT APP</span></div>
     </section>
 
     <section id="scopri-wayout" class="app-home-sheet" data-app-tabs>

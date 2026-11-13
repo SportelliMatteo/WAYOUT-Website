@@ -2,349 +2,139 @@
 
 namespace App\Support;
 
-use DOMDocument;
-use DOMElement;
-use DOMNode;
+use App\Exceptions\WayoutApiException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Validation\ValidationException;
-use LogicException;
+use Illuminate\Support\Str;
 
+/** Published documents are owned and served by the WAYOUT backend. */
 class LegalDocumentService
 {
-    /** @return list<string> */
+    private array $currentDocuments = [];
+
+    private array $publishedDocuments = [];
+
+    public function __construct(private readonly WayoutApiClient $client) {}
+
     public function keys(): array
     {
-        return array_keys(config('legal.documents', []));
+        return array_keys(config('legal.backend_codes', []));
     }
 
-    public function current(string $document, ?string $locale = null): object
+    public function published(?string $scope = 'SITE'): array
+    {
+        $this->assertScope($scope);
+        $key = $scope ?? 'ALL';
+        if (isset($this->publishedDocuments[$key])) {
+            return $this->publishedDocuments[$key];
+        }
+        if ($scope !== null && isset($this->publishedDocuments['ALL'])) {
+            return array_values(array_filter($this->publishedDocuments['ALL'], fn ($document) => $document['scope'] === $scope));
+        }
+        $response = $this->client->get('/api/v1/legal/documents'.($scope ? '?scope='.$scope : ''));
+
+        return $this->publishedDocuments[$key] = array_values(array_filter($response['data'] ?? [], fn ($document) => is_array($document) && in_array($document['scope'] ?? null, $scope ? [$scope] : ['APP', 'SITE'], true)
+            && is_string($document['code'] ?? null) && is_string($document['name'] ?? null) && is_array($document['current'] ?? null)
+        ));
+    }
+
+    public function current(string $document, ?string $locale = null, string $scope = 'SITE'): object
     {
         $locale ??= app()->getLocale();
-        $this->assertKnown($document);
-
-        if (! Schema::hasTable('legal_documents')) {
-            throw new LogicException('Legal document storage has not been migrated.');
+        $this->assertScope($scope);
+        $code = $this->code($document, $scope);
+        $key = $scope.':'.$code.':'.$locale;
+        if (isset($this->currentDocuments[$key])) {
+            return $this->currentDocuments[$key];
+        }
+        $response = $this->client->get('/api/v1/legal/documents/'.rawurlencode($code).'?scope='.$scope, ['Accept-Language' => $locale]);
+        $data = $response['data'] ?? [];
+        if (($data['scope'] ?? null) !== $scope || ($data['code'] ?? null) !== $code || ! is_array($data['current'] ?? null)) {
+            throw new WayoutApiException('Il documento legale SITE non è disponibile.', 503, 'LEGAL_DOCUMENT_UNAVAILABLE');
         }
 
-        $current = $this->currentQuery($document, $locale)->first();
-
-        if ($current) {
-            return $current;
-        }
-
-        $this->initialize($document, $locale);
-
-        return $this->currentQuery($document, $locale)->firstOrFail();
+        return $this->currentDocuments[$key] = $this->normalize($document, $locale, $data, $data['current'], $scope);
     }
 
-    /** @return Collection<string, object> */
     public function allCurrent(?string $locale = null): Collection
     {
-        $locale ??= app()->getLocale();
+        $published = collect($this->published())->keyBy('code');
 
-        return collect($this->keys())
-            ->mapWithKeys(fn (string $key) => [$key => $this->current($key, $locale)]);
+        return collect($this->keys())->filter(fn ($key) => $published->has($this->code($key)))
+            ->mapWithKeys(fn ($key) => [$key => $this->current($key, $locale)]);
     }
 
-    /** @param list<string> $documents */
     public function versions(array $documents, ?string $locale = null): array
     {
-        return collect($documents)
-            ->mapWithKeys(fn (string $key) => [$key => $this->current($key, $locale)->version])
-            ->all();
+        return collect($documents)->mapWithKeys(fn ($key) => [$key => $this->current($key, $locale)->version])->all();
     }
 
-    public function history(?string $locale = null): Collection
+    public function history(string $document, string $scope = 'SITE'): array
     {
-        $locale ??= app()->getLocale();
+        $this->assertScope($scope);
+        $response = $this->client->get('/api/v1/legal/documents/'.rawurlencode($this->code($document, $scope)).'/versions?scope='.$scope);
 
-        $this->allCurrent($locale);
+        $data = $response['data'] ?? [];
+        if (($data['code'] ?? null) !== $this->code($document, $scope) || ($data['scope'] ?? null) !== $scope || ! is_array($data['versions'] ?? null)) {
+            throw new WayoutApiException('Lo storico del documento SITE non è disponibile.', 503, 'LEGAL_HISTORY_UNAVAILABLE');
+        }
+        $currentId = $this->current($document, scope: $scope)->version_id;
 
-        return DB::table('legal_document_versions')
-            ->whereIn('document_key', $this->keys())
-            ->where('locale', $locale)
-            ->orderByDesc('published_at')
-            ->orderByDesc('id')
-            ->get()
-            ->groupBy('document_key');
+        return array_values(array_filter($data['versions'], fn ($version) => is_array($version) && ($version['id'] ?? null) !== $currentId));
     }
 
-    public function paginatedHistory(callable $perPage, ?string $locale = null): Collection
+    public function version(string $document, string $id, ?string $locale = null, string $scope = 'SITE'): object
     {
-        $locale ??= app()->getLocale();
-
-        $this->allCurrent($locale);
-
-        return collect($this->keys())->mapWithKeys(function (string $document) use ($locale, $perPage) {
-            $parameter = 'legal_'.$document;
-
-            return [$document => DB::table('legal_document_versions')
-                ->where('document_key', $document)
-                ->where('locale', $locale)
-                ->orderByDesc('published_at')
-                ->orderByDesc('id')
-                ->paginate($perPage($document), ['*'], $parameter.'_page')
-                ->withQueryString()];
-        });
-    }
-
-    public function publish(
-        string $document,
-        string $locale,
-        string $version,
-        string $title,
-        string $description,
-        string $contentHtml,
-    ): object {
-        $this->assertKnown($document);
-        $this->current($document, $locale);
-
-        $version = trim($version);
-        $title = trim($title);
-        $description = trim($description);
-        $contentHtml = $this->sanitizeHtml($contentHtml);
-
-        if ($contentHtml === '') {
-            throw ValidationException::withMessages([
-                'content_html' => __('messages.admin.legal_content_required'),
-            ]);
+        abort_unless(Str::isUuid($id), 404);
+        $current = $this->current($document, $locale, $scope);
+        if ($current->version_id === $id) {
+            return $current;
+        }
+        // Only IDs listed as previously effective for this SITE document are eligible.
+        abort_unless(collect($this->history($document, $scope))->contains(fn ($version) => ($version['id'] ?? null) === $id), 404);
+        $response = $this->client->get('/api/v1/legal/versions/'.rawurlencode($id), ['Accept-Language' => $locale ?? app()->getLocale()]);
+        $version = $response['data'] ?? [];
+        if (($version['id'] ?? null) !== $id || data_get($version, 'document.code') !== $this->code($document, $scope) || data_get($version, 'document.scope') !== $scope) {
+            throw new WayoutApiException('La versione del documento legale non è disponibile.', 503, 'LEGAL_VERSION_UNAVAILABLE');
         }
 
-        $version = $this->nextAvailableVersion($document, $locale, $version);
-
-        DB::transaction(function () use ($document, $locale, $version, $title, $description, $contentHtml) {
-            $versionId = DatabaseUuid::insert('legal_document_versions', [
-                'document_key' => $document,
-                'version' => $version,
-                'locale' => $locale,
-                'title' => $title,
-                'description' => $description,
-                'content_hash' => hash('sha256', $contentHtml),
-                'content_snapshot' => $contentHtml,
-                'content_format' => 'html',
-                'source_path' => 'admin_dashboard',
-                'published_at' => now(),
-                'created_at' => now(),
-            ]);
-
-            DB::table('legal_documents')
-                ->where('document_key', $document)
-                ->where('locale', $locale)
-                ->update([
-                    'current_version_id' => $versionId,
-                    'updated_at' => now(),
-                ]);
-        });
-
-        return $this->current($document, $locale);
+        return $this->normalize($document, $locale ?? app()->getLocale(), ['name' => $current->title], $version, $scope);
     }
 
-    private function initialize(string $document, string $locale): void
+    private function code(string $document, string $scope = 'SITE'): string
     {
-        $config = config('legal.documents.'.$document);
-        $content = $this->initialContent($document, $locale, $config);
-        $version = (string) ($config['initial_version'] ?? now()->toDateString());
-        $title = (string) ($config['titles'][$locale] ?? $config['titles']['it'] ?? ucfirst($document));
-        $description = (string) ($config['descriptions'][$locale] ?? $config['descriptions']['it'] ?? '');
-        $hash = hash('sha256', $content);
+        if ($scope === 'SITE' && in_array($document, $this->keys(), true)) {
+            return (string) config('legal.backend_codes.'.$document);
+        }
+        abort_unless(preg_match('/^[A-Z][A-Z0-9_-]{0,79}$/D', $document), 404);
 
-        DB::transaction(function () use ($document, $locale, &$version, $title, $description, $content, $hash) {
-            $existing = DB::table('legal_document_versions')
-                ->where('document_key', $document)
-                ->where('locale', $locale)
-                ->where('version', $version)
-                ->first();
-
-            if ($existing && ($existing->content_format !== 'html' || ! hash_equals($existing->content_hash, $hash))) {
-                $version = $this->availableImportedVersion($document, $locale, $version);
-                $existing = null;
-            }
-
-            $versionId = $existing?->id ?? DatabaseUuid::insert('legal_document_versions', [
-                'document_key' => $document,
-                'version' => $version,
-                'locale' => $locale,
-                'title' => $title,
-                'description' => $description,
-                'content_hash' => $hash,
-                'content_snapshot' => $content,
-                'content_format' => 'html',
-                'source_path' => 'initial_import',
-                'published_at' => now(),
-                'created_at' => now(),
-            ]);
-
-            $existingDocument = DB::table('legal_documents')
-                ->where('document_key', $document)
-                ->where('locale', $locale)
-                ->exists();
-
-            DB::table('legal_documents')->updateOrInsert(
-                ['document_key' => $document, 'locale' => $locale],
-                [
-                    'current_version_id' => $versionId,
-                    'updated_at' => now(),
-                    ...($existingDocument ? [] : ['id' => DatabaseUuid::new(), 'created_at' => now()]),
-                ],
-            );
-        });
+        return $document;
     }
 
-    private function initialContent(string $document, string $locale, array $config): string
+    private function assertScope(?string $scope): void
     {
-        if (isset($config['initial_content'])) {
-            return $this->sanitizeHtml((string) ($config['initial_content'][$locale] ?? $config['initial_content']['it']));
-        }
-
-        $view = $config['views'][$locale] ?? $config['view'] ?? null;
-
-        if (! is_string($view) || $view === '') {
-            throw new LogicException('No '.$locale.' source is configured for legal document: '.$document);
-        }
-
-        $path = resource_path('views/'.$view);
-        $source = is_file($path) ? file_get_contents($path) : false;
-
-        if (! is_string($source)
-            || ! preg_match("/@section\('legal-content'\)\s*(.*?)\s*@endsection/s", $source, $matches)) {
-            throw new LogicException('Unable to import legal document: '.$document);
-        }
-
-        return $this->sanitizeHtml($matches[1]);
+        abort_unless($scope === null || in_array($scope, ['APP', 'SITE'], true), 404);
     }
 
-    private function currentQuery(string $document, string $locale)
+    private function normalize(string $document, string $locale, array $data, array $version, string $scope): object
     {
-        return DB::table('legal_documents')
-            ->join('legal_document_versions', 'legal_documents.current_version_id', '=', 'legal_document_versions.id')
-            ->where('legal_documents.document_key', $document)
-            ->where('legal_documents.locale', $locale)
-            ->select([
-                'legal_documents.id as document_id',
-                'legal_documents.document_key',
-                'legal_documents.locale',
-                'legal_document_versions.id as version_id',
-                'legal_document_versions.version',
-                'legal_document_versions.title',
-                'legal_document_versions.description',
-                'legal_document_versions.content_hash',
-                'legal_document_versions.content_snapshot',
-                'legal_document_versions.content_format',
-                'legal_document_versions.published_at',
-            ]);
-    }
-
-    private function availableImportedVersion(string $document, string $locale, string $base): string
-    {
-        $candidate = $base.'-dashboard';
-        $suffix = 1;
-
-        while (DB::table('legal_document_versions')
-            ->where('document_key', $document)
-            ->where('locale', $locale)
-            ->where('version', $candidate)
-            ->exists()) {
-            $candidate = $base.'-dashboard-'.$suffix++;
+        if (! is_string($version['content_html'] ?? null) || ! is_string($version['id'] ?? null)
+            || ! isset($version['version'], $version['published_at'])) {
+            throw new WayoutApiException('Il testo del documento legale non è disponibile.', 503, 'LEGAL_CONTENT_UNAVAILABLE');
         }
 
-        return $candidate;
-    }
-
-    private function nextAvailableVersion(string $document, string $locale, string $base): string
-    {
-        $candidate = $base;
-        $revision = 2;
-
-        while (DB::table('legal_document_versions')
-            ->where('document_key', $document)
-            ->where('locale', $locale)
-            ->where('version', $candidate)
-            ->exists()) {
-            $candidate = $base.'.'.$revision++;
-        }
-
-        return $candidate;
-    }
-
-    private function assertKnown(string $document): void
-    {
-        if (! in_array($document, $this->keys(), true)) {
-            abort(404);
-        }
-    }
-
-    private function sanitizeHtml(string $html): string
-    {
-        $html = trim($html);
-
-        if ($html === '') {
-            return '';
-        }
-
-        $document = new DOMDocument('1.0', 'UTF-8');
-        $previous = libxml_use_internal_errors(true);
-        $document->loadHTML(
-            '<?xml encoding="utf-8" ?><div id="legal-root">'.$html.'</div>',
-            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD,
-        );
-        libxml_clear_errors();
-        libxml_use_internal_errors($previous);
-
-        $root = $document->getElementById('legal-root');
-
-        if (! $root) {
-            return '';
-        }
-
-        $this->sanitizeNode($root);
-        $result = '';
-
-        foreach ($root->childNodes as $child) {
-            $result .= $document->saveHTML($child);
-        }
-
-        return trim($result);
-    }
-
-    private function sanitizeNode(DOMNode $node): void
-    {
-        $allowedTags = [
-            'div', 'section', 'h1', 'h2', 'h3', 'h4', 'p', 'span', 'ul', 'ol', 'li',
-            'strong', 'em', 'b', 'i', 'a', 'br', 'table', 'thead', 'tbody', 'tfoot',
-            'tr', 'th', 'td', 'dl', 'dt', 'dd',
+        return (object) [
+            'document_key' => $document,
+            'code' => $this->code($document, $scope),
+            'scope' => $scope,
+            'locale' => $locale,
+            'version_id' => $version['id'],
+            'version' => (string) $version['version'],
+            'title' => $data['name'] ?? $version['label'] ?? $document,
+            'description' => $data['name'] ?? '',
+            'content_snapshot' => $version['content_html'],
+            'content_hash' => hash('sha256', $version['content_html']),
+            'content_format' => 'html',
+            'published_at' => $version['published_at'],
         ];
-        $allowedAttributes = ['class', 'href', 'target', 'rel', 'colspan', 'rowspan'];
-
-        foreach (iterator_to_array($node->childNodes) as $child) {
-            if ($child instanceof DOMElement) {
-                if (! in_array(strtolower($child->tagName), $allowedTags, true)) {
-                    $child->parentNode?->removeChild($child);
-
-                    continue;
-                }
-
-                foreach (iterator_to_array($child->attributes) as $attribute) {
-                    if (! in_array(strtolower($attribute->name), $allowedAttributes, true)) {
-                        $child->removeAttribute($attribute->name);
-                    }
-                }
-
-                if ($child->hasAttribute('href')) {
-                    $href = trim($child->getAttribute('href'));
-
-                    if (! preg_match('~^(https?://|mailto:|/|#)~i', $href)) {
-                        $child->removeAttribute('href');
-                    }
-                }
-
-                if ($child->getAttribute('target') === '_blank') {
-                    $child->setAttribute('rel', 'noopener noreferrer');
-                }
-            }
-
-            $this->sanitizeNode($child);
-        }
     }
 }

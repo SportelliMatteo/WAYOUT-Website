@@ -92,7 +92,7 @@
             <p class="text-xs font-black uppercase tracking-[0.2em] text-violet-700">{{ __('messages.withdrawal.notice_label') }}</p>
             <h2 class="mt-2 text-3xl font-black text-slate-950">{{ __('messages.withdrawal.notice_title') }}</h2>
         </div>
-        <div class="space-y-8">{!! $withdrawalInfo->content_snapshot !!}</div>
+        <div class="backend-legal-content">{!! $withdrawalInfo->content_snapshot !!}</div>
     </section>
 
     <section id="refund-policy" class="rounded-[1.5rem] border-2 border-amber-300 bg-amber-50/60 p-5 sm:p-8">
@@ -101,7 +101,7 @@
             <h2 class="mt-2 text-3xl font-black text-slate-950">Refund Policy</h2>
             <p class="mt-3 font-semibold leading-7 text-slate-700">{{ __('messages.withdrawal.additional_text') }}</p>
         </div>
-        <div class="space-y-8">{!! $refundPolicy->content_snapshot !!}</div>
+        <div class="backend-legal-content">{!! $refundPolicy->content_snapshot !!}</div>
     </section>
 </div>
 @endsection

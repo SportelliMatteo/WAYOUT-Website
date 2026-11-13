@@ -31,6 +31,21 @@ if (hero && !reducedMotion.matches) {
 document.querySelectorAll('[data-app-tabs]').forEach((section) => {
     const tabs = [...section.querySelectorAll('[data-app-tab]')];
     const panels = [...section.querySelectorAll('[data-app-panel]')];
+    let timer = null;
+    let visible = !('IntersectionObserver' in window);
+    const stop = () => {
+        clearTimeout(timer);
+        timer = null;
+    };
+    const schedule = () => {
+        stop();
+        if (reducedMotion.matches || !visible || document.hidden || tabs.length < 2) return;
+        timer = setTimeout(() => {
+            const index = tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
+            activate(tabs[(index + 1) % tabs.length]);
+            schedule();
+        }, 5000);
+    };
     const activate = (selected, focus = false) => {
         const previous = tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
         tabs.forEach((tab) => {
@@ -51,7 +66,10 @@ document.querySelectorAll('[data-app-tabs]').forEach((section) => {
         if (focus) selected.focus();
     };
     tabs.forEach((tab, index) => {
-        tab.addEventListener('click', () => activate(tab));
+        tab.addEventListener('click', () => {
+            activate(tab);
+            schedule();
+        });
         tab.addEventListener('keydown', (event) => {
             let next = index;
             if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
@@ -61,6 +79,17 @@ document.querySelectorAll('[data-app-tabs]').forEach((section) => {
             else return;
             event.preventDefault();
             activate(tabs[next], true);
+            schedule();
         });
     });
+    if ('IntersectionObserver' in window) {
+        const visibility = new IntersectionObserver((entries) => {
+            visible = entries.some((entry) => entry.isIntersecting);
+            schedule();
+        }, { threshold: 0.15 });
+        visibility.observe(section);
+    }
+    document.addEventListener('visibilitychange', schedule);
+    reducedMotion.addEventListener('change', schedule);
+    schedule();
 });

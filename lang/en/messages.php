@@ -571,7 +571,7 @@ return [
         'saved_codes_continue' => 'I saved the codes, continue',
         'dashboard_title' => 'Admin Dashboard - Wayout',
         'brand' => 'WAYOUT Admin',
-        'heading' => 'Customers and orders',
+        'heading' => 'Website settings',
         'dashboard_sections' => 'Dashboard sections',
         'tab_overview' => 'Overview',
         'tab_users' => 'Users',

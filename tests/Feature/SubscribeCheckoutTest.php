@@ -55,7 +55,10 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSee('id="promo-offers"', false)
             ->assertSee('id="subscription-offers"', false)
             ->assertSee('Pacchetti promo one shot')
-            ->assertSee('Scopri gli abbonamenti')
+            ->assertSee('data-offer-tab="promo-offers"', false)
+            ->assertSee('data-offer-tab="subscription-offers"', false)
+            ->assertSee('aria-selected="true" aria-controls="promo-offers"', false)
+            ->assertSee('aria-labelledby="subscriptions-tab" tabindex="0"  hidden', false)
             ->assertDontSee('js.stripe.com', false);
     }
 
@@ -66,6 +69,26 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSee('Pagamento unico')->assertSee('365 giorni')
             ->assertSee('Nessun rinnovo automatico')->assertSee('Dall’acquisto/attivazione')
             ->assertDontSee('Waitlist Pass')->assertDontSee('prima del lancio');
+    }
+
+    public function test_permission_copy_uses_localized_marketing_labels_and_preserves_limits(): void
+    {
+        $packages = $this->promoPackages();
+        $packages[0]['tier']['permissions'] = [
+            ['key' => 'CAN_CREATE_PRIVATE_PARTY', 'description' => 'Whether the user can create private party events', 'value_type' => 'BOOL', 'value' => true],
+            ['key' => 'MAX_FUTURE_EVENTS', 'value_type' => 'INT', 'value' => 20],
+            ['key' => 'AD_FREE', 'description' => 'Whether the user is exempt from ads in the app', 'value_type' => 'BOOL', 'value' => false],
+        ];
+        Http::fake(['*/internal/promo-packages' => Http::response(['data' => $packages])]);
+
+        $this->get(route('subscribe', ['lang' => 'it']))->assertOk()
+            ->assertSee('Organizza tavoli nei club e feste private')
+            ->assertSee('Fino a <strong>20</strong> tavoli nei club e feste private in programma contemporaneamente', false)
+            ->assertDontSee('Whether the user can create private party events')
+            ->assertDontSee('Whether the user is exempt from ads in the app');
+        $this->get(route('subscribe', ['lang' => 'en']))->assertOk()
+            ->assertSee('Organize tables at clubs and host private parties')
+            ->assertSee('Keep up to <strong>20</strong> upcoming club tables and private parties active at once', false);
     }
 
     public function test_catalog_grid_supports_arbitrary_packages_including_free_and_excludes_inactive_ones(): void
@@ -84,7 +107,10 @@ class SubscribeCheckoutTest extends TestCase
     public function test_empty_catalog_has_a_distinct_empty_state(): void
     {
         Http::fake(['*/internal/promo-packages' => Http::response(['data' => []])]);
-        $this->get(route('subscribe'))->assertOk()->assertSee('Le prossime occasioni stanno arrivando.')->assertDontSee('data-package-code=', false);
+        $this->get(route('subscribe'))->assertOk()->assertSee('Le prossime occasioni stanno arrivando.')
+            ->assertSee('aria-selected="true" aria-controls="subscription-offers"', false)
+            ->assertSee('aria-labelledby="promo-tab" tabindex="0"  hidden', false)
+            ->assertDontSee('data-package-code=', false);
     }
 
     public function test_checkout_accepts_arbitrary_catalog_codes_and_saves_the_package_snapshot(): void
@@ -322,7 +348,7 @@ class SubscribeCheckoutTest extends TestCase
         $this->assertDatabaseHas('purchases', ['plan' => 'FREE60', 'amount' => 0, 'offer_type' => 'PROMO_PACKAGE']);
     }
 
-    public function test_recurring_catalog_uses_bearer_and_checkout_uses_external_price_id(): void
+    public function test_recurring_catalog_is_public_and_checkout_uses_external_price_id(): void
     {
         Http::fake(function (Request $request) {
             return match (parse_url($request->url(), PHP_URL_PATH)) {
@@ -337,12 +363,13 @@ class SubscribeCheckoutTest extends TestCase
                 default => Http::response([], 404),
             };
         });
-        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload('__plans'))
-            ->assertOk()->assertJsonCount(1, 'plans')->assertDontSee('existing-token');
+        $this->getJson(route('subscribe.plans'))
+            ->assertOk()->assertJsonCount(2, 'plans')->assertJsonPath('plans.1.external_price_id', null)->assertDontSee('existing-token');
         $this->assertDatabaseCount('purchases', 0);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/api/auth/verify-firebase-token'));
         $this->postJson(route('subscribe.checkout'), [...$this->checkoutPayload('price_monthly'), 'recurring_terms_accepted' => true])
             ->assertOk()->assertJson(['redirectUrl' => 'https://checkout.stripe.test/monthly']);
-        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/api/v1/plans') && $request->hasHeader('Authorization', 'Bearer existing-token') && ! $request->hasHeader('X-Wayout-Signature'));
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/api/v1/plans') && ! $request->hasHeader('Authorization') && ! $request->hasHeader('X-Wayout-Signature'));
         Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/checkout-sessions') && $request['external_price_id'] === 'price_monthly' && ! isset($request['promo_package_code']));
         $this->assertDatabaseHas('purchases', ['external_price_id' => 'price_monthly', 'offer_type' => 'PLAN', 'auto_renew' => true, 'billing_period' => 'MONTHLY', 'amount' => 1200]);
     }

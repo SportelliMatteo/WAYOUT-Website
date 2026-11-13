@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\WayoutApiException;
 use App\Http\Middleware\EnforceSiteVisibility;
 use App\Http\Middleware\RequireAdminAuthentication;
 use App\Http\Middleware\SecurityHeaders;
@@ -12,6 +13,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -56,6 +58,16 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (WayoutApiException $exception, Request $request) {
+            if (! str_starts_with($exception->apiCode ?? '', 'LEGAL_') && ! str_starts_with($exception->requestPath ?? '', '/api/v1/legal/')) {
+                return null;
+            }
+            Log::warning('Legal backend request failed.', $exception->logContext());
+
+            return $request->expectsJson()
+                ? response()->json(['error' => __('experience.legal_unavailable')], 503)
+                : response()->view('errors.legal-unavailable', [], 503);
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

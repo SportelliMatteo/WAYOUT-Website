@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Exceptions\WayoutApiException;
+use App\Support\AppStoreLinks;
 use App\Support\LegalDocumentService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -18,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(LegalDocumentService::class);
     }
 
     /**
@@ -75,14 +77,30 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
-        View::composer(['pages.home', 'pages.subscribe', 'pages.contact'], function ($view) {
-            if (! Schema::hasTable('legal_documents')) {
-                return;
+        View::composer('partials.app-downloads', function ($view) {
+            $view->with('appStoreLinks', app(AppStoreLinks::class)->all());
+        });
+        View::composer(['layouts.app', 'pages.legal.layout'], function ($view) {
+            try {
+                $documents = app(LegalDocumentService::class)->published(null);
+                $view->with('footerLegalDocuments', collect($documents)->groupBy('scope')->all());
+            } catch (WayoutApiException $exception) {
+                Log::warning('Footer legal index unavailable.', $exception->logContext());
+                $view->with('footerLegalDocuments', []);
             }
+        });
 
-            $documents = app(LegalDocumentService::class)->allCurrent();
-
-            $view->with('legalDocumentsHtml', $documents->map->content_snapshot->all());
+        View::composer(['pages.subscribe', 'pages.contact'], function ($view) {
+            $key = $view->name() === 'pages.subscribe' ? 'purchase_acceptance' : 'contact_acceptance';
+            try {
+                $document = app(LegalDocumentService::class)->current($key);
+                $view->with('legalDocumentsHtml', [$key => $document->content_snapshot]);
+                $view->with('legalContentUnavailable', false);
+            } catch (WayoutApiException $exception) {
+                Log::warning('Backend legal content unavailable.', $exception->logContext());
+                $view->with('legalDocumentsHtml', [$key => '']);
+                $view->with('legalContentUnavailable', true);
+            }
         });
     }
 }

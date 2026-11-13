@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\LegalDocumentService;
+use App\Support\LocalLegalDocumentArchive as LegalDocumentService;
 use App\Support\WaitlistCreatorPolicyUpdate;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;

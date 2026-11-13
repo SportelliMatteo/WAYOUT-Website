@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\AdminUser;
 use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
-use App\Support\LegalDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -16,31 +15,6 @@ use Tests\TestCase;
 class AdminDashboardTest extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_pagination_links_keep_their_own_panel_even_when_rendered_from_overview(): void
-    {
-        $this->seedDashboardData();
-        for ($i = 1; $i <= 6; $i++) {
-            DB::table('purchases')->insert(['id' => DatabaseUuid::new(), 'email' => 'pagination'.$i.'@example.com', 'plan' => 'join', 'amount' => 2900, 'currency' => 'eur', 'status' => 'succeeded', 'created_at' => now(), 'updated_at' => now()]);
-        }
-        $response = $this->withSession($this->adminSession())->get(route('admin.dashboard', [
-            'tab' => 'overview', 'customers_per_page' => 5, 'lang' => 'it',
-        ]))->assertOk()->assertSee('Successiva')->assertSee('Risultati da')
-            ->assertDontSee('Showing')->assertDontSee('pagination.previous');
-        $document = new \DOMDocument;
-        @$document->loadHTML($response->getContent());
-        $xpath = new \DOMXPath($document);
-        $links = $xpath->query('//div[@id="admin-panel-users"]//a[@rel="next"]');
-        $this->assertGreaterThan(0, $links->length);
-        $url = $links->item(0)->getAttribute('href');
-        parse_str(parse_url($url, PHP_URL_QUERY), $query);
-        $this->assertSame('users', $query['tab']);
-        $this->assertSame('2', $query['customers_page']);
-        $this->assertSame('5', $query['customers_per_page']);
-        $this->get($url)->assertOk()->assertSee('data-admin-panel="users" class=""', false);
-        $this->get(route('admin.dashboard', ['tab' => 'users', 'customers_per_page' => 5, 'lang' => 'en']))
-            ->assertOk()->assertSee('Next')->assertSee('Showing')->assertDontSee('Risultati da');
-    }
 
     public function test_admin_activity_pagination_exposes_only_its_table_for_partial_replacement(): void
     {
@@ -93,99 +67,6 @@ class AdminDashboardTest extends TestCase
         ]);
     }
 
-    public function test_admin_dashboard_shows_waitlist_purchase_and_revenue_totals(): void
-    {
-        $this->seedDashboardData();
-
-        $response = $this->withSession($this->adminSession())
-            ->get(route('admin.dashboard'));
-
-        $response->assertOk()
-            ->assertSee('Clienti e ordini')
-            ->assertSee('buyer@example.com')
-            ->assertSee('Founder Creator 12M')
-            ->assertSee('Marketing')
-            ->assertSee('88,00€')
-            ->assertSee('29,00€')
-            ->assertSee('59,00€')
-            ->assertDontSee('Capienze Founder')
-            ->assertSee('Utenti Founder Join 12M')
-            ->assertSee('Utenti Founder Creator 12M')
-            ->assertDontSee('Persone in waitlist');
-    }
-
-    public function test_dashboard_lists_have_independent_page_sizes_and_reject_unsupported_sizes(): void
-    {
-        $session = $this->adminSession();
-        $response = $this->withSession($session)
-            ->get(route('admin.dashboard', [
-                'customers_per_page' => 5,
-                'orders_per_page' => 20,
-                'consents_per_page' => 5,
-                'withdrawals_per_page' => 20,
-                'audit_per_page' => 5,
-                'retention_per_page' => 20,
-                'admins_per_page' => 5,
-                'join_buyers_per_page' => 20,
-                'creator_buyers_per_page' => 5,
-                'legal_privacy_per_page' => 20,
-            ]));
-
-        $response->assertOk()
-            ->assertSee('Righe per pagina');
-
-        $this->assertSame(5, $response->viewData('customers')->perPage());
-        $this->assertSame(20, $response->viewData('recentPurchases')->perPage());
-        $this->assertSame(5, $response->viewData('recentConsentEvents')->perPage());
-        $this->assertSame(20, $response->viewData('recentWithdrawals')->perPage());
-        $this->assertSame(5, $response->viewData('recentAdminAuditEvents')->perPage());
-        $this->assertSame(20, $response->viewData('retentionRuns')->perPage());
-        $this->assertSame(5, $response->viewData('adminUsers')->perPage());
-        $this->assertSame(20, $response->viewData('joinBuyers')->perPage());
-        $this->assertSame(5, $response->viewData('creatorBuyers')->perPage());
-        $this->assertSame(20, $response->viewData('legalDocumentHistory')->get('privacy')->perPage());
-
-        $invalid = $this->withSession($session)
-            ->get(route('admin.dashboard', ['orders_per_page' => 100]));
-
-        $this->assertSame(10, $invalid->viewData('recentPurchases')->perPage());
-    }
-
-    public function test_admin_dashboard_sections_and_legal_categories_are_accessible_as_tabs(): void
-    {
-        $response = $this->withSession($this->adminSession())
-            ->get(route('admin.dashboard', [
-                'tab' => 'legal',
-                'legal_group' => 'consent_texts',
-            ]));
-
-        $response->assertOk()
-            ->assertSee('role="tablist"', false)
-            ->assertSee('data-admin-tab="legal"', false)
-            ->assertSee('data-admin-panel="legal" class=""', false)
-            ->assertSee('data-legal-tab="consent_texts"', false)
-            ->assertSee('data-legal-panel="consent_texts"', false)
-            ->assertSee('Testi delle checkbox');
-    }
-
-    public function test_admin_dashboard_shows_backend_founder_maximum_quantities(): void
-    {
-        Http::fake([
-            '*/api/v1/internal/promo-packages' => Http::response(['data' => [
-                ['code' => 'FOUNDER_JOIN_12M_PASS', 'price' => '29.00', 'free' => false, 'available' => 499, 'max_available_quantity' => 500],
-                ['code' => 'FOUNDER_CREATOR_12M_PASS', 'price' => '59.00', 'free' => false, 'available' => 149, 'max_available_quantity' => 150],
-            ]]),
-        ]);
-        $this->seedDashboardData();
-
-        $this->withSession($this->adminSession())
-            ->get(route('admin.dashboard'))
-            ->assertOk()
-            ->assertSee('0 / 500')
-            ->assertSee('0 / 150')
-            ->assertDontSee('Capienze Founder');
-    }
-
     public function test_admin_can_enable_legal_entity_invoicing(): void
     {
         $session = $this->adminSession();
@@ -212,217 +93,6 @@ class AdminDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Fattura a persona giuridica')
             ->assertSee('<option value="1" selected>Abilitato</option>', false);
-    }
-
-    public function test_admin_can_publish_a_new_legal_version_used_by_the_public_page(): void
-    {
-        $response = $this->withSession($this->adminSession())
-            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [
-                'document_key' => 'privacy',
-                'locale' => 'it',
-                'version' => '2026-07-15',
-                'title' => 'Privacy policy aggiornata',
-                'description' => 'Nuova descrizione privacy.',
-                'content_html' => '<div><h2>Nuovo testo privacy</h2><p>Contenuto pubblicato dal database.</p><script>alert(1)</script></div>',
-            ]);
-
-        $response->assertRedirect(route('admin.dashboard', [
-            'lang' => 'it',
-            'tab' => 'legal',
-            'legal_group' => 'policies',
-        ]).'#legal-documents')
-            ->assertSessionHas('admin_success');
-
-        $version = DB::table('legal_document_versions')
-            ->where('document_key', 'privacy')
-            ->where('locale', 'it')
-            ->where('version', '2026-07-15')
-            ->first();
-
-        $this->assertNotNull($version);
-        $this->assertSame('html', $version->content_format);
-        $this->assertStringNotContainsString('<script', $version->content_snapshot);
-        $this->assertDatabaseHas('legal_documents', [
-            'document_key' => 'privacy',
-            'locale' => 'it',
-            'current_version_id' => $version->id,
-        ]);
-
-        $this->assertDatabaseHas('admin_audit_events', [
-            'actor_email' => 'admin@example.com',
-            'action' => 'legal_document.published',
-            'target_type' => 'legal_document',
-            'target_id' => $version->id,
-        ]);
-
-        $this->get(route('legal.privacy'))
-            ->assertOk()
-            ->assertSee('Privacy policy aggiornata')
-            ->assertSee('Nuovo testo privacy')
-            ->assertSee('Versione 2026-07-15')
-            ->assertDontSee('alert(1)');
-    }
-
-    public function test_admin_can_edit_and_publish_the_english_legal_version_without_changing_italian(): void
-    {
-        $italian = app(LegalDocumentService::class)->current('privacy', 'it');
-        $session = $this->adminSession();
-
-        $this->withSession($session)
-            ->get(route('admin.dashboard', [
-                'lang' => 'en',
-                'tab' => 'legal',
-                'legal_group' => 'policies',
-            ]))
-            ->assertOk()
-            ->assertSee('Document language')
-            ->assertSee('You are editing the English versions.')
-            ->assertSee('name="locale" value="en"', false);
-
-        $response = $this->withSession($session)
-            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [
-                'document_key' => 'privacy',
-                'locale' => 'en',
-                'version' => '2026-08-29',
-                'title' => 'Updated privacy policy',
-                'description' => 'Updated English privacy information.',
-                'content_html' => '<div><h2>English privacy text</h2><p>Published independently.</p></div>',
-            ]);
-
-        $response->assertRedirect(route('admin.dashboard', [
-            'lang' => 'en',
-            'tab' => 'legal',
-            'legal_group' => 'policies',
-        ]).'#legal-documents');
-
-        $this->get(route('legal.privacy', ['lang' => 'en']))
-            ->assertOk()
-            ->assertSee('Updated privacy policy')
-            ->assertSee('English privacy text')
-            ->assertSee('Legal area')
-            ->assertSee('Website and waitlist terms');
-
-        $italianAfterPublication = app(LegalDocumentService::class)->current('privacy', 'it');
-        $this->assertSame($italian->version_id, $italianAfterPublication->version_id);
-        $this->assertSame($italian->content_hash, $italianAfterPublication->content_hash);
-    }
-
-    public function test_all_compliance_documents_have_distinct_english_initial_content(): void
-    {
-        foreach (['privacy', 'cookies', 'terms', 'passes', 'sales', 'presale', 'refunds', 'withdrawal_info', 'notice'] as $document) {
-            $italian = app(LegalDocumentService::class)->current($document, 'it');
-            $english = app(LegalDocumentService::class)->current($document, 'en');
-
-            $this->assertSame('en', $english->locale, $document);
-            $this->assertNotSame($italian->content_hash, $english->content_hash, $document);
-            $this->assertNotSame($italian->content_snapshot, $english->content_snapshot, $document);
-        }
-    }
-
-    public function test_legal_document_publication_requires_admin_authentication(): void
-    {
-        $this->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [])
-            ->assertRedirect(route('admin.login'));
-    }
-
-    public function test_admin_can_publish_multiple_legal_revisions_on_the_same_date(): void
-    {
-        $date = now()->toDateString();
-        $session = $this->adminSession();
-        $existingRevisions = DB::table('legal_document_versions')
-            ->where('document_key', 'privacy')
-            ->where('locale', 'it')
-            ->where(fn ($query) => $query
-                ->where('version', $date)
-                ->orWhere('version', 'like', $date.'.%'))
-            ->count();
-        $payload = [
-            'document_key' => 'privacy',
-            'locale' => 'it',
-            'version' => $date,
-            'title' => 'Privacy aggiornata oggi',
-            'description' => 'Descrizione aggiornata oggi.',
-            'content_html' => '<div><h2>Prima revisione</h2></div>',
-        ];
-
-        $this->withSession($session)
-            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), $payload)
-            ->assertSessionHas('admin_success');
-
-        $this->withSession($session)
-            ->post(route('admin.legal-documents.publish', ['document' => 'privacy']), [
-                ...$payload,
-                'content_html' => '<div><h2>Seconda revisione</h2></div>',
-            ])->assertSessionHas('admin_success');
-
-        $versions = DB::table('legal_document_versions')
-            ->where('document_key', 'privacy')
-            ->where('locale', 'it')
-            ->where(fn ($query) => $query
-                ->where('version', $date)
-                ->orWhere('version', 'like', $date.'.%'))
-            ->orderBy('id')
-            ->pluck('version');
-
-        $this->assertCount($existingRevisions + 2, $versions);
-        $current = app(LegalDocumentService::class)->current('privacy', 'it');
-        $this->assertTrue($versions->contains($current->version));
-        $this->assertStringContainsString('Seconda revisione', $current->content_snapshot);
-    }
-
-    public function test_admin_dashboard_can_filter_waitlist_buyers(): void
-    {
-        $this->seedDashboardData();
-
-        $response = $this->withSession($this->adminSession())
-            ->get(route('admin.dashboard', ['status' => 'buyers']));
-
-        $response->assertOk()
-            ->assertSee('buyer@example.com')
-            ->assertDontSee('lead@example.com');
-    }
-
-    public function test_customers_exclude_people_with_only_a_waitlist_entry(): void
-    {
-        $this->seedDashboardData();
-        $response = $this->withSession($this->adminSession())->get(route('admin.dashboard', ['tab' => 'users']));
-        $response->assertOk();
-        $this->assertSame(['buyer@example.com'], $response->viewData('customers')->pluck('email')->all());
-        $this->assertSame(2, (int) $response->viewData('customers')->first()->orders_succeeded);
-    }
-
-    public function test_customers_can_be_searched_by_email(): void
-    {
-        $this->seedDashboardData();
-        $session = $this->adminSession();
-        $response = $this->withSession($session)->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'buyer@']));
-        $response->assertOk();
-        $this->assertSame(['buyer@example.com'], $response->viewData('customers')->pluck('email')->all());
-        $response = $this->get(route('admin.dashboard', ['tab' => 'users', 'q' => 'lead@example.com']));
-        $this->assertSame(0, $response->viewData('customers')->total());
-    }
-
-    public function test_admin_dashboard_displays_utc_consent_timestamps_in_rome_timezone(): void
-    {
-        DB::table('consent_events')->insert([
-            'id' => DatabaseUuid::new(),
-            'subject_email' => 'timezone@example.com',
-            'consent_type' => 'marketing',
-            'action' => 'granted',
-            'source' => 'test',
-            'document_versions' => json_encode([]),
-            'document_hashes' => json_encode([]),
-            'document_urls' => json_encode([]),
-            'locale' => 'it',
-            'occurred_at' => '2026-07-15 20:00:00',
-            'created_at' => '2026-07-15 20:00:00',
-        ]);
-
-        $response = $this->withSession($this->adminSession())
-            ->get(route('admin.dashboard', ['tab' => 'consents']));
-
-        $response->assertOk()
-            ->assertSee('15/07/2026 22:00');
     }
 
     public function test_admin_dashboard_shows_retention_schedule_candidates_and_history(): void
@@ -470,6 +140,26 @@ class AdminDashboardTest extends TestCase
         );
     }
 
+    public function test_dashboard_contains_only_settings_and_does_not_fetch_sales_or_legal_catalogs(): void
+    {
+        Http::fake();
+        $this->withSession($this->adminSession())->get(route('admin.dashboard', ['tab' => 'orders']))
+            ->assertOk()->assertSee('Configurazioni sito')->assertSee('id="admin-panel-settings"', false)
+            ->assertDontSee('admin-panel-orders')->assertDontSee('admin-panel-overview')
+            ->assertDontSee('admin-panel-users')->assertDontSee('admin-panel-withdrawals')
+            ->assertDontSee('admin-panel-consents')->assertDontSee('admin-panel-legal')
+            ->assertDontSee('admin.legal-documents.publish');
+        Http::assertNothingSent();
+    }
+
+    public function test_removed_admin_payment_and_publication_endpoints_return_not_found(): void
+    {
+        $this->withSession($this->adminSession());
+        foreach (['/admin/withdrawals/example/refund', '/admin/purchases/example/invoice/retry', '/admin/purchases/example/invoice/sync', '/admin/legal-documents/privacy'] as $path) {
+            $this->post($path)->assertNotFound();
+        }
+    }
+
     private function adminSession(): array
     {
         $admin = AdminUser::query()->create([
@@ -485,69 +175,5 @@ class AdminDashboardTest extends TestCase
             'admin_user_id' => $admin->id,
             'admin_auth_version' => $admin->auth_version,
         ];
-    }
-
-    private function seedDashboardData(): void
-    {
-        $buyerId = DatabaseUuid::new();
-        DB::table('waitlist_entries')->insert([
-            [
-                'id' => $buyerId,
-                'benefit_id' => '11111111-1111-4111-8111-111111111111',
-                'email' => 'buyer@example.com',
-                'waitlist_position' => 1,
-                'email_verified_at' => now()->subDay(),
-                'marketing_consent' => true,
-                'created_at' => now()->subDays(2),
-                'updated_at' => now()->subDays(2),
-            ],
-            [
-                'id' => DatabaseUuid::new(),
-                'benefit_id' => DatabaseUuid::new(),
-                'email' => 'eligible@example.com',
-                'waitlist_position' => 2,
-                'email_verified_at' => now()->subHours(12),
-                'marketing_consent' => false,
-                'created_at' => now()->subDay(),
-                'updated_at' => now()->subDay(),
-            ],
-            [
-                'id' => DatabaseUuid::new(),
-                'benefit_id' => DatabaseUuid::new(),
-                'email' => 'lead@example.com',
-                'waitlist_position' => null,
-                'email_verified_at' => null,
-                'marketing_consent' => false,
-                'created_at' => now()->subDay(),
-                'updated_at' => now()->subDay(),
-            ],
-        ]);
-
-        DB::table('purchases')->insert([
-            [
-                'id' => DatabaseUuid::new(),
-                'waitlist_entry_id' => $buyerId,
-                'email' => 'buyer@example.com',
-                'plan' => 'join',
-                'amount' => 2900,
-                'currency' => 'eur',
-                'stripe_session_id' => 'direct_join',
-                'status' => 'succeeded',
-                'created_at' => now()->subHours(3),
-                'updated_at' => now()->subHours(3),
-            ],
-            [
-                'id' => DatabaseUuid::new(),
-                'waitlist_entry_id' => $buyerId,
-                'email' => 'buyer@example.com',
-                'plan' => 'creator',
-                'amount' => 5900,
-                'currency' => 'eur',
-                'stripe_session_id' => 'direct_creator',
-                'status' => 'succeeded',
-                'created_at' => now()->subHours(2),
-                'updated_at' => now()->subHours(2),
-            ],
-        ]);
     }
 }

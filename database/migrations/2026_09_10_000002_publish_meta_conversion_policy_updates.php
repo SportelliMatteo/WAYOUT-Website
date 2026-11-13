@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\LegalDocumentService;
+use App\Support\LocalLegalDocumentArchive as LegalDocumentService;
 use App\Support\MetaTrackingPolicyUpdate;
 use Illuminate\Database\Migrations\Migration;
 

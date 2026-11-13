@@ -151,7 +151,7 @@ const setupCheckoutPhoneVerification = () => {
         try {
             const credential = await confirmation.confirm(code.value.trim());
             token.value = await credential.user.getIdToken(true);
-            submit.disabled = false;
+            submit.disabled = form.dataset.legalUnavailable === 'true';
             prefix.disabled = true;
             number.readOnly = true;
             updateSendButton();

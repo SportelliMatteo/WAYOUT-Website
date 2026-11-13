@@ -89,11 +89,10 @@ class ConsentAuditService
 
         foreach ($documents as $document) {
             $current = $this->legalDocuments->current($document);
-            $config = config('legal.documents.'.$document);
 
             $versions[$document] = $current->version;
             $hashes[$document] = $current->content_hash;
-            $urls[$document] = route($config['route'], [], true);
+            $urls[$document] = route('legal.version', ['document' => $document, 'version' => $current->version_id], true);
         }
 
         return compact('versions', 'hashes', 'urls');

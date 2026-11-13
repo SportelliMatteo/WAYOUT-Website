@@ -65,7 +65,7 @@ class RecaptchaProtectionTest extends TestCase
         ])->assertSessionHas('contact_success', true);
 
         $this->assertDatabaseHas('contact_messages', ['email' => 'mario@example.com']);
-        Http::assertSent(fn ($request) => $request['secret'] === 'test-secret-key'
+        Http::assertSent(fn ($request) => ($request['secret'] ?? null) === 'test-secret-key'
             && $request['response'] === 'valid-token');
     }
 
