@@ -40,7 +40,7 @@ class FounderAvailability
 
         return [
             'capacities' => $capacities,
-            'waitlist' => $this->entrySummary($waitlistCount, $capacities['waitlist_capacity']),
+            'waitlist' => array_replace($this->entrySummary($waitlistCount, $capacities['waitlist_capacity']), config('founder.waitlist_closed') ? ['remaining' => 0, 'is_full' => true] : []),
             'join' => $this->entrySummary($joinCount, $capacities['join_capacity']),
             'creator' => $this->entrySummary($creatorCount, $capacities['creator_capacity']),
         ];
@@ -50,7 +50,7 @@ class FounderAvailability
     {
         $capacity = $this->capacities()['waitlist_capacity'];
 
-        return $capacity <= 0 || $this->waitlistCount() >= $capacity;
+        return config('founder.waitlist_closed') || $capacity <= 0 || $this->waitlistCount() >= $capacity;
     }
 
     public function isPlanSoldOut(string $plan): bool

@@ -14,6 +14,30 @@ class WaitlistTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['founder.waitlist_closed' => false]);
+    }
+
+    public function test_closed_waitlist_shows_launch_and_rejects_new_signups(): void
+    {
+        config(['founder.waitlist_closed' => true]);
+        Mail::fake();
+
+        $this->get(route('home'))->assertOk()
+            ->assertSee('2.000')->assertSee('28 novembre')->assertSee('Waitlist chiusa')
+            ->assertDontSee('id="waitlist-join-form"', false);
+
+        $this->post(route('waitlist.store'), [
+            'email' => 'late@example.com',
+            'waitlist_terms_accepted' => '1',
+        ])->assertSessionHas('waitlist_error', __('messages.messages.waitlist_closed'));
+
+        $this->assertDatabaseMissing('waitlist_entries', ['email' => 'late@example.com']);
+        Mail::assertNothingSent();
+    }
+
     public function test_home_shows_email_only_form_and_consents_below_it(): void
     {
         $this->get(route('home'))

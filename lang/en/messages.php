@@ -98,6 +98,18 @@ return [
         'template_filename' => 'WAYOUT-model-withdrawal-form.docx',
     ],
     'home' => [
+        'launch_closed' => 'Waitlist closed · All spots taken',
+        'launch_milestone' => 'All spots taken. All in.',
+        'launch_thanks' => '2,000 of you chose to be here from day one. The waitlist is officially closed. Thank you for bringing WAYOUT to life. This is just the beginning.',
+        'launch_label' => 'App launch',
+        'launch_date' => '28 November',
+        'launch_tagline' => 'Save the date. Your next night out starts here.',
+        'launch_explore' => 'Discover what’s coming',
+        'launch_eyebrow' => '2,000 spots filled. See you on 28 November.',
+        'launch_headline_a' => 'Almost time to',
+        'launch_headline_b' => 'go out.',
+        'launch_intro' => 'The waitlist is full. WAYOUT arrives on 28 November: new people, new plans, new nights to remember. Get ready to be there.',
+
         'title' => 'Wayout',
         'description' => 'Find people to share tables, nights out, and new experiences with.',
         'eyebrow' => 'Social clubbing, before everyone else',

@@ -98,6 +98,18 @@ return [
         'template_filename' => 'Modulo-tipo-di-recesso-WAYOUT.docx',
     ],
     'home' => [
+        'launch_closed' => 'Waitlist chiusa · Tutti i posti assegnati',
+        'launch_milestone' => 'Posti esauriti. Energia al completo.',
+        'launch_thanks' => 'In 2.000 avete scelto di esserci dall’inizio. La waitlist è ufficialmente chiusa. Grazie per aver acceso WAYOUT. Ora arriva il bello.',
+        'launch_label' => 'Il lancio dell’app',
+        'launch_date' => '28 novembre',
+        'launch_tagline' => 'Segna la data. La prossima serata parte da qui.',
+        'launch_explore' => 'Scopri cosa sta arrivando',
+        'launch_eyebrow' => '2.000 posti raggiunti. Ci vediamo il 28 novembre.',
+        'launch_headline_a' => 'L’attesa è quasi',
+        'launch_headline_b' => 'fuori.',
+        'launch_intro' => 'La waitlist ha fatto il pieno. Il 28 novembre arriva WAYOUT: nuove persone, nuovi piani, nuove serate da vivere. Preparati a esserci.',
+
         'title' => 'Wayout',
         'description' => 'Trova persone con cui condividere tavoli, serate e nuove esperienze.',
         'eyebrow' => 'Social clubbing, prima di tutto',

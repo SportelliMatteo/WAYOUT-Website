@@ -6,6 +6,7 @@ use App\Mail\WaitlistVerificationMail;
 use App\Mail\WaitlistWelcomeMail;
 use App\Support\ConsentAuditService;
 use App\Support\DatabaseUuid;
+use App\Support\FounderAvailability;
 use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
 use App\Support\TransactionalEmailSender;
@@ -36,6 +37,11 @@ class WaitlistController extends Controller
             'marketing_consent' => ['nullable', 'boolean'],
         ]);
         $email = Str::lower(trim($validated['email']));
+        if (app(FounderAvailability::class)->isWaitlistFull()
+            && ! DB::table('waitlist_entries')->where('email', $email)->whereNotNull('email_verified_at')->exists()) {
+            return back()->with('waitlist_error', __('messages.messages.waitlist_closed'));
+        }
+
         $marketingConsent = $request->boolean('marketing_consent');
 
         try {
@@ -180,7 +186,7 @@ class WaitlistController extends Controller
                         ->lockForUpdate()->value('value') ?? config('founder.default_capacities.waitlist_capacity'));
                     $verifiedCount = DB::table('waitlist_entries')->whereNotNull('email_verified_at')->count();
 
-                    if ($capacity <= 0 || $verifiedCount >= $capacity) {
+                    if (config('founder.waitlist_closed') || $capacity <= 0 || $verifiedCount >= $capacity) {
                         return ['valid' => true, 'full' => true];
                     }
 

@@ -26,17 +26,34 @@
     <div class="wayout-shell grid items-center gap-8 py-8 sm:py-10 lg:min-h-[calc(100vh-6rem)] lg:grid-cols-[1.02fr_0.98fr] lg:gap-12 lg:py-16">
         <div class="relative z-10 text-center lg:text-left">
             <span class="inline-flex max-w-full items-center rounded-full border border-violet-200 bg-white/80 px-4 py-2 text-sm font-bold text-violet-700 shadow-sm">
-                {{ __('messages.home.eyebrow') }}
+                {{ $waitlistFull ? __('messages.home.launch_eyebrow') : __('messages.home.eyebrow') }}
             </span>
             <h1 class="mx-auto mt-6 max-w-4xl text-4xl font-black leading-[0.96] text-slate-950 sm:text-6xl lg:mx-0 lg:text-7xl">
-                {{ __('messages.home.headline_a') }} <span class="wayout-gradient-text">{{ __('messages.home.headline_b') }}</span>
+                {{ $waitlistFull ? __('messages.home.launch_headline_a') : __('messages.home.headline_a') }} <span class="wayout-gradient-text">{{ $waitlistFull ? __('messages.home.launch_headline_b') : __('messages.home.headline_b') }}</span>
             </h1>
             <p class="mx-auto mt-5 max-w-2xl text-base font-medium leading-7 text-slate-600 sm:mt-6 sm:text-xl sm:leading-8 lg:mx-0">
-                {{ __('messages.home.intro') }}
+                {{ $waitlistFull ? __('messages.home.launch_intro') : __('messages.home.intro') }}
             </p>
 
             <div class="mx-auto mt-7 max-w-2xl overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-[0_26px_80px_rgba(15,23,42,0.20)] sm:mt-8 lg:mx-0">
                 <div class="bg-[radial-gradient(circle_at_12%_0%,rgba(124,35,245,0.62),transparent_22rem),radial-gradient(circle_at_95%_10%,rgba(185,255,74,0.20),transparent_18rem)] p-4 sm:p-5">
+                    @if($waitlistFull)
+                        <div class="space-y-6 p-2 sm:p-3">
+                            <span class="inline-flex items-center gap-2 rounded-full border border-lime-300/30 bg-lime-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-lime-200"><span class="h-2 w-2 rounded-full bg-lime-300" aria-hidden="true"></span>{{ __('messages.home.launch_closed') }}</span>
+                            <div>
+                                <p class="text-6xl font-black leading-none tracking-tighter sm:text-8xl">2.000<span class="text-lime-300">/</span><span class="text-3xl text-violet-200 sm:text-5xl">2.000</span></p>
+                                <p class="mt-3 text-xl font-black sm:text-2xl">{{ __('messages.home.launch_milestone') }}</p>
+                            </div>
+                            <div class="h-2 overflow-hidden rounded-full bg-white/10" aria-hidden="true"><div class="h-full w-full rounded-full bg-gradient-to-r from-violet-500 to-lime-300"></div></div>
+                            <p class="text-sm font-medium leading-6 text-slate-300 sm:text-base">{{ __('messages.home.launch_thanks') }}</p>
+                            <div class="rounded-3xl wayout-lime p-5 text-slate-950 sm:p-6">
+                                <p class="text-xs font-black uppercase tracking-[0.22em]">{{ __('messages.home.launch_label') }}</p>
+                                <p class="mt-2 text-4xl font-black tracking-tight sm:text-5xl"><time datetime="2026-11-28">{{ __('messages.home.launch_date') }}</time></p>
+                                <p class="mt-2 text-sm font-bold">{{ __('messages.home.launch_tagline') }}</p>
+                            </div>
+                            <a href="#features" class="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-white/25 px-6 py-3 text-sm font-black transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime-300">{{ __('messages.home.launch_explore') }} <span class="ml-2" aria-hidden="true">↗</span></a>
+                        </div>
+                    @else
                     <div class="flex flex-col items-center gap-4 text-center lg:items-start lg:text-left">
                         <div class="min-w-0">
                             <p class="text-xs font-black uppercase tracking-[0.22em] text-violet-200">{{ __('messages.home.early_access') }}</p>
@@ -77,10 +94,6 @@
                         </button>
                     </form>
 
-                    @if($waitlistFull)
-                        <p class="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-violet-100">
-                            {{ __('messages.home.waitlist_closed_message') }}
-                        </p>
                     @endif
 
                     @if(session('waitlist_error'))
