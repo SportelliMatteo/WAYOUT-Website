@@ -18,6 +18,93 @@ class SubscribeCheckoutTest extends TestCase
 {
     use RefreshDatabase;
 
+    private array $purchaseDocuments = [];
+
+    private int $legalAcceptStatus = 200;
+
+    private int $legalReadStatus = 200;
+
+    public function test_purchase_documents_must_be_presented_and_accepted_before_checkout(): void
+    {
+        $this->purchaseDocuments = [['version_id' => DatabaseUuid::new(), 'name' => 'Purchase terms', 'checkbox_label' => 'Accetto {link}', 'content_text' => 'Terms']];
+        $this->fakeExistingUserCheckout();
+        $payload = $this->checkoutPayload();
+        // Even a forged checkbox cannot bypass presentation of the document.
+        $payload['accepted_version_ids'] = [$this->purchaseDocuments[0]['version_id']];
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk()->assertJsonPath('legal_required', true);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/purchase-eligibility'));
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk()->assertJsonStructure(['redirectUrl']);
+        Http::assertSent(function (Request $request) {
+            if (! str_ends_with($request->url(), '/internal/legal/accept')) {
+                return false;
+            }
+            $timestamp = $request->header('X-Wayout-Timestamp')[0];
+
+            return $request->hasHeader('Authorization', 'Bearer existing-token')
+                && $request['version_ids'] === [$this->purchaseDocuments[0]['version_id']]
+                && $request['client_ip'] === '127.0.0.1'
+                && $request['context_ref'] === 'join'
+                && $request->header('X-Wayout-Signature')[0] === hash_hmac('sha256', $timestamp.'.'.$request->body(), str_repeat('s', 48));
+        });
+    }
+
+    public function test_legal_version_conflict_reloads_documents_and_blocks_checkout(): void
+    {
+        $this->purchaseDocuments = [['version_id' => DatabaseUuid::new(), 'name' => 'Terms']];
+        $this->legalAcceptStatus = 409;
+        $this->fakeExistingUserCheckout();
+        $payload = $this->checkoutPayload();
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk()->assertJsonPath('legal_required', true);
+        $payload['accepted_version_ids'] = [$this->purchaseDocuments[0]['version_id']];
+        $this->postJson(route('subscribe.checkout'), $payload)->assertStatus(409)->assertJsonPath('legal_required', true);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/purchase-eligibility'));
+        $this->assertDatabaseCount('purchases', 0);
+    }
+
+    public function test_empty_purchase_documents_skip_acceptance(): void
+    {
+        $this->fakeExistingUserCheckout();
+        $this->purchaseDocuments = [];
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload())->assertOk();
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/internal/legal/accept'));
+    }
+
+    public function test_updated_purchase_version_requires_new_checkboxes(): void
+    {
+        $this->purchaseDocuments = [['version_id' => DatabaseUuid::new(), 'name' => 'Terms']];
+        $this->fakeExistingUserCheckout();
+        $payload = $this->checkoutPayload();
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk();
+        $payload['accepted_version_ids'] = [$this->purchaseDocuments[0]['version_id']];
+        $this->purchaseDocuments[0]['version_id'] = DatabaseUuid::new();
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk()
+            ->assertJsonPath('legal_required', true)
+            ->assertJsonPath('documents.0.version_id', $this->purchaseDocuments[0]['version_id']);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/internal/legal/accept') || str_ends_with($request->url(), '/purchase-eligibility'));
+    }
+
+    public function test_failed_acceptance_never_starts_checkout(): void
+    {
+        $this->purchaseDocuments = [['version_id' => DatabaseUuid::new(), 'name' => 'Terms']];
+        $this->legalAcceptStatus = 503;
+        $this->fakeExistingUserCheckout();
+        $payload = $this->checkoutPayload();
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk();
+        $payload['accepted_version_ids'] = [$this->purchaseDocuments[0]['version_id']];
+        $this->postJson(route('subscribe.checkout'), $payload)->assertStatus(502);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/purchase-eligibility'));
+        $this->assertDatabaseCount('purchases', 0);
+    }
+
+    public function test_unavailable_legal_state_blocks_purchase(): void
+    {
+        $this->legalReadStatus = 503;
+        $this->fakeExistingUserCheckout();
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload())->assertStatus(502);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/purchase-eligibility'));
+        $this->assertDatabaseCount('purchases', 0);
+    }
+
     public function test_sales_terms_use_the_canonical_url(): void
     {
         $this->get('/termini-di-vendita')->assertOk();
@@ -120,6 +207,8 @@ class SubscribeCheckoutTest extends TestCase
             return match (parse_url($request->url(), PHP_URL_PATH)) {
                 '/api/v1/internal/promo-packages' => Http::response(['data' => [['code' => 'CITY_90', 'name' => 'City 90', 'price' => '79.00', 'currency' => 'EUR', 'duration_days' => 90, 'free' => false, 'available' => null]]]),
                 '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/legal/me' => Http::response(['data' => ['purchase' => $this->purchaseDocuments]], $this->legalReadStatus),
+                '/api/v1/internal/legal/accept' => Http::response(['data' => []], $this->legalAcceptStatus),
                 '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
                 '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
                 '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_city', 'url' => 'https://checkout.stripe.test/city']]]),
@@ -214,6 +303,8 @@ class SubscribeCheckoutTest extends TestCase
 
                     return Http::response(['data' => ['access_token' => 'new-user-token']]);
                 })(),
+                '/api/v1/legal/me' => Http::response(['data' => ['purchase' => $this->purchaseDocuments]], $this->legalReadStatus),
+                '/api/v1/internal/legal/accept' => Http::response(['data' => []], $this->legalAcceptStatus),
                 '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
                 '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
                 '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_new', 'url' => 'https://checkout.stripe.test/new']]]),
@@ -244,6 +335,8 @@ class SubscribeCheckoutTest extends TestCase
             return match ($path) {
                 '/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
                 '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/legal/me' => Http::response(['data' => ['purchase' => $this->purchaseDocuments]], $this->legalReadStatus),
+                '/api/v1/internal/legal/accept' => Http::response(['data' => []], $this->legalAcceptStatus),
                 '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
                 '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => false, 'reason' => 'ACTIVE_SUBSCRIPTION', 'message' => 'Promo non disponibile.']]),
                 default => Http::response([], 404),
@@ -336,6 +429,8 @@ class SubscribeCheckoutTest extends TestCase
             return match (parse_url($request->url(), PHP_URL_PATH)) {
                 '/api/v1/internal/promo-packages' => Http::response(['data' => [['code' => 'FREE60', 'free' => true, 'duration_days' => 60, 'price' => null]]]),
                 '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/legal/me' => Http::response(['data' => ['purchase' => $this->purchaseDocuments]], $this->legalReadStatus),
+                '/api/v1/internal/legal/accept' => Http::response(['data' => []], $this->legalAcceptStatus),
                 '/api/v1/users/me' => Http::response(['data' => ['id' => '32131864-6d52-4b97-919d-99d4f2abc845']]),
                 '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
                 '/api/v1/internal/promo-packages/activate' => Http::response(['data' => ['result' => 'activated']]),
@@ -353,6 +448,8 @@ class SubscribeCheckoutTest extends TestCase
         Http::fake(function (Request $request) {
             return match (parse_url($request->url(), PHP_URL_PATH)) {
                 '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/legal/me' => Http::response(['data' => ['purchase' => $this->purchaseDocuments]], $this->legalReadStatus),
+                '/api/v1/internal/legal/accept' => Http::response(['data' => []], $this->legalAcceptStatus),
                 '/api/v1/users/me' => Http::response(['data' => ['id' => '32131864-6d52-4b97-919d-99d4f2abc845']]),
                 '/api/v1/plans' => Http::response(['data' => [
                     ['id' => '32131864-6d52-4b97-919d-99d4f2abc846', 'name' => 'Mensile', 'active' => true, 'price' => '12.00', 'currency' => 'EUR', 'billing_period' => 'MONTHLY', 'providers' => [['provider' => 'STRIPE', 'active' => true, 'external_price_id' => 'price_monthly']]],
@@ -424,6 +521,8 @@ class SubscribeCheckoutTest extends TestCase
             return match (parse_url($request->url(), PHP_URL_PATH)) {
                 '/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
                 '/api/auth/verify-firebase-token' => Http::response(['data' => ['access_token' => 'existing-token']]),
+                '/api/v1/legal/me' => Http::response(['data' => ['purchase' => $this->purchaseDocuments]], $this->legalReadStatus),
+                '/api/v1/internal/legal/accept' => Http::response(['data' => []], $this->legalAcceptStatus),
                 '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
                 '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
                 '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_123', 'url' => 'https://checkout.stripe.test/session']]]),

@@ -1,0 +1,229 @@
+{
+  "source": "WAYOUT_App_Compliance_22_FAQ_App_Sito_DEFINITIVE_2026-11-12.docx",
+  "updated_at": "2026-11-12",
+  "intro": "Con WAYOUT puoi scoprire tavoli ed esperienze, chiedere di unirti a un gruppo o creare un tavolo tuo. Le persone organizzano autonomamente gli incontri; WAYOUT mette a disposizione la piattaforma digitale. Queste FAQ valgono per sito e app e riassumono le informazioni principali, senza sostituire i documenti contrattuali applicabili.",
+  "sections": [
+    {
+      "id": "scoprire-wayout",
+      "title": "Scoprire WAYOUT",
+      "items": [
+        {
+          "number": 1,
+          "question": "Che cos’è WAYOUT?",
+          "answer": "È una piattaforma social per conoscere persone attraverso tavoli, serate ed esperienze condivise. Puoi esplorare le proposte, chiedere di partecipare e, con un Pass che lo consente, creare e gestire un tavolo. Gli incontri sono organizzati autonomamente dagli utenti."
+        },
+        {
+          "number": 2,
+          "question": "Dove è disponibile WAYOUT?",
+          "answer": "Nella fase iniziale l’app è scaricabile in Italia, in lingua italiana, e le esperienze disponibili sono concentrate su Milano. L’arrivo in altre città dipenderà dall’espansione del servizio: non sono previste date garantite."
+        },
+        {
+          "number": 3,
+          "question": "Chi può iscriversi e come funziona la registrazione?",
+          "answer": "L’accesso è riservato a persone di almeno 18 anni. Per creare un account utilizzi il numero di telefono e il codice OTP, completi il profilo con informazioni veritiere e una tua foto conforme e accetti i documenti obbligatori. Non viene svolta una verifica documentale generalizzata dell’identità."
+        }
+      ]
+    },
+    {
+      "id": "tavoli-e-chat",
+      "title": "Tavoli, partecipazione e chat",
+      "items": [
+        {
+          "number": 4,
+          "question": "Come posso trovare un tavolo e chiedere di partecipare?",
+          "answer": "Esplora i tavoli e le esperienze mostrati nell’app, apri i dettagli della proposta e invia una richiesta di partecipazione se il tuo Pass lo consente. L’invio non garantisce l’ammissione: è l’organizzatore a valutare la richiesta."
+        },
+        {
+          "number": 5,
+          "question": "Chi decide chi può entrare in un tavolo?",
+          "answer": "L’organizzatore (Creator) accetta o rifiuta le richieste e può rimuovere un partecipante dal proprio tavolo e dalla relativa chat. Queste decisioni devono rispettare le regole della Community e la legge. Puoi sempre ritirare una richiesta o lasciare un tavolo."
+        },
+        {
+          "number": 6,
+          "question": "Come posso creare un tavolo?",
+          "answer": "Serve un Pass con funzioni Creator. Dall’app puoi proporre un tavolo collegato a un evento o a una venue disponibile, indicare i dettagli e gestire le richieste ricevute. Prima di diventare visibili, eventi e tavoli sono soggetti ai controlli di pubblicazione e alle regole di moderazione."
+        },
+        {
+          "number": 7,
+          "question": "Come funzionano le chat?",
+          "answer": "Le chat sono di gruppo, associate ai singoli tavoli e accessibili ai partecipanti accettati e all’organizzatore. Non esistono chat private uno a uno. Le chat sono temporanee: vengono chiuse in relazione alla data dell’esperienza e successivamente eliminate secondo i tempi indicati nella Privacy Policy."
+        },
+        {
+          "number": 8,
+          "question": "Come funzionano le feste private?",
+          "answer": "I Creator abilitati possono proporre feste private secondo i limiti del servizio. Chi non è stato accettato visualizza soltanto una zona approssimativa; l’indirizzo e le coordinate esatti sono mostrati all’organizzatore e alle persone ammesse. Il fatto di essere accettati non sostituisce le cautele personali da adottare prima di incontrarsi."
+        },
+        {
+          "number": 9,
+          "question": "Che cosa succede se un tavolo viene annullato o non posso più partecipare?",
+          "answer": "L’organizzatore gestisce la propria proposta e le comunicazioni al gruppo. Se un tavolo futuro viene annullato attraverso le funzioni della piattaforma, i partecipanti interessati possono ricevere una notifica. Eventuali prenotazioni o somme concordate direttamente con altre persone o locali restano rapporti esterni a WAYOUT."
+        }
+      ]
+    },
+    {
+      "id": "locali-e-quote",
+      "title": "Locali, prenotazioni e quote",
+      "items": [
+        {
+          "number": 10,
+          "question": "WAYOUT organizza le serate o prenota tavoli nei locali?",
+          "answer": "No, di regola WAYOUT mette in contatto le persone ma non organizza materialmente gli incontri, non effettua prenotazioni e non vende ingressi, consumazioni o tavoli fisici. Sono i partecipanti e gli organizzatori a gestire direttamente i rapporti con i locali, salvo eventuali iniziative ufficiali espressamente dichiarate."
+        },
+        {
+          "number": 11,
+          "question": "I locali presenti nell’app sono partner di WAYOUT?",
+          "answer": "Non necessariamente. I locali sono indicati a scopo informativo per aiutare gli utenti a scegliere dove incontrarsi. La presenza di una venue nell’app non implica convenzioni, disponibilità confermata, affiliazioni o approvazioni da parte del locale."
+        },
+        {
+          "number": 12,
+          "question": "Chi stabilisce le quote dei tavoli e a chi si paga?",
+          "answer": "Le quote e gli eventuali prezzi indicativi sono definiti autonomamente dagli organizzatori, nel rispetto della legge e delle Community Guidelines. WAYOUT non incassa né trasferisce denaro per i tavoli fisici e non verifica i prezzi applicati dai locali. Prima di pagare, verifica direttamente costi e condizioni con l’organizzatore e il locale."
+        }
+      ]
+    },
+    {
+      "id": "pass-e-abbonamenti",
+      "title": "Pass, prezzi e abbonamenti",
+      "items": [
+        {
+          "number": 13,
+          "question": "Posso utilizzare WAYOUT gratuitamente?",
+          "answer": "Sì. Il piano FREE consente di esplorare i tavoli e inviare fino a una nuova richiesta di partecipazione al mese, con una sola richiesta futura attiva per volta. Non consente di creare tavoli. Se la richiesta viene accettata, puoi accedere alla chat del relativo gruppo."
+        },
+        {
+          "number": 14,
+          "question": "Che differenza c’è tra JOIN e CREATOR?",
+          "answer": "JOIN serve a richiedere la partecipazione ai tavoli e utilizzare le chat dei gruppi in cui sei accettato; CREATOR comprende JOIN e aggiunge la possibilità di creare e gestire tavoli e feste private. Entrambi esistono nelle durate settimanale, mensile e trimestrale; i limiti quantitativi variano in base al Pass."
+        },
+        {
+          "number": 15,
+          "question": "Ci sono limiti al numero di richieste e tavoli?",
+          "answer": "Sì. JOIN consente fino a 4, 7 o 10 richieste future attive (settimanale, mensile o trimestrale). CREATOR consente rispettivamente fino a 6, 9 o 12 richieste future, 5, 7 o 10 tavoli/eventi futuri e 2, 3 o 4 tavoli per evento. Restano applicabili la capienza massima di 20 persone e il limite di 5 tavoli futuri nella stessa data."
+        },
+        {
+          "number": 16,
+          "question": "Quanto costano i Pass standard?",
+          "answer": "I prezzi iniziali (in euro e comprensivi delle imposte applicabili) variano per durata e canale di acquisto. Nella tabella qui sotto trovi il listino riportato nel documento del 12 novembre 2026. Prima di confermare, fanno fede il prezzo e le condizioni mostrati sul sito o nello store. I Pass non comprendono ingressi o consumazioni dei locali.",
+          "table": {
+            "headers": [
+              "Piano",
+              "Durata",
+              "Sito web",
+              "App iOS / Android"
+            ],
+            "rows": [
+              [
+                "JOIN",
+                "7 giorni",
+                "€ 3,99",
+                "€ 4,99"
+              ],
+              [
+                "JOIN",
+                "1 mese",
+                "€ 7,99",
+                "€ 8,99"
+              ],
+              [
+                "JOIN",
+                "3 mesi",
+                "€ 19,99",
+                "€ 22,99"
+              ],
+              [
+                "CREATOR",
+                "7 giorni",
+                "€ 6,99",
+                "€ 7,99"
+              ],
+              [
+                "CREATOR",
+                "1 mese",
+                "€ 14,99",
+                "€ 16,99"
+              ],
+              [
+                "CREATOR",
+                "3 mesi",
+                "€ 39,99",
+                "€ 45,99"
+              ]
+            ]
+          }
+        },
+        {
+          "number": 17,
+          "question": "Dove posso acquistare un Pass?",
+          "answer": "Nell’app gli abbonamenti standard si acquistano tramite Apple App Store o Google Play. Sul sito possono essere disponibili gli stessi piani standard e offerte promozionali specifiche; il pagamento web segue le condizioni del checkout. Un Pass associato al tuo account WAYOUT abilita le corrispondenti funzioni nell’app."
+        },
+        {
+          "number": 18,
+          "question": "Se cambio telefono, perdo il mio Pass?",
+          "answer": "Il Pass è associato al tuo account WAYOUT, non al singolo telefono. Accedi con l’account corretto sul nuovo dispositivo; per acquisti tramite store può essere necessario usare anche lo stesso account Apple o Google e le eventuali funzioni di ripristino. Se il Pass non compare, contatta l’assistenza con i riferimenti dell’acquisto."
+        },
+        {
+          "number": 19,
+          "question": "Gli abbonamenti si rinnovano automaticamente? Come li disdico?",
+          "answer": "Gli abbonamenti standard JOIN e CREATOR si rinnovano alla scadenza fino alla disdetta, secondo il canale di acquisto. Se hai acquistato tramite Apple o Google, gestisci il rinnovo nelle impostazioni Abbonamenti dello store; per gli acquisti sul sito usa il canale indicato nel checkout o contatta l’assistenza. Disinstallare l’app non interrompe i rinnovi."
+        },
+        {
+          "number": 20,
+          "question": "Come funziona il Waitlist Pass?",
+          "answer": "È un beneficio gratuito di 60 giorni con funzioni Creator, riservato ai primi 2.000 iscritti validi alla waitlist. Se ne hai diritto, si attiva al completamento del profilo con l’email riconosciuta; va riscattato entro 60 giorni dal go-live. La durata decorre dalla tua attivazione individuale, non dal lancio generale, e non prevede rinnovo automatico."
+        },
+        {
+          "number": 21,
+          "question": "Che cosa sono i Founder Pass?",
+          "answer": "Sono Pass promozionali della prevendita: Founder Join 12M (€ 29 una tantum) e Founder Creator 12M (€ 59 una tantum), entrambi senza rinnovo automatico. In caso di acquisto pre-lancio, sono utilizzabili dal go-live secondo le condizioni accettate e hanno durata di 12 mesi. Normalmente la vendita termina con il lancio."
+        },
+        {
+          "number": 22,
+          "question": "Che cos’è la Launch Offer?",
+          "answer": "È un’offerta prevista sul sito, non acquistabile direttamente nell’app: nella configurazione iniziale JOIN mensile a € 3,99 e CREATOR mensile a € 7,99 per i primi tre cicli a pagamento. Successivamente si applicano i prezzi mensili ordinari web, salvo diverse condizioni comunicate prima dell’acquisto. Il rinnovo prosegue fino alla disdetta."
+        }
+      ]
+    },
+    {
+      "id": "sicurezza",
+      "title": "Sicurezza e segnalazioni",
+      "items": [
+        {
+          "number": 23,
+          "question": "Come posso segnalare un utente o un contenuto?",
+          "answer": "Dal profilo di un partecipante seleziona «Segnala utente». Per eventi, tavoli o chat usa Impostazioni → «Segnala un problema», scegli la categoria e descrivi il fatto indicando, se possibile, nome del tavolo, autore e data. Puoi anche scrivere a amministrazione@wayoutapp.it. La segnalazione è esaminata dallo staff."
+        },
+        {
+          "number": 24,
+          "question": "Cosa posso fare in caso di molestie o comportamenti scorretti?",
+          "answer": "Non continuare un’interazione che ti mette a disagio: puoi lasciare il tavolo e segnalare l’utente. L’organizzatore può rimuovere partecipanti dal proprio gruppo; WAYOUT può valutare il ticket e sospendere account abusivi. Le chat sono soltanto di gruppo e non è presente una funzione di blocco diretto tra utenti."
+        },
+        {
+          "number": 25,
+          "question": "Che cosa devo fare in caso di pericolo durante un incontro?",
+          "answer": "Allontanati se puoi farlo in sicurezza e contatta subito il 112 o le autorità competenti. WAYOUT non è un servizio di emergenza e non presidia fisicamente i luoghi degli incontri. Puoi segnalare l’accaduto anche alla piattaforma per le valutazioni relative all’account o ai contenuti."
+        }
+      ]
+    },
+    {
+      "id": "account-e-assistenza",
+      "title": "Account, privacy e assistenza",
+      "items": [
+        {
+          "number": 26,
+          "question": "Come gestisco consensi e notifiche?",
+          "answer": "Nella sezione «Documenti e consensi» del profilo puoi consultare i documenti e modificare le preferenze facoltative, compresi marketing e statistiche d’uso. Puoi anche intervenire sulle autorizzazioni alle notifiche dalle impostazioni del dispositivo. Le comunicazioni strettamente necessarie al servizio sono distinte da quelle promozionali."
+        },
+        {
+          "number": 27,
+          "question": "Come posso eliminare il mio account WAYOUT?",
+          "answer": "Nell’app apri Impostazioni → «Elimina Account» e segui le istruzioni. Se non puoi accedere, utilizza la pagina di cancellazione sul sito oppure scrivi a amministrazione@wayoutapp.it. La chiusura può annullare tavoli futuri e interrompere l’accesso ai Pass; il rinnovo Apple va disdetto separatamente. Per eventuali problemi sui rinnovi web o Google puoi rivolgerti all’assistenza. Restano salvi i diritti previsti dalla legge."
+        },
+        {
+          "number": 28,
+          "question": "Dove trovo le regole complete e come contatto WAYOUT?",
+          "answer": "Le condizioni applicabili sono consultabili nell’area legale App del sito e nella sezione «Documenti e consensi» dell’app; per gli acquisti sul sito valgono anche i relativi documenti commerciali. Per assistenza, Pass, segnalazioni e privacy scrivi a amministrazione@wayoutapp.it; PEC: wayout@pec.wayoutapp.it."
+        }
+      ]
+    }
+  ]
+}

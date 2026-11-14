@@ -79,6 +79,8 @@ class WayoutCheckoutController extends Controller
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'gender' => ['required', Rule::in(['MALE', 'FEMALE', 'OTHER'])],
             'invoice_requested' => ['sometimes', 'boolean'],
+            'accepted_version_ids' => ['sometimes', 'array', 'max:20'],
+            'accepted_version_ids.*' => ['required', 'uuid', 'distinct'],
             'purchase_terms_accepted' => [Rule::excludeIf($plan === '__plans'), 'required', 'accepted'],
             'recurring_terms_accepted' => [Rule::excludeIf(! str_starts_with($plan, 'price_')), 'required', 'accepted'],
             'billing_customer_type' => [Rule::requiredIf($request->boolean('invoice_requested')), 'nullable', Rule::in($allowedBillingCustomerTypes)],
@@ -151,6 +153,53 @@ class WayoutCheckoutController extends Controller
                 }
                 $package = [...$offer, 'code' => $plan, 'free' => false, 'duration_days' => null];
             }
+
+            $legal = $wayout->bearerGet('/api/v1/legal/me', $identity['access_token'], ['Accept-Language' => app()->getLocale()]);
+            $documents = data_get($legal, 'data.purchase');
+            if (! is_array($documents)) {
+                throw new WayoutApiException('Stato dei documenti di acquisto non disponibile.', 502);
+            }
+            $versionIds = [];
+            foreach ($documents as $document) {
+                if (! is_array($document) || ! is_string($document['version_id'] ?? null)) {
+                    throw new WayoutApiException('Documenti di acquisto non validi.', 502);
+                }
+                $versionIds[] = $document['version_id'];
+            }
+            $consentKey = 'purchase_legal.'.hash('sha256', $identity['id'].':'.$plan);
+            $acceptedIds = $validated['accepted_version_ids'] ?? [];
+            $presentedIds = $request->session()->get($consentKey, []);
+            if ($documents !== [] && (array_diff($versionIds, $acceptedIds) !== []
+                || array_diff($acceptedIds, $versionIds) !== []
+                || array_diff($versionIds, $presentedIds) !== [])) {
+                $request->session()->put($consentKey, $versionIds);
+
+                return response()->json(['legal_required' => true, 'documents' => $documents]);
+            }
+            if ($documents !== []) {
+                try {
+                    $wayout->internalPost('/api/v1/internal/legal/accept', [
+                        'version_ids' => $versionIds,
+                        'context_ref' => $plan,
+                        'client_ip' => $request->ip(),
+                        'client_user_agent' => mb_substr($request->userAgent() ?? '', 0, 512),
+                    ], $identity['access_token']);
+                } catch (WayoutApiException $exception) {
+                    if ($exception->status !== 409) {
+                        throw $exception;
+                    }
+                    $request->session()->forget($consentKey);
+                    $updated = $wayout->bearerGet('/api/v1/legal/me', $identity['access_token'], ['Accept-Language' => app()->getLocale()]);
+                    $updatedDocuments = data_get($updated, 'data.purchase');
+                    if (! is_array($updatedDocuments)) {
+                        throw new WayoutApiException('Stato dei documenti di acquisto non disponibile.', 502);
+                    }
+                    $request->session()->put($consentKey, array_column($updatedDocuments, 'version_id'));
+
+                    return response()->json(['legal_required' => true, 'documents' => $updatedDocuments], 409);
+                }
+            }
+            $request->session()->forget($consentKey);
 
             $selection = $isRecurring ? ['external_price_id' => $plan] : ['promo_package_code' => $package['code']];
             $eligibility = $wayout->internalPost('/api/v1/internal/purchase-eligibility', [

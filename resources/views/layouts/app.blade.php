@@ -37,7 +37,10 @@
 <a href="{{ route('about') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('about') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.about') }}
                     </a>
-                    <a href="{{ route('contact') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('contact') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
+                    <a href="{{ route('faq', ['lang' => app()->getLocale()]) }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('faq') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
+                        {{ __('experience.faq_nav') }}
+                    </a>
+<a href="{{ route('contact') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('contact') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.contact') }}
                     </a>
                 </div>
@@ -72,7 +75,10 @@
 <a href="{{ route('about') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('about') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.about') }}
                 </a>
-                <a href="{{ route('contact') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('contact') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
+                <a href="{{ route('faq', ['lang' => app()->getLocale()]) }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('faq') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
+                    {{ __('experience.faq_nav') }}
+                </a>
+<a href="{{ route('contact') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('contact') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.contact') }}
                 </a>
                 <div class="mx-auto mt-3 flex rounded-full border border-white/10 bg-white/10 p-1 text-sm font-black">

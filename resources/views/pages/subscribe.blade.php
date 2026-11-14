@@ -43,6 +43,7 @@
             <p class="experience-kicker">{{ __('experience.plans_label') }}</p>
             <h1>{{ __('experience.plans_headline') }}<br><span>{{ __('experience.plans_highlight') }}</span></h1>
             <p>{{ __('experience.plans_intro') }}</p>
+            <a class="mt-4 inline-block font-bold text-violet-700 underline underline-offset-4" href="{{ route('faq', ['lang' => app()->getLocale()]).'#pass-e-abbonamenti' }}">{{ __('experience.faq_link') }} ↗</a>
             <div class="exclusive-tags">@foreach(__('experience.sales_tags') as $tag)<span>✓ {{ $tag }}</span>@endforeach</div>
         </header>
         <div class="offer-switch" role="tablist" aria-label="{{ __('experience.offer_navigation') }}">
@@ -126,7 +127,6 @@
             <div id="recurring-plans" class="packages-grid recurring-plans-grid" aria-live="polite"></div>
         </section>
         </div>
-        <section class="packages-faq"><h2>{{ __('experience.faq_title') }}</h2>@foreach(__('experience.faqs') as $faq)<details><summary>{{ $faq['question'] }}</summary><p>{{ $faq['answer'] }}</p></details>@endforeach</section>
     </div>
 </section>
 
@@ -283,6 +283,7 @@
                 <input id="recurring-terms-accepted" type="checkbox" name="recurring_terms_accepted" class="mt-1 h-5 w-5">
                 <span>{{ __('experience.recurring_consent') }}</span>
             </label>
+            <div id="purchase-legal-documents" class="space-y-4" aria-live="polite"></div>
             <p id="payment-details-error" role="alert" class="hidden whitespace-pre-line rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"></p>
             <button id="payment-details-submit" type="submit" disabled class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-60">
                 <span class="payment-submit-text">{{ __('messages.subscribe.confirm_and_pay') }}</span>
@@ -630,6 +631,55 @@
     });
     updateInvoiceFields();
 
+    function renderPurchaseDocuments(documents) {
+        const container = document.getElementById('purchase-legal-documents');
+        container.replaceChildren();
+        for (const documentData of documents) {
+            const section = document.createElement('section');
+            section.className = 'rounded-2xl border border-violet-200 bg-violet-50 p-4 space-y-3';
+            const details = document.createElement('details');
+            const summary = document.createElement('summary');
+            summary.className = 'cursor-pointer font-bold underline';
+            summary.textContent = documentData.name || documentData.label || documentData.code;
+            const content = document.createElement('div');
+            content.className = 'max-h-64 overflow-auto whitespace-pre-wrap py-3 text-sm';
+            // Render backend HTML as inert text to keep scripts and remote resources out of checkout.
+            const parsed = new DOMParser().parseFromString(documentData.content_html || '', 'text/html');
+            parsed.querySelectorAll('script, style').forEach(node => node.remove());
+            content.textContent = documentData.content_text || parsed.body.textContent || '';
+            details.append(summary, content);
+            const label = document.createElement('label');
+            label.className = 'flex items-start gap-3 text-sm';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'accepted_version_ids[]';
+            checkbox.value = documentData.version_id;
+            checkbox.required = true;
+            checkbox.className = 'mt-1 h-5 w-5 shrink-0';
+            const text = document.createElement('span');
+            const parts = (documentData.checkbox_label || '{link}').split('{link}');
+            parts.forEach((part, index) => {
+                text.append(document.createTextNode(part));
+                if (index < parts.length - 1) {
+                    const link = document.createElement('button');
+                    link.type = 'button';
+                    link.className = 'font-bold underline text-violet-700';
+                    link.textContent = summary.textContent;
+                    link.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        details.open = true;
+                        summary.focus();
+                    });
+                    text.append(link);
+                }
+            });
+            label.append(checkbox, text);
+            section.append(details, label);
+            container.append(section);
+        }
+        container.querySelector('input')?.focus();
+    }
+
     paymentForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
         paymentError?.classList.add('hidden');
@@ -670,6 +720,7 @@
         const formData = new FormData(paymentForm);
         const payload = {
             plan: selectedPlan,
+            accepted_version_ids: formData.getAll('accepted_version_ids[]'),
             ...(selectedPlan.startsWith('price_') ? { recurring_terms_accepted: formData.get('recurring_terms_accepted') === 'on' } : {}),
             email: formData.get('email'),
             firebase_token: formData.get('firebase_token'),
@@ -704,6 +755,19 @@
             });
 
             const data = await response.json();
+
+            if (data.legal_required === true && Array.isArray(data.documents)) {
+                renderPurchaseDocuments(data.documents);
+                if (response.status === 409) {
+                    paymentError.textContent = @json(__('experience.purchase_legal_updated'));
+                    paymentError.classList.remove('hidden');
+                }
+                button.disabled = false;
+                button.textContent = originalButtonText;
+                setPaymentLoading(false);
+                document.getElementById('purchase-legal-documents').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
 
             if (!response.ok || data.error) {
                 showServerValidationErrors(data);

@@ -44,6 +44,7 @@ return [
     'legal_page' => [
         'area' => 'Area legale',
         'documents' => 'Documenti',
+        'published_at' => 'Pubblicato il',
         'last_update' => 'Ultimo aggiornamento',
         'version' => 'Versione',
     ],

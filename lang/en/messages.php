@@ -44,6 +44,7 @@ return [
     'legal_page' => [
         'area' => 'Legal area',
         'documents' => 'Documents',
+        'published_at' => 'Published on',
         'last_update' => 'Last updated',
         'version' => 'Version',
     ],

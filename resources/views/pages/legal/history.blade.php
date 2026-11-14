@@ -1,8 +1,6 @@
 @extends('pages.legal.layout', [
     'title' => $document->title.' — '.__('experience.legal_history'),
     'description' => $document->description,
-    'version' => $document->version,
-    'updated' => \Illuminate\Support\Carbon::parse($document->published_at)->translatedFormat('d F Y'),
 ])
 @section('legal-content')
 <p class="mb-6"><a class="font-bold text-violet-700 underline" href="{{ $currentDocumentUrl }}">{{ __('experience.legal_current') }}</a></p>

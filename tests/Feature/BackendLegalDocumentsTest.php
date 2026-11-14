@@ -36,10 +36,25 @@ class BackendLegalDocumentsTest extends TestCase
         $count = DB::table('legal_document_versions')->count();
         Http::fake(['*/legal/documents/COOKIES*' => Http::response(['success' => true, 'data' => $this->currentDocument()])]);
         $this->get('/cookie-policy?lang=en')->assertOk()->assertSee('<h2>Testo dal backend</h2>', false)
-            ->assertSee('legal')->assertSee('Version 2');
+            ->assertSee('legal')->assertSee('Version 2')
+            ->assertSee('Published on:')->assertSee('13 November 2026')
+            ->assertSee('datetime="2026-11-13T20:57:36.999Z"', false)
+            ->assertDontSee('Last updated:')->assertDontSee('02 November 2026');
         Http::assertSent(fn ($request) => $request->url() === 'https://staging-app.wayoutapp.test/api/v1/legal/documents/COOKIES?scope=SITE'
             && $request->hasHeader('Accept-Language', 'en') && ! $request->hasHeader('Authorization') && ! $request->hasHeader('X-Wayout-Signature'));
         $this->assertSame($count, DB::table('legal_document_versions')->count());
+    }
+
+    public function test_publication_date_uses_backend_metadata_in_italian_and_rome_timezone(): void
+    {
+        config()->set('app.display_timezone', 'Europe/Rome');
+        $document = $this->currentDocument();
+        $document['current']['published_at'] = '2026-11-14T23:30:00Z';
+        $document['current']['version'] = 7;
+        Http::fake(['*/legal/documents/COOKIES*' => Http::response(['data' => $document])]);
+        $this->get('/cookie-policy?lang=it')->assertOk()
+            ->assertSee('Pubblicato il:')->assertSee('15 novembre 2026')->assertSee('Versione 7')
+            ->assertDontSee('Ultimo aggiornamento:')->assertDontSee('02 novembre 2026');
     }
 
     public function test_published_index_excludes_app_documents(): void
@@ -82,7 +97,9 @@ class BackendLegalDocumentsTest extends TestCase
             ]]),
         ]);
         $this->get(route('legal.version', ['document' => 'cookies', 'version' => self::PREVIOUS_ID]))
-            ->assertOk()->assertSee('Testo precedente dal backend')->assertSee('Stai leggendo una versione precedente.');
+            ->assertOk()->assertSee('Testo precedente dal backend')->assertSee('Stai leggendo una versione precedente.')
+            ->assertSee('Pubblicato il:')->assertSee('01 ottobre 2026')->assertSee('Versione 1')
+            ->assertDontSee('13 novembre 2026');
         $this->get(route('legal.version', ['document' => 'cookies', 'version' => '98b09265-eaa3-4492-8639-053343bf4523']))->assertNotFound();
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '98b09265-eaa3-4492-8639-053343bf4523'));
     }

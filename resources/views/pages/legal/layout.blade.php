@@ -12,7 +12,13 @@
             </span>
             <h1 class="mt-6 text-4xl font-black leading-tight text-slate-950 sm:text-6xl">{{ $title }}</h1>
             <p class="mt-4 max-w-3xl text-base font-semibold leading-7 text-slate-600">
-                {{ __('messages.legal_page.last_update') }}: {{ $updated ?? '-' }} · {{ __('messages.legal_page.version') }} {{ $version ?? '-' }}
+                @if(isset($document))
+                    {{ __('messages.legal_page.published_at') }}:
+                    <time datetime="{{ $document->published_at }}">{{ \Illuminate\Support\Carbon::parse($document->published_at, 'UTC')->setTimezone(config('app.display_timezone'))->locale(app()->getLocale())->translatedFormat('d F Y') }}</time>
+                    · {{ __('messages.legal_page.version') }} {{ $document->version }}
+                @else
+                    {{ __('messages.legal_page.last_update') }}: {{ $updated ?? '-' }} · {{ __('messages.legal_page.version') }} {{ $version ?? '-' }}
+                @endif
             </p>
         </div>
 

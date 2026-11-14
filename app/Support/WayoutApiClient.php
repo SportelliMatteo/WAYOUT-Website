@@ -18,7 +18,7 @@ class WayoutApiClient
     }
 
     /** @param array<string, mixed> $payload */
-    public function internalPost(string $path, array $payload): array
+    public function internalPost(string $path, array $payload, string $accessToken = ''): array
     {
         try {
             $body = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -31,7 +31,7 @@ class WayoutApiClient
             );
         }
 
-        return $this->sendInternal('POST', $path, $body);
+        return $this->sendInternal('POST', $path, $body, $accessToken);
     }
 
     /** @param array<string, mixed> $payload @param array<string, string> $headers */
@@ -81,7 +81,7 @@ class WayoutApiClient
         return $response->json() ?? [];
     }
 
-    private function sendInternal(string $method, string $path, string $body): array
+    private function sendInternal(string $method, string $path, string $body, string $accessToken = ''): array
     {
         $secret = (string) config('services.wayout.internal_secret', '');
 
@@ -104,6 +104,9 @@ class WayoutApiClient
 
         try {
             $request = $this->request()->withHeaders($headers);
+            if ($accessToken !== '') {
+                $request->withToken($accessToken);
+            }
             $response = $method === 'GET'
                 ? $request->get($path)
                 : $request->withBody($body, 'application/json')->post($path);

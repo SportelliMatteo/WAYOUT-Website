@@ -10,6 +10,7 @@
             <p class="brand-eyebrow">{{ __('messages.contact.eyebrow') }}</p>
             <h1>{{ __('messages.contact.headline') }}</h1>
             <p class="contact-intro">{{ __('messages.contact.intro') }}</p>
+            <a class="mt-5 inline-block font-bold text-violet-700 underline underline-offset-4" href="{{ route('faq', ['lang' => app()->getLocale()]) }}">{{ __('experience.faq_link') }} ↗</a>
             <div class="contact-reasons">
                 <h2>{{ __('messages.contact.why') }}</h2>
                 @foreach(['club', 'collab', 'questions', 'purchase'] as $reason)

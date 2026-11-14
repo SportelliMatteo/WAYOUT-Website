@@ -1,6 +1,19 @@
 <?php
 
 return [
+    'faq_title' => 'Frequently asked questions',
+    'faq_description' => 'A guide to WAYOUT: tables, chats, Passes, safety, accounts and support.',
+    'faq_intro' => 'What you need to know before going out.',
+    'faq_link' => 'Have a question? Read the FAQs',
+    'faq_source_date' => 'Source document updated on 12 November 2026',
+    'faq_language' => 'Answers are currently available in Italian.',
+    'faq_prices_note' => 'Prices and promotions in these FAQs refer to the document dated 12 November 2026. See Plans and checkout for currently available offers and applicable terms.',
+    'faq_plans' => 'View Plans',
+    'faq_contact' => 'Still need help? Contact us',
+    'faq_nav' => 'FAQ',
+    'faq_legal_site' => 'Website legal documents',
+    'faq_legal' => 'App legal documents',
+    'faq_categories' => 'Choose a topic',
 
     'about_contact' => 'Let’s talk',
     'about_photo_alt' => 'People and lights during a night at a club',
@@ -9,6 +22,7 @@ return [
     'contact_form_eyebrow' => 'Your next connection starts here',
     'contact_form_title' => 'Drop us a message.',
 
+    'purchase_legal_updated' => 'The documents have been updated. Read and confirm them again before continuing.',
     'legal_site' => 'Legal · Website',
     'legal_app' => 'Legal · App',
     'legal_no_documents' => 'No documents are currently published.',
@@ -151,10 +165,4 @@ return [
     'catalog_error' => 'We can’t load the packages right now. Please try again shortly.',
     'retry' => 'Try again',
     'selected' => 'Your package',
-    'faq_title' => 'Everything you need to know.',
-    'faqs' => [
-        ['question' => 'Promo package or subscription: what changes?', 'answer' => 'A promo package has one payment and a defined duration, with no automatic renewal. A subscription has recurring payments at the price and billing period shown on the plan.'],
-        ['question' => 'When does it start and end?', 'answer' => 'Validity starts at purchase/activation. The duration is shown on each package card; the end date depends on when it actually starts.'],
-        ['question' => 'Can I buy it in the app?', 'answer' => 'You can buy both exclusive web promo packages and available subscriptions on this website. Choose your offer to continue.'],
-    ],
 ];

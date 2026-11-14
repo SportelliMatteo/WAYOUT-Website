@@ -27,6 +27,7 @@
                 @foreach(['home' => 'home', 'subscribe' => 'plans', 'about' => 'about', 'contact' => 'contact'] as $routeName => $label)
                     <a href="{{ route($routeName, ['lang' => app()->getLocale()]) }}">{{ __('messages.nav.'.$label) }}</a>
                 @endforeach
+                <a href="{{ route('faq', ['lang' => app()->getLocale()]) }}">{{ __('experience.faq_nav') }}</a>
                 @include('partials.app-downloads')
             </nav>
             @foreach(['SITE' => 'legal_site', 'APP' => 'legal_app'] as $scope => $label)

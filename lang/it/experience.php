@@ -1,6 +1,19 @@
 <?php
 
 return [
+    'faq_title' => 'Domande frequenti',
+    'faq_description' => 'Una guida a WAYOUT: tavoli, chat, Pass, sicurezza, account e assistenza.',
+    'faq_intro' => 'Tutto quello che vuoi sapere, prima di uscire.',
+    'faq_link' => 'Hai una domanda? Leggi le FAQ',
+    'faq_source_date' => 'Contenuti del documento aggiornato al 12 novembre 2026',
+    'faq_language' => 'Le risposte sono disponibili in italiano.',
+    'faq_prices_note' => 'Prezzi e promozioni riportati nelle FAQ si riferiscono al documento del 12 novembre 2026. Per le offerte attualmente disponibili e le condizioni applicabili, consulta i Piani e il checkout.',
+    'faq_plans' => 'Consulta i Piani',
+    'faq_contact' => 'Non hai trovato la risposta? Contattaci',
+    'faq_nav' => 'FAQ',
+    'faq_legal_site' => 'Documenti legali Sito',
+    'faq_legal' => 'Documenti legali App',
+    'faq_categories' => 'Scegli un argomento',
 
     'about_contact' => 'Parliamone',
     'about_photo_alt' => 'Persone e luci durante una serata in un club',
@@ -9,6 +22,7 @@ return [
     'contact_form_eyebrow' => 'La prossima connessione inizia qui',
     'contact_form_title' => 'Scrivici due righe.',
 
+    'purchase_legal_updated' => 'I documenti sono stati aggiornati. Leggili e conferma nuovamente prima di proseguire.',
     'legal_site' => 'Legale · Sito',
     'legal_app' => 'Legale · App',
     'legal_no_documents' => 'Nessun documento pubblicato al momento.',
@@ -151,10 +165,4 @@ return [
     'catalog_error' => 'Non riusciamo a caricare i pacchetti. Riprova tra poco.',
     'retry' => 'Riprova',
     'selected' => 'Il tuo pacchetto',
-    'faq_title' => 'Tutto chiaro, prima di scegliere.',
-    'faqs' => [
-        ['question' => 'Pacchetto promo o abbonamento: cosa cambia?', 'answer' => 'Il pacchetto promo prevede un pagamento unico e una durata definita, senza rinnovo automatico. L’abbonamento prevede pagamenti ricorrenti al prezzo e alla periodicità indicati sul piano.'],
-        ['question' => 'Quando inizia e quando finisce?', 'answer' => 'La validità decorre dall’acquisto/attivazione. La durata è indicata sulla card del pacchetto; la data di fine dipende dalla sua decorrenza effettiva.'],
-        ['question' => 'Posso acquistarlo nell’app?', 'answer' => 'Sul sito puoi acquistare sia i pacchetti promo a prezzo esclusivo web sia gli abbonamenti disponibili. Scegli l’offerta e prosegui con l’acquisto.'],
-    ],
 ];
