@@ -34,12 +34,12 @@ class SiteVisibilityTest extends TestCase
             ->assertSee('Qualcosa di nuovo sta arrivando.')
             ->assertSee('site-unavailable-page', false)
             ->assertSee('text-slate-100', false)
-            ->assertSee('border-slate-300 bg-slate-100 text-slate-700', false);
+            ->assertDontSee('>EN</a>', false);
 
         $this->get(route('home', ['lang' => 'en']))
             ->assertOk()
-            ->assertSee('Something new is on its way.')
-            ->assertSee('border-slate-950 bg-slate-950 text-white', false);
+            ->assertSee('Qualcosa di nuovo sta arrivando.')
+            ->assertSee('<html lang="it">', false);
 
         $this->get(route('admin.login'))
             ->assertOk()

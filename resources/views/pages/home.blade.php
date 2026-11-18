@@ -41,6 +41,8 @@
         </div>
     </section>
 
+    @if($plansEnabled)
     <section class="app-home-offer wayout-shell" data-reveal><div><p class="experience-kicker">{{ __('experience.home_offer_label') }}</p><h2>{{ __('experience.home_offer_title') }}</h2><p>{{ __('experience.home_offer_text') }}</p></div><a href="{{ route('subscribe') }}" class="app-purple-button">{{ __('experience.plans_cta') }} <span aria-hidden="true">↗</span></a></section>
+    @endif
 </div>
 @endsection

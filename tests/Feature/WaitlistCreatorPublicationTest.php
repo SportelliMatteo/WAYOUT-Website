@@ -54,9 +54,9 @@ class WaitlistCreatorPublicationTest extends TestCase
     {
         foreach (['it', 'en'] as $locale) {
             $this->get('/come-funzionano-i-pass?lang='.$locale)->assertOk()
-                ->assertSee($locale === 'it' ? 'Sì con il Waitlist Pass; no con Founder Join.' : 'Yes with the Waitlist Pass; no with Founder Join.')
-                ->assertSee($locale === 'it' ? 'Massimo 500 pass' : 'Maximum 500 passes')
-                ->assertSee($locale === 'it' ? 'Massimo 150 pass' : 'Maximum 150 passes');
+                ->assertSee('Sì con il Waitlist Pass; no con Founder Join.')
+                ->assertSee('Massimo 500 pass')
+                ->assertSee('Massimo 150 pass');
 
             $terms = app(LegalDocumentService::class)->current('terms', $locale)->content_snapshot;
             $this->assertStringContainsString($locale === 'it' ? 'le funzionalità Join e le funzionalità Creator' : 'the Join and Creator features', $terms);

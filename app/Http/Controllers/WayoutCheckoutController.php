@@ -7,6 +7,7 @@ use App\Support\CheckoutFeatures;
 use App\Support\DatabaseUuid;
 use App\Support\FounderPromoCatalog;
 use App\Support\ItalianFiscalData;
+use App\Support\LegalDocumentService;
 use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
 use App\Support\WayoutApiClient;
@@ -21,7 +22,7 @@ use Throwable;
 
 class WayoutCheckoutController extends Controller
 {
-    private function offers(WayoutApiClient $wayout, bool $includeAppOnly = false): array
+    private function offers(WayoutApiClient $wayout): array
     {
         $plans = $wayout->get('/api/v1/plans');
         $offers = [];
@@ -29,16 +30,11 @@ class WayoutCheckoutController extends Controller
             if (! is_array($offer) || ($offer['active'] ?? false) !== true) {
                 continue;
             }
-            $hasWebProvider = false;
             foreach (($offer['providers'] ?? []) as $provider) {
                 if (($provider['provider'] ?? null) === 'STRIPE' && ($provider['active'] ?? false) === true
                     && is_string($provider['external_price_id'] ?? null) && str_starts_with($provider['external_price_id'], 'price_')) {
                     $offers[] = [...$offer, 'external_price_id' => $provider['external_price_id']];
-                    $hasWebProvider = true;
                 }
-            }
-            if ($includeAppOnly && ! $hasWebProvider) {
-                $offers[] = [...$offer, 'external_price_id' => null];
             }
         }
 
@@ -48,7 +44,7 @@ class WayoutCheckoutController extends Controller
     public function plans(WayoutApiClient $wayout)
     {
         try {
-            return response()->json(['plans' => $this->offers($wayout, includeAppOnly: true)]);
+            return response()->json(['plans' => $this->offers($wayout)]);
         } catch (WayoutApiException $exception) {
             Log::warning('Subscription catalog unavailable.', $exception->logContext());
 
@@ -155,10 +151,7 @@ class WayoutCheckoutController extends Controller
             }
 
             $legal = $wayout->bearerGet('/api/v1/legal/me', $identity['access_token'], ['Accept-Language' => app()->getLocale()]);
-            $documents = data_get($legal, 'data.purchase');
-            if (! is_array($documents)) {
-                throw new WayoutApiException('Stato dei documenti di acquisto non disponibile.', 502);
-            }
+            $documents = $this->sitePurchaseDocuments($legal);
             $versionIds = [];
             foreach ($documents as $document) {
                 if (! is_array($document) || ! is_string($document['version_id'] ?? null)) {
@@ -190,10 +183,7 @@ class WayoutCheckoutController extends Controller
                     }
                     $request->session()->forget($consentKey);
                     $updated = $wayout->bearerGet('/api/v1/legal/me', $identity['access_token'], ['Accept-Language' => app()->getLocale()]);
-                    $updatedDocuments = data_get($updated, 'data.purchase');
-                    if (! is_array($updatedDocuments)) {
-                        throw new WayoutApiException('Stato dei documenti di acquisto non disponibile.', 502);
-                    }
+                    $updatedDocuments = $this->sitePurchaseDocuments($updated);
                     $request->session()->put($consentKey, array_column($updatedDocuments, 'version_id'));
 
                     return response()->json(['legal_required' => true, 'documents' => $updatedDocuments], 409);
@@ -309,6 +299,31 @@ class WayoutCheckoutController extends Controller
             ->update(['status' => 'canceled', 'updated_at' => now()]);
 
         return redirect()->route('subscribe')->with('checkout_error', __('messages.subscribe.checkout_canceled'));
+    }
+
+    private function sitePurchaseDocuments(array $legal): array
+    {
+        $documents = data_get($legal, 'data.purchase');
+        if (! is_array($documents)) {
+            throw new WayoutApiException('Stato dei documenti di acquisto non disponibile.', 502);
+        }
+        foreach ($documents as $document) {
+            if (! is_array($document) || ! is_string($document['version_id'] ?? null)) {
+                throw new WayoutApiException('Documenti di acquisto non validi.', 502);
+            }
+        }
+        if ($documents === []) {
+            return [];
+        }
+
+        // The authenticated endpoint can include APP documents. Match exact SITE
+        // publication IDs, even when the response does not include scope metadata.
+        $siteDocuments = app(LegalDocumentService::class)->published('SITE');
+        $siteVersionIds = array_column(array_column($siteDocuments, 'current'), 'id');
+
+        return array_values(array_filter($documents, fn (array $document) => ($document['scope'] ?? data_get($document, 'document.scope', 'SITE')) === 'SITE'
+            && in_array($document['version_id'], $siteVersionIds, true)
+        ));
     }
 
     /** @param array<string, mixed> $validated */

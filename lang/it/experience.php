@@ -23,6 +23,7 @@ return [
     'contact_form_title' => 'Scrivici due righe.',
 
     'purchase_legal_updated' => 'I documenti sono stati aggiornati. Leggili e conferma nuovamente prima di proseguire.',
+    'purchase_site_documents_acceptance' => 'Confermo di aver letto i seguenti documenti:',
     'legal_site' => 'Legale · Sito',
     'legal_app' => 'Legale · App',
     'legal_no_documents' => 'Nessun documento pubblicato al momento.',

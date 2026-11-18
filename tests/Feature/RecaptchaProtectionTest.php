@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Support\DatabaseUuid;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -11,9 +12,16 @@ class RecaptchaProtectionTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $contactRequestId;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->contactRequestId = DatabaseUuid::new();
+        $this->withSession(['contact_request_id' => $this->contactRequestId]);
+        Http::fake(['*/internal/support/tickets' => Http::response([
+            'success' => true, 'data' => ['id' => '36897688-e434-4dc0-9561-a134e9c4bdf2'],
+        ], 201)]);
 
         config()->set('services.recaptcha.enabled', true);
         config()->set('services.recaptcha.site_key', 'test-site-key');
@@ -56,6 +64,7 @@ class RecaptchaProtectionTest extends TestCase
         ]);
 
         $this->post(route('contact.store'), [
+            'request_id' => $this->contactRequestId,
             'g-recaptcha-response' => 'valid-token',
             'name' => 'Mario Rossi',
             'email' => 'mario@example.com',

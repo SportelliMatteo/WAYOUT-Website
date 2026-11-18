@@ -2,202 +2,33 @@
 
 namespace Tests\Feature;
 
-use App\Mail\WithdrawalReceiptMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class WithdrawalTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const PURCHASE_ID = '018f4f7e-9dd8-7f20-a1f4-5f79f874c501';
-
-    public function test_page_has_required_url_form_and_three_sections(): void
+    public function test_page_shows_backend_legal_documents_and_a_direct_support_form(): void
     {
-        $this->get('/recedere-dal-contratto')
-            ->assertOk()
-            ->assertSee('Recesso e rimborsi')
-            ->assertSee('Ultimo aggiornamento: 31 agosto 2026 · Versione 1.0')
-            ->assertDontSee('Versione Informativa')
-            ->assertSee('Recedere dal contratto qui')
-            ->assertSee('Informativa sul diritto di recesso')
-            ->assertSee('Refund Policy')
-            ->assertSee('Conferma recesso');
-
-        $this->get('/recesso-e-rimborso')
-            ->assertRedirect('/recedere-dal-contratto')
-            ->assertStatus(301);
+        $this->get('/recedere-dal-contratto')->assertOk()
+            ->assertSee('Recesso e rimborsi')->assertSee('Informativa sul diritto di recesso')->assertSee('Refund Policy')
+            ->assertSee('Invia richiesta di recesso e rimborso')->assertSee('name="message"', false)
+            ->assertDontSee('name="purchase_date"', false)->assertDontSee('name="plan"', false);
+        $this->get('/recesso-e-rimborso')->assertRedirect('/recedere-dal-contratto')->assertStatus(301);
     }
 
-    public function test_english_withdrawal_flow_uses_english_documents_and_receipts(): void
+    public function test_old_confirmation_urls_return_to_the_direct_ticket_form(): void
     {
-        Mail::fake();
-        config()->set('email.enabled', true);
-        $this->insertPurchase();
-
-        $this->get(route('legal.refunds', ['lang' => 'en']))
-            ->assertOk()
-            ->assertSee('Withdraw from the contract here')
-            ->assertSee('Information on the right of withdrawal')
-            ->assertSee('Order number or other contract identifier')
-            ->assertSee('Annex A — Model withdrawal form')
-            ->assertSee('border-dashed', false)
-            ->assertDontSee('______________________________')
-            ->assertDontSee('Recedere dal contratto qui');
-
-        $this->post(route('withdrawal.review.store'), $this->validForm())
-            ->assertRedirect(route('withdrawal.review'));
-
-        $this->assertSame('en', session('withdrawal.review.locale'));
-        $this->get(route('withdrawal.review'))
-            ->assertOk()
-            ->assertSee('Confirm withdrawal')
-            ->assertSee('I, Ada Lovelace, hereby give notice');
-
-        $review = session('withdrawal.review');
-        $response = $this->post(route('withdrawal.confirm'), ['nonce' => $review['nonce']]);
-        $withdrawal = DB::table('withdrawal_requests')->first();
-
-        $this->assertSame('en', $withdrawal->locale);
-        $this->assertSame(
-            app(\App\Support\LegalDocumentService::class)->current('withdrawal_info', 'en')->version,
-            json_decode($withdrawal->document_versions, true)['withdrawal_info'],
-        );
-
-        $this->get($response->headers->get('Location'))
-            ->assertOk()
-            ->assertSee('Withdrawal receipt')
-            ->assertSee('Declaration received');
-        $this->get(route('withdrawal.receipt.download', ['token' => $review['public_token']]))
-            ->assertOk()
-            ->assertSee('SUBMITTED DECLARATION');
+        $this->get(route('withdrawal.review'))->assertRedirect(route('legal.refunds'));
+        $this->post(route('withdrawal.confirm'), ['nonce' => 'old'])->assertRedirect(route('legal.refunds'));
+        $this->assertDatabaseCount('withdrawal_requests', 0);
     }
 
-    public function test_withdrawal_template_is_a_downloadable_editable_word_document(): void
+    public function test_template_remains_downloadable_in_italian_even_with_an_english_link(): void
     {
-        $this->get(route('withdrawal.template.download'))
-            ->assertOk()
+        $this->get(route('withdrawal.template.download', ['lang' => 'en']))->assertOk()
             ->assertDownload('Modulo-tipo-di-recesso-WAYOUT.docx')
             ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    }
-
-    public function test_english_withdrawal_template_downloads_the_english_word_document(): void
-    {
-        $this->get(route('withdrawal.template.download', ['lang' => 'en']))
-            ->assertOk()
-            ->assertDownload('WAYOUT-model-withdrawal-form.docx')
-            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    }
-
-    public function test_review_does_not_register_until_final_confirmation(): void
-    {
-        $this->insertPurchase();
-
-        $response = $this->post(route('withdrawal.review.store'), $this->validForm());
-
-        $response->assertRedirect(route('withdrawal.review'));
-        $this->assertDatabaseCount('withdrawal_requests', 0);
-
-        $this->get(route('withdrawal.review'))
-            ->assertOk()
-            ->assertSee('Conferma recesso')
-            ->assertSee('WO-2026-000123');
-    }
-
-    public function test_confirmation_records_before_sending_receipt_and_exposes_download(): void
-    {
-        Mail::fake();
-        config()->set('email.enabled', true);
-
-        $this->insertPurchase();
-
-        $this->post(route('withdrawal.review.store'), $this->validForm());
-        $review = session('withdrawal.review');
-
-        $response = $this->post(route('withdrawal.confirm'), ['nonce' => $review['nonce']]);
-
-        $withdrawal = DB::table('withdrawal_requests')->first();
-        $this->assertNotNull($withdrawal);
-        $this->assertSame(self::PURCHASE_ID, $withdrawal->purchase_id);
-        $this->assertTrue((bool) $withdrawal->within_ordinary_period);
-        $this->assertDatabaseHas('withdrawal_request_events', [
-            'withdrawal_request_id' => $withdrawal->id,
-            'event_type' => 'request.received',
-        ]);
-        Mail::assertSent(WithdrawalReceiptMail::class, 1);
-
-        $response->assertRedirect(route('withdrawal.receipt', ['token' => $review['public_token']]));
-        $this->get($response->headers->get('Location'))
-            ->assertOk()
-            ->assertSee($withdrawal->receipt_number)
-            ->assertSee('Dichiarazione ricevuta');
-        $this->get(route('withdrawal.receipt.download', ['token' => $review['public_token']]))
-            ->assertOk()
-            ->assertHeader('content-type', 'text/plain; charset=UTF-8')
-            ->assertSee($withdrawal->receipt_number);
-    }
-
-    public function test_unknown_order_shows_popup_and_does_not_start_withdrawal(): void
-    {
-        $response = $this->from(route('legal.refunds'))->post(route('withdrawal.review.store'), $this->validForm([
-            'order_reference' => 'CONTRATTO-ESTERNO-9',
-        ]));
-
-        $response->assertRedirect(route('legal.refunds'))
-            ->assertSessionHas('order_not_found', true)
-            ->assertSessionHasErrors([
-                'order_reference' => "Ordine non esistente, controlla attentamente nell'email di acquisto",
-            ]);
-
-        $this->get(route('legal.refunds'))
-            ->assertOk()
-            ->assertSee('Ordine non trovato')
-            ->assertSee("Ordine non esistente, controlla attentamente nell'email di acquisto")
-            ->assertSee('value="CONTRATTO-ESTERNO-9"', false);
-
-        $this->assertDatabaseCount('withdrawal_requests', 0);
-        $this->assertNull(session('withdrawal.review'));
-    }
-
-    public function test_order_must_belong_to_purchase_email(): void
-    {
-        $this->insertPurchase();
-
-        $this->post(route('withdrawal.review.store'), $this->validForm([
-            'purchase_email' => 'altra@example.com',
-        ]))->assertSessionHas('order_not_found', true);
-
-        $this->assertNull(session('withdrawal.review'));
-    }
-
-    private function validForm(array $overrides = []): array
-    {
-        return array_merge([
-            'first_name' => 'Ada',
-            'last_name' => 'Lovelace',
-            'purchase_email' => 'ada@example.com',
-            'receipt_email' => 'ada@example.com',
-            'order_reference' => 'WO-2026-000123',
-            'purchase_date' => now()->subDays(3)->toDateString(),
-            'plan' => 'join',
-            'website' => '',
-        ], $overrides);
-    }
-
-    private function insertPurchase(): void
-    {
-        DB::table('purchases')->insert([
-            'id' => self::PURCHASE_ID,
-            'order_reference' => 'WO-2026-000123',
-            'email' => 'ada@example.com',
-            'plan' => 'join',
-            'amount' => 2900,
-            'currency' => 'eur',
-            'status' => 'succeeded',
-            'created_at' => now()->subDays(3),
-            'updated_at' => now()->subDays(3),
-        ]);
     }
 }

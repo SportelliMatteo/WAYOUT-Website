@@ -270,12 +270,17 @@
                 @endif
             </section>
             <label id="purchase-terms" class="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4">
-                <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
+                <input id="purchase-terms-accepted" type="checkbox" name="purchase_terms_accepted" value="true" required @disabled($legalContentUnavailable) class="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50" />
                 <span class="text-sm font-semibold leading-6 text-slate-700 [&_a]:font-black [&_a]:text-violet-700 [&_a]:underline [&_a]:underline-offset-4">
                     @if($legalContentUnavailable)
                         {{ __('experience.legal_unavailable') }}
                     @else
-                        {!! $legalDocumentsHtml['purchase_acceptance'] !!}
+                        {{ __('experience.purchase_site_documents_acceptance') }}
+                        <span>
+                            @foreach($checkoutLegalDocuments as $legalDocument)
+                                <a href="{{ route('legal.document', ['document' => $legalDocument['code'], 'scope' => 'SITE', 'lang' => app()->getLocale()]) }}" target="_blank" rel="noopener">{{ $legalDocument['name'] }}</a>@if(!$loop->last),@endif
+                            @endforeach
+                        </span>
                     @endif
                 </span>
             </label>
@@ -452,7 +457,8 @@
         catalog.replaceChildren();
         const periods = @json(__('experience.billing_periods'));
         const permissionLabels = @json($permissionLabels);
-        data.plans.forEach((plan, index) => {
+        const webPlans = data.plans.filter(plan => typeof plan.external_price_id === 'string' && plan.external_price_id.startsWith('price_'));
+        webPlans.forEach((plan, index) => {
             const card = document.createElement('article');
             card.className = 'package-card recurring-plan-card';
             const badges = document.createElement('div'); badges.className = 'package-badges';
@@ -515,8 +521,8 @@
             card.append(purchase);
             catalog.append(card);
         });
-        document.getElementById('recurring-catalog-intro').classList.toggle('hidden', data.plans.length > 0);
-        if (!data.plans.length) {
+        document.getElementById('recurring-catalog-intro').classList.toggle('hidden', webPlans.length > 0);
+        if (!webPlans.length) {
             catalog.textContent = @json(__('experience.empty_plans'));
             document.getElementById('recurring-catalog-intro').classList.add('hidden');
         }

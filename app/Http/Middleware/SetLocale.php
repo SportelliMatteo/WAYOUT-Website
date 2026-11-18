@@ -11,14 +11,9 @@ class SetLocale
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $availableLocales = ['it', 'en'];
-        $locale = $request->query('lang');
-
-        if (in_array($locale, $availableLocales, true)) {
-            $request->session()->put('locale', $locale);
-        }
-
-        App::setLocale($request->session()->get('locale', config('app.locale')));
+        // English is temporarily disabled, including existing session preferences.
+        $request->session()->put('locale', 'it');
+        App::setLocale('it');
 
         return $next($request);
     }

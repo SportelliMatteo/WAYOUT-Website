@@ -9,6 +9,11 @@ POST /api/v1/prelaunch/benefits/eligibility
 
 La specifica OpenAPI è in `public/openapi/prelaunch-benefits.yaml`; Swagger UI è pubblicata su `/api/docs`.
 
+Entrambi gli endpoint restano attivi anche senza il modulo pubblico di nuova
+iscrizione alla waitlist. La dashboard mostra gli iscritti esistenti, totali,
+email verificate, verifiche pendenti e numero di idonei ai 60 giorni, con ricerca,
+filtri e paginazione. Non controlla né visualizza l’avvenuto riscatto nell’app.
+
 ## Regola di idoneità
 
 La risposta include soltanto gli utenti che:

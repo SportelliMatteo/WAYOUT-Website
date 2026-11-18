@@ -3,6 +3,7 @@
 use App\Exceptions\WayoutApiException;
 use App\Http\Middleware\EnforceSiteVisibility;
 use App\Http\Middleware\RequireAdminAuthentication;
+use App\Http\Middleware\RequirePlansEnabled;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\VerifyBenefitApiSignature;
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin.auth' => RequireAdminAuthentication::class,
+            'plans.enabled' => RequirePlansEnabled::class,
             'benefit.api' => VerifyBenefitApiSignature::class,
             'recaptcha' => VerifyRecaptcha::class,
         ]);

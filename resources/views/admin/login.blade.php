@@ -80,10 +80,6 @@
                     </button>
                 </form>
             </details>
-            <div class="mt-5 flex justify-center gap-2 text-xs font-black">
-                <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-3 py-2 {{ app()->getLocale() === 'it' ? 'bg-white text-slate-950' : 'bg-white/10 text-black' }}">IT</a>
-                <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full px-3 py-2 {{ app()->getLocale() === 'en' ? 'bg-white text-slate-950' : 'bg-white/10 text-black' }}">EN</a>
-            </div>
         </section>
     </main>
 </body>

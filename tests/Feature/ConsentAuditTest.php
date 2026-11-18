@@ -6,6 +6,7 @@ use App\Support\LegalDocumentService;
 use App\Support\LocalLegalDocumentArchive;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -87,8 +88,13 @@ class ConsentAuditTest extends TestCase
     public function test_contact_acceptance_references_the_saved_message(): void
     {
         Mail::fake();
+        Http::fake(['*/internal/support/tickets' => Http::response([
+            'success' => true, 'data' => ['id' => '36897688-e434-4dc0-9561-a134e9c4bdf2'],
+        ], 201)]);
+        $this->get(route('contact'))->assertOk();
 
         $this->post(route('contact.store'), [
+            'request_id' => session('contact_request_id'),
             'name' => 'Mario Rossi',
             'email' => 'mario@example.com',
             'subject' => 'information',
@@ -107,7 +113,7 @@ class ConsentAuditTest extends TestCase
         ]);
 
         $contactEvent = DB::table('consent_events')->where('contact_message_id', $messageId)->first();
-        $this->assertArrayHasKey('contact_acceptance', json_decode($contactEvent->document_versions, true));
+        $this->assertSame(['privacy', 'terms'], array_keys(json_decode($contactEvent->document_versions, true)));
     }
 
     public function test_unsigned_marketing_revocation_is_rejected(): void

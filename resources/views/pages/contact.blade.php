@@ -16,9 +16,32 @@
                 @foreach(['club', 'collab', 'questions', 'purchase'] as $reason)
                     <article class="contact-reason">
                         <span aria-hidden="true">0{{ $loop->iteration }}</span>
-                        <div><h3>{{ __('messages.contact.'.$reason.'_title') }}</h3><p>{{ __('messages.contact.'.$reason.'_text') }}</p></div>
+                        <div>
+                            <h3>{{ __('messages.contact.'.$reason.'_title') }}</h3>
+                            @if($reason === 'purchase')
+                                <p>
+                                    Per informazioni sugli acquisti, consulta
+                                    @if(app(\App\Support\CheckoutFeatures::class)->plansEnabled())
+                                        <a class="font-bold text-white underline underline-offset-4" href="{{ route('subscribe') }}">la pagina Piani</a>.
+                                    @else
+                                        <a class="font-bold text-white underline underline-offset-4" href="{{ route('faq') }}">le FAQ su Pass e abbonamenti</a>.
+                                    @endif
+                                    Per richiedere <a class="font-bold text-white underline underline-offset-4" href="{{ route('legal.refunds') }}#recedere">recesso e rimborso</a>
+                                    o la <a class="font-bold text-white underline underline-offset-4" href="{{ route('subscription.cancel') }}">disdetta dell’abbonamento</a>, usa i moduli dedicati.
+                                </p>
+                            @else
+                                <p>{{ __('messages.contact.'.$reason.'_text') }}</p>
+                            @endif
+                        </div>
                     </article>
                 @endforeach
+                <article class="contact-reason">
+                    <span aria-hidden="true">05</span>
+                    <div>
+                        <h3>Cancellazione account nell’app</h3>
+                        <p>Per richiedere la cancellazione del tuo account WAYOUT nell’app, usa il <a class="font-bold text-white underline underline-offset-4" href="{{ route('account.deletion') }}">modulo di richiesta cancellazione account</a>.</p>
+                    </div>
+                </article>
             </div>
         </div>
 
@@ -42,6 +65,7 @@
 
             <form class="contact-form" method="POST" action="{{ route('contact.store') }}">
                 @csrf
+                <input type="hidden" name="request_id" value="{{ $contactRequestId }}">
                 @include('partials.recaptcha', ['action' => 'contact'])
                 <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
 
@@ -78,12 +102,15 @@
 
                 <div class="contact-privacy">
                     <label for="privacy_accepted" class="flex items-start gap-3 text-sm font-semibold leading-6 text-slate-600">
-                        <input id="privacy_accepted" name="privacy_accepted" type="checkbox" value="1" required @checked(old('privacy_accepted')) class="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
+                        <input id="privacy_accepted" name="privacy_accepted" type="checkbox" value="1" required @disabled($legalContentUnavailable) @checked(! $legalContentUnavailable && old('privacy_accepted')) class="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-violet-700 focus:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50" />
                         <span class="[&_a]:font-black [&_a]:text-violet-700 [&_a]:underline [&_a]:underline-offset-4">
                             @if($legalContentUnavailable)
                                 {{ __('experience.legal_unavailable') }}
                             @else
-                                {!! $legalDocumentsHtml['contact_acceptance'] !!}
+                                {!! __('messages.contact.privacy_acceptance', [
+                                    'privacy' => '<a href="'.e(route('legal.privacy')).'" target="_blank" rel="noopener">Privacy policy</a>',
+                                    'terms' => '<a href="'.e(route('legal.terms')).'" target="_blank" rel="noopener">Termini e condizioni</a>',
+                                ]) !!}
                             @endif
                         </span>
                     </label>

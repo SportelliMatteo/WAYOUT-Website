@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Exceptions\WayoutApiException;
 use App\Support\AppStoreLinks;
+use App\Support\CheckoutFeatures;
 use App\Support\LegalDocumentService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -53,12 +54,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('withdrawal', function (Request $request) {
-            return Limit::perMinute(5)->by($request->session()->getId() ?: $request->ip());
+            return Limit::perMinute(5)->by($request->ip());
         });
 
         RateLimiter::for('withdrawal-confirm', function (Request $request) {
-            return Limit::perMinute(3)->by($request->session()->getId() ?: $request->ip());
+            return Limit::perMinute(3)->by($request->ip());
         });
+
+        RateLimiter::for('purchase-support', fn (Request $request) => Limit::perMinute(3)->by($request->ip()));
 
         RateLimiter::for('admin', function (Request $request) {
             if ($request->isMethod('GET')) {
@@ -80,6 +83,17 @@ class AppServiceProvider extends ServiceProvider
         View::composer('partials.app-downloads', function ($view) {
             $view->with('appStoreLinks', app(AppStoreLinks::class)->all());
         });
+        View::composer('partials.commerce-support-form', function ($view) {
+            $source = $view->getData()['source'];
+            $key = 'commerce_support.'.$source;
+            if (! request()->session()->has($key) || request()->session()->has('commerce_ticket.'.$source)) {
+                request()->session()->put($key, (string) Str::uuid());
+            }
+            $view->with('requestId', request()->session()->get($key));
+        });
+        View::composer(['layouts.app', 'partials.footer', 'pages.home', 'pages.about', 'pages.faq'], function ($view) {
+            $view->with('plansEnabled', app(CheckoutFeatures::class)->plansEnabled());
+        });
         View::composer(['layouts.app', 'pages.legal.layout'], function ($view) {
             try {
                 $documents = app(LegalDocumentService::class)->published(null);
@@ -91,14 +105,30 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer(['pages.subscribe', 'pages.contact'], function ($view) {
-            $key = $view->name() === 'pages.subscribe' ? 'purchase_acceptance' : 'contact_acceptance';
+            if ($view->name() === 'pages.subscribe') {
+                try {
+                    $documents = app(LegalDocumentService::class)->published('SITE');
+                    $view->with('checkoutLegalDocuments', $documents);
+                    $view->with('legalContentUnavailable', $documents === []);
+                } catch (WayoutApiException $exception) {
+                    Log::warning('Checkout legal index unavailable.', $exception->logContext());
+                    $view->with('checkoutLegalDocuments', []);
+                    $view->with('legalContentUnavailable', true);
+                }
+
+                return;
+            }
+            if (! request()->session()->has('contact_request_id') || request()->session()->has('contact_success')) {
+                request()->session()->put('contact_request_id', (string) Str::uuid());
+            }
+            $view->with('contactRequestId', request()->session()->get('contact_request_id'));
             try {
-                $document = app(LegalDocumentService::class)->current($key);
-                $view->with('legalDocumentsHtml', [$key => $document->content_snapshot]);
+                $documents = app(LegalDocumentService::class);
+                $documents->current('privacy');
+                $documents->current('terms');
                 $view->with('legalContentUnavailable', false);
             } catch (WayoutApiException $exception) {
                 Log::warning('Backend legal content unavailable.', $exception->logContext());
-                $view->with('legalDocumentsHtml', [$key => '']);
                 $view->with('legalContentUnavailable', true);
             }
         });

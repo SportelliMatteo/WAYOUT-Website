@@ -36,12 +36,12 @@ class BackendLegalDocumentsTest extends TestCase
         $count = DB::table('legal_document_versions')->count();
         Http::fake(['*/legal/documents/COOKIES*' => Http::response(['success' => true, 'data' => $this->currentDocument()])]);
         $this->get('/cookie-policy?lang=en')->assertOk()->assertSee('<h2>Testo dal backend</h2>', false)
-            ->assertSee('legal')->assertSee('Version 2')
-            ->assertSee('Published on:')->assertSee('13 November 2026')
+            ->assertSee('legal')->assertSee('Versione 2')
+            ->assertSee('Pubblicato il:')->assertSee('13 novembre 2026')
             ->assertSee('datetime="2026-11-13T20:57:36.999Z"', false)
             ->assertDontSee('Last updated:')->assertDontSee('02 November 2026');
         Http::assertSent(fn ($request) => $request->url() === 'https://staging-app.wayoutapp.test/api/v1/legal/documents/COOKIES?scope=SITE'
-            && $request->hasHeader('Accept-Language', 'en') && ! $request->hasHeader('Authorization') && ! $request->hasHeader('X-Wayout-Signature'));
+            && $request->hasHeader('Accept-Language', 'it') && ! $request->hasHeader('Authorization') && ! $request->hasHeader('X-Wayout-Signature'));
         $this->assertSame($count, DB::table('legal_document_versions')->count());
     }
 
@@ -156,10 +156,68 @@ class BackendLegalDocumentsTest extends TestCase
         $this->assertStringContainsString(self::CURRENT_ID, json_decode($event->document_urls, true)['cookies']);
     }
 
-    public function test_contact_page_shows_unavailability_instead_of_old_acceptance_html(): void
+    public function test_contact_page_disables_acceptance_if_privacy_is_unavailable(): void
     {
-        Http::fake(['*/legal/documents/CONTACT_ACCEPTANCE*' => Http::response([], 404)]);
+        Http::fake(['*/legal/documents/PRIVACY*' => Http::response([], 404)]);
         $this->get('/contatti')->assertOk()->assertSee('I documenti legali non sono al momento disponibili.')
+            ->assertSee('type="checkbox" value="1" required disabled', false)
             ->assertSee('type="submit" disabled', false);
+    }
+
+    public function test_contact_page_requires_only_privacy_and_terms_without_a_contact_acceptance_document(): void
+    {
+        Http::fake([
+            '*/legal/documents/PRIVACY?scope=SITE' => Http::response(['data' => $this->currentDocument('PRIVACY')]),
+            '*/legal/documents/TERMS?scope=SITE' => Http::response(['data' => $this->currentDocument('TERMS')]),
+            '*' => Http::response([], 404),
+        ]);
+        $this->get('/contatti')->assertOk()->assertSee('Privacy policy')->assertSee('Termini e condizioni')
+            ->assertSee(route('legal.privacy'))->assertSee(route('legal.terms'))
+            ->assertDontSee('I documenti legali non sono al momento disponibili.')
+            ->assertDontSee('type="submit" disabled', false);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/legal/documents/CONTACT_ACCEPTANCE'));
+    }
+
+    public function test_checkout_disables_acceptance_when_purchase_document_is_unavailable(): void
+    {
+        Http::fake(['*' => Http::response([], 404)]);
+
+        $this->get('/piani')->assertOk()
+            ->assertSee('I documenti legali non sono al momento disponibili.')
+            ->assertSee('name="purchase_terms_accepted" value="true" required disabled', false)
+            ->assertSee('data-legal-unavailable="true"', false);
+    }
+
+    public function test_checkout_lists_all_published_site_documents_without_a_fixed_acceptance_document(): void
+    {
+        $appDocument = $this->currentDocument('APP_ONLY');
+        $appDocument['scope'] = 'APP';
+        Http::fake([
+            '*/legal/documents?scope=SITE' => Http::response(['data' => [
+                $this->currentDocument('TERMINI_DI_VENDITA'),
+                $this->currentDocument('RECESSO_E_RIMBORSI'),
+                $this->currentDocument('NEW_POLICY'),
+                $appDocument,
+            ]]),
+            '*' => Http::response([], 404),
+        ]);
+
+        $this->get('/piani')->assertOk()
+            ->assertSee(route('legal.document', ['document' => 'TERMINI_DI_VENDITA', 'scope' => 'SITE', 'lang' => 'it']))
+            ->assertSee(route('legal.document', ['document' => 'RECESSO_E_RIMBORSI', 'scope' => 'SITE', 'lang' => 'it']))
+            ->assertSee(route('legal.document', ['document' => 'NEW_POLICY', 'scope' => 'SITE', 'lang' => 'it']))
+            ->assertDontSee('APP_ONLY')
+            ->assertDontSee('name="purchase_terms_accepted" value="true" required disabled', false)
+            ->assertSee('data-legal-unavailable="false"', false);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/legal/documents/PURCHASE_ACCEPTANCE'));
+    }
+
+    public function test_checkout_disables_acceptance_when_no_site_documents_are_published(): void
+    {
+        Http::fake(['*' => Http::response(['data' => []])]);
+
+        $this->get('/piani')->assertOk()
+            ->assertSee('name="purchase_terms_accepted" value="true" required disabled', false)
+            ->assertSee('data-legal-unavailable="true"', false);
     }
 }

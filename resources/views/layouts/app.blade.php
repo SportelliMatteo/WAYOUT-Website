@@ -10,9 +10,22 @@
         <meta name="robots" content="{{ $robots }}">
     @endif
     <link rel="shortcut icon" href="/favicon.jpg" type="image/jpeg" />
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+        (() => {
+            try { if (sessionStorage.getItem('wayout-intro-seen') === '3') return; } catch {}
+            document.documentElement.classList.add('wayout-loading');
+            const release = () => {
+                document.documentElement.classList.remove('wayout-loading');
+                document.querySelector('[data-site-loader]')?.remove();
+            };
+            window.wayoutLoaderFallback = setTimeout(release, 6500);
+            window.addEventListener('pageshow', (event) => { if (event.persisted) release(); });
+        })();
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="flex min-h-screen flex-col text-slate-950 antialiased {{ request()->routeIs('home') ? 'app-inspired-page' : '' }}">
+    @include('partials.site-loader')
     <nav class="site-nav fixed left-0 top-0 z-30 w-full px-3 pt-3">
         <div class="site-nav-shell mx-auto flex max-w-screen-2xl items-center justify-between rounded-full border border-white/65 bg-white/[0.72] px-3 py-2 shadow-[0_18px_70px_rgba(15,23,42,0.09)] backdrop-blur-2xl lg:px-4">
             <a href="{{ route('home') }}" class="inline-flex items-center rounded-full bg-white px-3 py-2 shadow-sm ring-1 ring-slate-950/5">
@@ -31,9 +44,11 @@
                     <a href="{{ route('home') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('home') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.home') }}
                     </a>
+@if($plansEnabled)
 <a href="{{ route('subscribe') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('subscribe') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.plans') }}
                     </a>
+                @endif
 <a href="{{ route('about') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('about') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.about') }}
                     </a>
@@ -43,10 +58,6 @@
 <a href="{{ route('contact') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('contact') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.contact') }}
                     </a>
-                </div>
-                <div class="site-languages ml-2 flex rounded-full border border-slate-950/5 bg-white/55 p-1 text-xs font-black shadow-inner shadow-white/60">
-                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-3 py-2 transition {{ app()->getLocale() === 'it' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">IT</a>
-                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full px-3 py-2 transition {{ app()->getLocale() === 'en' ? 'bg-slate-950 text-white' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">EN</a>
                 </div>
             </div>
         </div>
@@ -69,9 +80,11 @@
                 <a href="{{ route('home') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('home') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.home') }}
                 </a>
+@if($plansEnabled)
 <a href="{{ route('subscribe') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('subscribe') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.plans') }}
                 </a>
+                @endif
 <a href="{{ route('about') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('about') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.about') }}
                 </a>
@@ -81,10 +94,6 @@
 <a href="{{ route('contact') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('contact') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.contact') }}
                 </a>
-                <div class="mx-auto mt-3 flex rounded-full border border-white/10 bg-white/10 p-1 text-sm font-black">
-                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full px-4 py-2 {{ app()->getLocale() === 'it' ? 'bg-white text-slate-950' : 'text-white' }}">IT</a>
-                    <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full px-4 py-2 {{ app()->getLocale() === 'en' ? 'bg-white text-slate-950' : 'text-white' }}">EN</a>
-                </div>
             </div>
         </div>
     </div>

@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Mail\ContactMessageMail;
+use App\Support\DatabaseUuid;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -13,6 +15,18 @@ class ContactTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $requestId;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->requestId = DatabaseUuid::new();
+        $this->withSession(['contact_request_id' => $this->requestId]);
+        Http::fake(['*/internal/support/tickets' => Http::response([
+            'success' => true, 'data' => ['id' => '36897688-e434-4dc0-9561-a134e9c4bdf2'],
+        ], 201)]);
+    }
+
     public function test_contact_message_is_saved(): void
     {
         Mail::fake();
@@ -20,6 +34,7 @@ class ContactTest extends TestCase
 
         $response = $this->from(route('contact'))
             ->post(route('contact.store'), [
+                'request_id' => $this->requestId,
                 'name' => 'Mario Rossi',
                 'email' => 'mario@example.com',
                 'subject' => 'information',
@@ -50,7 +65,8 @@ class ContactTest extends TestCase
         config()->set('email.contact_recipient', 'support@wayout.test');
 
         $this->post(route('contact.store'), [
-            'name' => 'Mario Rossi',
+            'request_id' => $this->requestId,
+                'name' => 'Mario Rossi',
             'email' => 'mario@example.com',
             'subject' => 'information',
             'message' => 'Vorrei maggiori informazioni.',
@@ -71,6 +87,7 @@ class ContactTest extends TestCase
 
         $response = $this->from(route('contact'))
             ->post(route('contact.store'), [
+                'request_id' => $this->requestId,
                 'name' => 'Mario Rossi',
                 'email' => 'mario@example.com',
                 'subject' => 'information',
@@ -86,6 +103,7 @@ class ContactTest extends TestCase
     {
         $response = $this->from(route('contact'))
             ->post(route('contact.store'), [
+                'request_id' => $this->requestId,
                 'name' => 'Mario Rossi',
                 'email' => 'mario@example.com',
                 'subject' => 'other',

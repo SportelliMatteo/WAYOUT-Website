@@ -7,6 +7,11 @@
             <span class="inline-flex rounded-full bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-800">{{ __('messages.withdrawal.registered') }}</span>
             <h1 class="mt-5 text-4xl font-black text-slate-950">{{ __('messages.withdrawal.receipt_title') }}</h1>
             <p class="mt-4 font-semibold leading-7 text-slate-600">{{ __('messages.withdrawal.receipt_help') }}</p>
+            @if($supportRequest && $supportRequest->status !== 'sent')
+                <p class="mt-3 font-semibold leading-7 text-amber-800">La dichiarazione è registrata sul sito. L’invio all’assistenza è in verifica: <a href="{{ route('contact') }}" class="underline">contatta l’assistenza</a> indicando il codice ricevuta. Il rimborso non è ancora confermato.</p>
+            @else
+                <p class="mt-3 font-semibold leading-7 text-slate-600">La richiesta di recesso e rimborso è stata ricevuta. L’assistenza ti contatterà all’email indicata; questa ricevuta non conferma che il rimborso sia già stato eseguito.</p>
+            @endif
 
             <dl class="mt-8 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5 sm:grid-cols-2">
                 <div><dt class="text-xs font-black uppercase text-slate-500">{{ __('messages.withdrawal.receipt_code') }}</dt><dd class="mt-1 font-black">{{ $withdrawal->receipt_number }}</dd></div>

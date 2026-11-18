@@ -33,10 +33,6 @@
                 {{ $isMaintenance ? __('messages.site_visibility.maintenance_text') : __('messages.site_visibility.coming_soon_text') }}
             </p>
 
-            <div class="mt-10 flex justify-center gap-2 text-xs font-black">
-                <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full border px-4 py-2 shadow-sm transition {{ app()->getLocale() === 'it' ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-white hover:text-slate-950' }}">IT</a>
-                <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full border px-4 py-2 shadow-sm transition {{ app()->getLocale() === 'en' ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-white hover:text-slate-950' }}">EN</a>
-            </div>
         </section>
     </main>
 </body>

@@ -44,7 +44,9 @@
         </div>
         <div class="about-manifesto">
             <p>{{ __('messages.about.project_p3') }}</p>
+    @if($plansEnabled)
             <a class="brand-button brand-button-primary" href="{{ route('subscribe', ['lang' => app()->getLocale()]) }}">{{ __('experience.about_explore') }} <span aria-hidden="true">↗</span></a>
+    @endif
         </div>
     </section>
 </div>

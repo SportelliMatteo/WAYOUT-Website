@@ -23,6 +23,7 @@ return [
     'contact_form_title' => 'Drop us a message.',
 
     'purchase_legal_updated' => 'The documents have been updated. Read and confirm them again before continuing.',
+    'purchase_site_documents_acceptance' => 'I confirm that I have read the following documents:',
     'legal_site' => 'Legal · Website',
     'legal_app' => 'Legal · App',
     'legal_no_documents' => 'No documents are currently published.',

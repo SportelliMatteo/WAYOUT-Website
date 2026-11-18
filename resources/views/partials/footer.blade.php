@@ -25,9 +25,13 @@
             <nav class="site-footer-links" aria-label="{{ __('messages.nav.navigation') }}">
                 <h2>{{ __('messages.nav.navigation') }}</h2>
                 @foreach(['home' => 'home', 'subscribe' => 'plans', 'about' => 'about', 'contact' => 'contact'] as $routeName => $label)
+                    @continue($routeName === 'subscribe' && ! $plansEnabled)
                     <a href="{{ route($routeName, ['lang' => app()->getLocale()]) }}">{{ __('messages.nav.'.$label) }}</a>
                 @endforeach
                 <a href="{{ route('faq', ['lang' => app()->getLocale()]) }}">{{ __('experience.faq_nav') }}</a>
+                <a href="{{ route('legal.refunds') }}#recedere">Recesso e rimborso</a>
+                <a href="{{ route('subscription.cancel') }}">Disdetta abbonamento</a>
+                <a href="{{ route('account.deletion') }}">Richiedi cancellazione account</a>
                 @include('partials.app-downloads')
             </nav>
             @foreach(['SITE' => 'legal_site', 'APP' => 'legal_app'] as $scope => $label)

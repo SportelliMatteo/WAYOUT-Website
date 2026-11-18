@@ -403,7 +403,6 @@ return [
             'club' => 'Club e venue',
             'collaboration' => 'Collaborazioni',
             'information' => 'Curiosità e informazioni',
-            'purchase' => 'Acquisto Pass, Rimborso o Recesso',
             'other' => 'Altro',
         ],
         'message_placeholder' => 'Scrivi qui il tuo messaggio...',

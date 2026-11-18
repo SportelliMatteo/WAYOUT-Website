@@ -1,3 +1,4 @@
+import './site-loader';
 import './analytics';
 import './checkout-phone';
 import './recaptcha';

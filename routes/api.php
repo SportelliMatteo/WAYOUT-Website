@@ -1,3 +1,9 @@
 <?php
 
-// Prelaunch waitlist benefit endpoints have been retired.
+use App\Http\Controllers\Api\PrelaunchBenefitController;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('v1/prelaunch')->middleware(['benefit.api', 'throttle:benefit-api'])->group(function () {
+    Route::get('/benefits', [PrelaunchBenefitController::class, 'index'])->name('benefits.index');
+    Route::post('/benefits/eligibility', [PrelaunchBenefitController::class, 'eligibility'])->name('benefits.eligibility');
+});

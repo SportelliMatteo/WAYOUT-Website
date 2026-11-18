@@ -30,8 +30,6 @@
             </div>
             <div class="flex items-center gap-2">
                 <span class="hidden text-right text-xs font-bold text-slate-500 sm:block">{{ $currentAdmin->name }}<br>{{ $currentAdmin->email }}</span>
-                <a href="{{ request()->fullUrlWithQuery(['lang' => 'it']) }}" class="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black {{ app()->getLocale() === 'it' ? 'text-violet-700' : 'text-slate-500' }}">IT</a>
-                <a href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" class="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black {{ app()->getLocale() === 'en' ? 'text-violet-700' : 'text-slate-500' }}">EN</a>
             <form action="{{ route('admin.logout') }}" method="POST">
                 @csrf
                 <button type="submit" class="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-violet-300 hover:text-violet-700">
@@ -53,8 +51,27 @@
             </div>
         @endif
 
+        @include('admin.partials.waitlist')
+
         <h2 class="mt-6 text-xl font-black">{{ __('messages.admin.tab_settings') }}</h2>
         <div id="admin-panel-settings" data-admin-panel="settings">
+        <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-xl font-black">Piani e acquisti sul sito</h2>
+                <span class="rounded-full px-3 py-1 text-xs font-black {{ $plansEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">{{ $plansEnabled ? 'Abilitati' : 'Disabilitati' }}</span>
+            </div>
+            <p class="mt-3 text-sm leading-6 text-slate-600">Abilita la pagina Piani, i pacchetti promo, gli abbonamenti e il pagamento. Disabilitando il flusso, i collegamenti vengono nascosti e tutti gli accessi diretti al catalogo e al checkout vengono bloccati, anche durante l’anteprima amministrativa.</p>
+            <form method="POST" action="{{ route('admin.plans-availability.update') }}" class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+                @csrf
+                <label class="grid gap-2 text-sm font-bold">Disponibilità dei piani
+                    <select name="plans_enabled" class="rounded-lg border border-slate-200 bg-white px-4 py-3">
+                        <option value="0" @selected(! $plansEnabled)>Disabilitati — nascosti e non accessibili</option>
+                        <option value="1" @selected($plansEnabled)>Abilitati — visibili e acquistabili</option>
+                    </select>
+                </label>
+                <button class="self-end rounded-lg bg-violet-700 px-5 py-3 font-black text-white">Salva disponibilità</button>
+            </form>
+        </section>
         <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-xl font-black">{{ __('experience.store_links_title') }}</h2>
             <p class="mt-2 text-sm text-slate-500">{{ __('experience.store_links_help') }}</p>

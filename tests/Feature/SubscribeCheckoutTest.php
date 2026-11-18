@@ -6,6 +6,7 @@ use App\Mail\PurchaseConfirmationMail;
 use App\Support\DatabaseUuid;
 use App\Support\LegalDocumentService;
 use App\Support\PurchasePackage;
+use App\Support\WayoutApiClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,9 +21,100 @@ class SubscribeCheckoutTest extends TestCase
 
     private array $purchaseDocuments = [];
 
+    public function test_public_subscription_catalog_includes_only_active_web_purchases(): void
+    {
+        Http::fake(['*/api/v1/plans' => Http::response(['data' => [
+            ['name' => 'Mensile web', 'active' => true, 'providers' => [['provider' => 'STRIPE', 'active' => true, 'external_price_id' => 'price_web']]],
+            ['name' => 'Solo Apple', 'active' => true, 'providers' => [['provider' => 'APPLE', 'active' => true]]],
+            ['name' => 'Solo Google', 'active' => true, 'providers' => [['provider' => 'GOOGLE', 'active' => true]]],
+            ['name' => 'Stripe disattivato', 'active' => true, 'providers' => [['provider' => 'STRIPE', 'active' => false, 'external_price_id' => 'price_disabled']]],
+            ['name' => 'Prezzo assente', 'active' => true, 'providers' => [['provider' => 'STRIPE', 'active' => true]]],
+            ['name' => 'Piano disattivato', 'active' => false, 'providers' => [['provider' => 'STRIPE', 'active' => true, 'external_price_id' => 'price_inactive']]],
+            ['name' => 'Web e app', 'active' => true, 'providers' => [
+                ['provider' => 'APPLE', 'active' => true],
+                ['provider' => 'STRIPE', 'active' => true, 'external_price_id' => 'price_both'],
+            ]],
+        ]])]);
+
+        $this->getJson(route('subscribe.plans'))->assertOk()->assertJsonCount(2, 'plans')
+            ->assertJsonPath('plans.0.name', 'Mensile web')->assertJsonPath('plans.0.external_price_id', 'price_web')
+            ->assertJsonPath('plans.1.name', 'Web e app')->assertJsonPath('plans.1.external_price_id', 'price_both')
+            ->assertDontSee('Solo Apple')->assertDontSee('Solo Google')->assertDontSee('Stripe disattivato')
+            ->assertDontSee('Prezzo assente')->assertDontSee('Piano disattivato');
+    }
+
     private int $legalAcceptStatus = 200;
 
     private int $legalReadStatus = 200;
+
+    private ?array $sitePublications = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $service = \Mockery::mock(LegalDocumentService::class, [app(WayoutApiClient::class)])->makePartial();
+        $service->shouldReceive('published')->with('SITE')->andReturnUsing(fn () => $this->publishedPurchaseDocuments());
+        $service->shouldReceive('published')->with(null)->passthru();
+        $this->app->instance(LegalDocumentService::class, $service);
+    }
+
+    private function publishedPurchaseDocuments(): array
+    {
+        if ($this->sitePublications !== null) {
+            return $this->sitePublications;
+        }
+
+        return array_map(fn (array $document) => [
+            'code' => $document['code'] ?? 'TERMS',
+            'name' => $document['name'] ?? 'Terms',
+            'scope' => $document['scope'] ?? 'SITE',
+            'current' => ['id' => $document['version_id']],
+        ], $this->purchaseDocuments);
+    }
+
+    public function test_app_purchase_documents_are_not_presented_or_accepted_on_the_site(): void
+    {
+        $this->purchaseDocuments = [
+            ['version_id' => DatabaseUuid::new(), 'scope' => 'APP', 'name' => 'Pass Abbonamenti Acquisti in APP'],
+            ['version_id' => DatabaseUuid::new(), 'scope' => 'SITE', 'name' => 'Termini sito'],
+        ];
+        $this->fakeExistingUserCheckout();
+        $payload = $this->checkoutPayload();
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk()
+            ->assertJsonCount(1, 'documents')
+            ->assertJsonPath('documents.0.name', 'Termini sito')
+            ->assertDontSee('Pass Abbonamenti Acquisti in APP');
+        $payload['accepted_version_ids'] = [$this->purchaseDocuments[1]['version_id']];
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk()->assertJsonStructure(['redirectUrl']);
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/internal/legal/accept')
+            && $request['version_ids'] === [$this->purchaseDocuments[1]['version_id']]);
+    }
+
+    public function test_app_only_purchase_documents_do_not_add_a_second_consent_step(): void
+    {
+        $this->purchaseDocuments = [['version_id' => DatabaseUuid::new(), 'scope' => 'APP', 'name' => 'App terms']];
+        $this->fakeExistingUserCheckout();
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload())->assertOk()->assertJsonStructure(['redirectUrl']);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/internal/legal/accept'));
+    }
+
+    public function test_purchase_documents_without_scope_are_matched_by_published_site_version_id(): void
+    {
+        $this->purchaseDocuments = [
+            ['version_id' => DatabaseUuid::new(), 'name' => 'App terms'],
+            ['version_id' => DatabaseUuid::new(), 'name' => 'Site terms'],
+        ];
+        $this->sitePublications = [[
+            'code' => 'TERMS', 'name' => 'Site terms', 'scope' => 'SITE',
+            'current' => ['id' => $this->purchaseDocuments[1]['version_id']],
+        ]];
+        $this->fakeExistingUserCheckout();
+
+        $this->postJson(route('subscribe.checkout'), $this->checkoutPayload())->assertOk()
+            ->assertJsonCount(1, 'documents')
+            ->assertJsonPath('documents.0.name', 'Site terms');
+    }
 
     public function test_purchase_documents_must_be_presented_and_accepted_before_checkout(): void
     {
@@ -174,8 +266,8 @@ class SubscribeCheckoutTest extends TestCase
             ->assertDontSee('Whether the user can create private party events')
             ->assertDontSee('Whether the user is exempt from ads in the app');
         $this->get(route('subscribe', ['lang' => 'en']))->assertOk()
-            ->assertSee('Organize tables at clubs and host private parties')
-            ->assertSee('Keep up to <strong>20</strong> upcoming club tables and private parties active at once', false);
+            ->assertSee('Organizza tavoli nei club e feste private')
+            ->assertSee('Fino a <strong>20</strong> tavoli nei club e feste private in programma contemporaneamente', false);
     }
 
     public function test_catalog_grid_supports_arbitrary_packages_including_free_and_excludes_inactive_ones(): void
@@ -461,7 +553,8 @@ class SubscribeCheckoutTest extends TestCase
             };
         });
         $this->getJson(route('subscribe.plans'))
-            ->assertOk()->assertJsonCount(2, 'plans')->assertJsonPath('plans.1.external_price_id', null)->assertDontSee('existing-token');
+            ->assertOk()->assertJsonCount(1, 'plans')->assertJsonPath('plans.0.external_price_id', 'price_monthly')
+            ->assertDontSee('Solo Apple')->assertDontSee('existing-token');
         $this->assertDatabaseCount('purchases', 0);
         Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/api/auth/verify-firebase-token'));
         $this->postJson(route('subscribe.checkout'), [...$this->checkoutPayload('price_monthly'), 'recurring_terms_accepted' => true])
