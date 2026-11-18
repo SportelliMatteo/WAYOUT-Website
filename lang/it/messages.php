@@ -107,7 +107,7 @@ return [
         'launch_explore' => 'Scopri cosa sta arrivando',
         'launch_eyebrow' => '2.000 posti raggiunti. Ci vediamo il 28 novembre.',
         'launch_headline_a' => 'L’attesa è quasi',
-        'launch_headline_b' => 'fuori.',
+        'launch_headline_b' => 'finita.',
         'launch_intro' => 'La waitlist ha fatto il pieno. Il 28 novembre arriva WAYOUT: nuove persone, nuovi piani, nuove serate da vivere. Preparati a esserci.',
 
         'title' => 'Wayout',
