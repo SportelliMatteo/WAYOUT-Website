@@ -35,24 +35,27 @@ class PlansAvailabilityTest extends TestCase
 
     public function test_admin_can_disable_and_enable_the_flow_with_an_audit_record(): void
     {
-        $this->withSession($this->adminSession())->get('/admin')->assertOk()->assertSee('Disponibilità dei piani');
+        $this->withSession($this->adminSession())->get('/admin')->assertOk()->assertSee('Disponibilità dei piani e dell’area riservata');
         $this->post(route('admin.plans-availability.update'), ['plans_enabled' => '0'])->assertRedirect(route('admin.dashboard', ['tab' => 'settings']));
         $this->assertFalse(app(CheckoutFeatures::class)->plansEnabled());
         $this->assertDatabaseHas('admin_audit_events', ['action' => 'plans.availability_updated', 'target_type' => 'checkout_settings']);
         $this->getJson('/subscribe/plans')->assertNotFound()->assertJsonPath('code', 'PLANS_DISABLED');
         $this->post(route('admin.plans-availability.update'), ['plans_enabled' => '1'])->assertRedirect();
         $this->assertTrue(app(CheckoutFeatures::class)->plansEnabled());
-        $this->get('/')->assertOk()->assertSee('href="'.route('subscribe').'"', false);
+        $this->get('/')->assertOk()->assertSee('href="'.route('subscribe').'"', false)
+            ->assertSee('href="'.route('customer.dashboard').'"', false);
+        $this->get(route('customer.login'))->assertOk();
+        $this->get(route('customer.dashboard'))->assertRedirect(route('customer.login'));
     }
 
     public function test_disabled_flow_blocks_direct_requests_before_any_backend_checkout_or_catalog_call(): void
     {
         $this->enabled(false);
-        foreach (['/piani', '/subscribe', '/subscribe/plans'] as $path) {
+        foreach (['/piani', '/subscribe', '/subscribe/plans', '/accedi', '/area-riservata', '/area-riservata/piani'] as $path) {
             $this->getJson($path)->assertNotFound()->assertJsonPath('code', 'PLANS_DISABLED')
                 ->assertHeader('Cache-Control', 'no-store, private');
         }
-        foreach (['/subscribe/checkout', '/purchase/confirmation'] as $path) {
+        foreach (['/subscribe/checkout', '/purchase/confirmation', '/accedi', '/esci', '/area-riservata/gestisci-abbonamento'] as $path) {
             $this->postJson($path, ['plan' => 'price_test'])->assertNotFound()->assertJsonPath('code', 'PLANS_DISABLED');
         }
         foreach (['checkout.success', 'checkout.status', 'checkout.cancel'] as $route) {
@@ -71,7 +74,7 @@ class PlansAvailabilityTest extends TestCase
             $response = $this->get($path)->assertOk();
             $document = new \DOMDocument;
             @$document->loadHTML($response->getContent());
-            $links = (new \DOMXPath($document))->query('//a[contains(@href, "/piani") or contains(@href, "/subscribe")]');
+            $links = (new \DOMXPath($document))->query('//a[contains(@href, "/piani") or contains(@href, "/subscribe") or contains(@href, "/area-riservata") or contains(@href, "/accedi")]');
             $this->assertSame(0, $links->length, $path);
         }
         $this->get('/piani')->assertNotFound()->assertSee('Pagina non disponibile')
@@ -114,7 +117,7 @@ class PlansAvailabilityTest extends TestCase
     public function test_support_and_legal_pages_remain_available_when_sales_are_disabled(): void
     {
         $this->enabled(false);
-        foreach (['/cancellazione-account', '/disdetta-abbonamento', '/recedere-dal-contratto', '/privacy-policy'] as $path) {
+        foreach (['/richiesta-cancellazione-account-e-dati-associati', '/disdetta-abbonamento', '/recedere-dal-contratto', '/privacy-policy'] as $path) {
             $this->get($path)->assertOk();
         }
     }

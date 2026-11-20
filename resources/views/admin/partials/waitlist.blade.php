@@ -24,19 +24,20 @@
     </div>
     <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-4 py-3">Posizione</th><th class="px-4 py-3">Email</th><th class="px-4 py-3">Benefit ID</th><th class="px-4 py-3">Verifica email</th><th class="px-4 py-3">Benefit 60 giorni</th><th class="px-4 py-3">Iscrizione</th></tr></thead>
+            <thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="px-4 py-3">Posizione</th><th class="px-4 py-3">Email</th><th class="px-4 py-3">Consenso marketing</th><th class="px-4 py-3">Benefit ID</th><th class="px-4 py-3">Verifica email</th><th class="px-4 py-3">Benefit 60 giorni</th><th class="px-4 py-3">Iscrizione</th></tr></thead>
             <tbody class="divide-y divide-slate-100">
                 @forelse($waitlistEntries as $entry)
                     <tr>
                         <td class="px-4 py-3">{{ $entry->waitlist_position ?? '—' }}</td>
                         <td class="px-4 py-3 font-bold">{{ $entry->email }}</td>
+                        <td class="px-4 py-3 font-bold {{ $entry->marketing_consent ? 'text-emerald-700' : 'text-slate-500' }}">{{ $entry->marketing_consent ? 'Sì' : 'No' }}</td>
                         <td class="px-4 py-3 break-all text-xs">{{ $entry->benefit_id ?? '—' }}<span class="mt-1 block text-slate-500">ID membro: {{ $entry->id }}</span></td>
                         <td class="px-4 py-3">{{ $entry->email_verified_at ? $date($entry->email_verified_at) : 'In attesa di verifica' }}</td>
                         <td class="px-4 py-3 font-bold {{ in_array($entry->id, $waitlistEligibleIds, true) ? 'text-emerald-700' : 'text-slate-500' }}">{{ in_array($entry->id, $waitlistEligibleIds, true) ? 'Abilitato · 60 giorni' : 'Non idoneo' }}</td>
                         <td class="px-4 py-3">{{ $date($entry->created_at) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Nessun iscritto corrisponde ai filtri.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Nessun iscritto corrisponde ai filtri.</td></tr>
                 @endforelse
             </tbody>
         </table>

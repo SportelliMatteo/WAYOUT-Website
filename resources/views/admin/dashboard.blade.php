@@ -57,13 +57,13 @@
         <div id="admin-panel-settings" data-admin-panel="settings">
         <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-black">Piani e acquisti sul sito</h2>
+                <h2 class="text-xl font-black">Piani, area riservata e acquisti sul sito</h2>
                 <span class="rounded-full px-3 py-1 text-xs font-black {{ $plansEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">{{ $plansEnabled ? 'Abilitati' : 'Disabilitati' }}</span>
             </div>
-            <p class="mt-3 text-sm leading-6 text-slate-600">Abilita la pagina Piani, i pacchetti promo, gli abbonamenti e il pagamento. Disabilitando il flusso, i collegamenti vengono nascosti e tutti gli accessi diretti al catalogo e al checkout vengono bloccati, anche durante l’anteprima amministrativa.</p>
+            <p class="mt-3 text-sm leading-6 text-slate-600">Abilita la pagina Piani, l’area riservata con accesso agli account già creati nell’app, i pacchetti promo, gli abbonamenti e il pagamento. Disabilitando il flusso, i collegamenti vengono nascosti e tutti gli accessi diretti all’area riservata, al catalogo e al checkout vengono bloccati, anche durante l’anteprima amministrativa.</p>
             <form method="POST" action="{{ route('admin.plans-availability.update') }}" class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
                 @csrf
-                <label class="grid gap-2 text-sm font-bold">Disponibilità dei piani
+                <label class="grid gap-2 text-sm font-bold">Disponibilità dei piani e dell’area riservata
                     <select name="plans_enabled" class="rounded-lg border border-slate-200 bg-white px-4 py-3">
                         <option value="0" @selected(! $plansEnabled)>Disabilitati — nascosti e non accessibili</option>
                         <option value="1" @selected($plansEnabled)>Abilitati — visibili e acquistabili</option>

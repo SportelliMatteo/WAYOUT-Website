@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { getAuth, inMemoryPersistence, RecaptchaVerifier, setPersistence, signInWithPhoneNumber, signOut } from 'firebase/auth';
 
 const setupCheckoutPhoneVerification = () => {
     const form = document.getElementById('payment-details-form');
@@ -124,6 +124,7 @@ const setupCheckoutPhoneVerification = () => {
             if (!recaptchaContainer) throw new Error('Firebase reCAPTCHA container is missing.');
 
             recaptcha = new RecaptchaVerifier(auth, recaptchaContainer, { size: 'invisible' });
+            await setPersistence(auth, inMemoryPersistence);
             confirmation = await signInWithPhoneNumber(auth, targetPhone, recaptcha);
             codePanel.classList.remove('hidden');
             showStatus(messages.codeSent);
@@ -151,6 +152,7 @@ const setupCheckoutPhoneVerification = () => {
         try {
             const credential = await confirmation.confirm(code.value.trim());
             token.value = await credential.user.getIdToken(true);
+            await signOut(auth);
             submit.disabled = form.dataset.legalUnavailable === 'true';
             prefix.disabled = true;
             number.readOnly = true;

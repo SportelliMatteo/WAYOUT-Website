@@ -49,7 +49,8 @@ class SecurityHeaders
 
     private function containsSensitiveContent(Request $request): bool
     {
-        return $request->is('admin', 'admin/*')
+        return $request->routeIs('customer.*', 'subscribe.checkout', 'purchase.confirmation.resend', 'checkout.*')
+            || $request->is('admin', 'admin/*')
             || $request->is('waitlist/verifica/*')
             || $request->is('recedere-dal-contratto/conferma')
             || $request->is('recedere-dal-contratto/ricevuta/*');

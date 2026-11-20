@@ -9,6 +9,7 @@ use App\Support\PurchasePackage;
 use App\Support\WayoutApiClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -20,6 +21,14 @@ class SubscribeCheckoutTest extends TestCase
     use RefreshDatabase;
 
     private array $purchaseDocuments = [];
+
+    private string $customerId = '32131864-6d52-4b97-919d-99d4f2abc845';
+
+    private function customerProfile(): array
+    {
+        return ['id' => $this->customerId, 'first_name' => 'Matteo', 'last_name' => 'Sportelli',
+            'email' => 'founder@example.com', 'date_of_birth' => '1990-01-01', 'gender' => 'FEMALE'];
+    }
 
     public function test_public_subscription_catalog_includes_only_active_web_purchases(): void
     {
@@ -52,6 +61,16 @@ class SubscribeCheckoutTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withSession(['customer' => [
+            'token' => Crypt::encryptString('existing-token'),
+            'expires_at' => now()->addHour()->timestamp,
+            'profile' => $this->customerProfile(),
+        ]]);
+        Http::fake([
+            '*/api/v1/users/me' => fn () => Http::response(['data' => $this->customerProfile()]),
+            '*/api/v1/me/subscription' => Http::response(['data' => null]),
+            '*/api/v1/me/entitlement' => Http::response(['data' => ['offer' => null, 'grace' => null]]),
+        ]);
 
         $service = \Mockery::mock(LegalDocumentService::class, [app(WayoutApiClient::class)])->makePartial();
         $service->shouldReceive('published')->with('SITE')->andReturnUsing(fn () => $this->publishedPurchaseDocuments());
@@ -225,11 +244,8 @@ class SubscribeCheckoutTest extends TestCase
             ->assertSee('59,90')
             ->assertSee('37 disponibili')
             ->assertSee('name="gender"', false)
-            ->assertSee('id="payment-phone-send"', false)
-            ->assertSee('data-resend-seconds="60"', false)
-            ->assertSee('Reinvia tra :seconds s')
-            ->assertSee('id="payment-phone-verify"', false)
-            ->assertSeeInOrder(['window.wayoutFirebaseConfig', 'measurementId', 'G-TEST123'], false)
+            ->assertDontSee('id="payment-phone-send"', false)
+            ->assertSee(route('customer.dashboard'))
             ->assertDontSee('WAITLIST_60D_PASS')
             ->assertSee('id="promo-offers"', false)
             ->assertSee('id="subscription-offers"', false)
@@ -334,15 +350,16 @@ class SubscribeCheckoutTest extends TestCase
             ->assertDontSee('I Founder Pass sono esauriti.');
     }
 
-    public function test_checkout_requires_a_valid_email_without_waitlist_context(): void
+    public function test_checkout_uses_backend_profile_instead_of_submitted_identity(): void
     {
-        Http::preventStrayRequests();
+        $this->fakeExistingUserCheckout();
         $payload = $this->checkoutPayload();
-        unset($payload['email']);
-        $this->postJson(route('subscribe.checkout'), $payload)->assertUnprocessable()->assertJsonStructure(['errors' => ['email']]);
-        $payload['email'] = 'invalid-address';
-        $this->postJson(route('subscribe.checkout'), $payload)->assertUnprocessable()->assertJsonStructure(['errors' => ['email']]);
-        $this->assertDatabaseCount('purchases', 0);
+        $payload['email'] = 'attacker@example.com';
+        $payload['first_name'] = 'Attacker';
+        $payload['firebase_token'] = 'different-identity-token';
+        $this->postJson(route('subscribe.checkout'), $payload)->assertOk();
+        $this->assertDatabaseHas('purchases', ['wayout_user_id' => $this->customerId, 'email' => 'founder@example.com', 'first_name' => 'Matteo']);
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/verify-firebase-token'));
     }
 
     public function test_checkout_creates_backend_session_for_an_existing_wayout_user(): void
@@ -378,42 +395,17 @@ class SubscribeCheckoutTest extends TestCase
         });
     }
 
-    public function test_checkout_creates_a_new_profile_with_gender_verified_phone_and_generated_nickname(): void
+    public function test_retrying_the_same_pending_purchase_reuses_the_order_and_backend_reference(): void
     {
-        $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
-        $userId = '90c5cf65-226a-4808-91a7-d7b22930a1e4';
-        $profileRequest = null;
-
-        Http::fake(function (Request $request) use ($userId, &$profileRequest) {
-            $path = parse_url($request->url(), PHP_URL_PATH);
-
-            return match ($path) {
-                '/api/v1/internal/promo-packages' => Http::response(['data' => $this->promoPackages()]),
-                '/api/auth/verify-firebase-token' => Http::response(['data' => []], 200, ['X-Temp-Token' => 'temporary-profile-token']),
-                '/api/auth/create-profile' => (function () use ($request, &$profileRequest) {
-                    $profileRequest = $request;
-
-                    return Http::response(['data' => ['access_token' => 'new-user-token']]);
-                })(),
-                '/api/v1/legal/me' => Http::response(['data' => ['purchase' => $this->purchaseDocuments]], $this->legalReadStatus),
-                '/api/v1/internal/legal/accept' => Http::response(['data' => []], $this->legalAcceptStatus),
-                '/api/v1/users/me' => Http::response(['data' => ['id' => $userId]]),
-                '/api/v1/internal/purchase-eligibility' => Http::response(['data' => ['allowed' => true]]),
-                '/api/v1/internal/checkout-sessions' => Http::response(['data' => ['allowed' => true, 'session' => ['id' => 'cs_new', 'url' => 'https://checkout.stripe.test/new']]]),
-                default => Http::response([], 404),
-            };
-        });
-
-        $this->withSession($this->checkoutSession($entry))
-            ->postJson(route('subscribe.checkout'), $this->checkoutPayload('join'))
-            ->assertOk();
-
-        $this->assertNotNull($profileRequest);
-        $profile = $profileRequest->data();
-        $this->assertSame('FEMALE', $profile['gender']);
-        $this->assertSame('+393331234567', $profile['mobile_number']);
-        $this->assertMatchesRegularExpression('/^@matteo_sportel_[a-z0-9]{4}$/', $profile['nickname']);
-        $this->assertSame('temporary-profile-token', $profileRequest->header('X-Temp-Token')[0]);
+        $this->fakeExistingUserCheckout();
+        $first = $this->postJson(route('subscribe.checkout'), $this->checkoutPayload())->assertOk();
+        $second = $this->postJson(route('subscribe.checkout'), $this->checkoutPayload())->assertOk();
+        $this->assertSame($first->json('purchaseId'), $second->json('purchaseId'));
+        $this->assertDatabaseCount('purchases', 1);
+        $requests = Http::recorded(fn (Request $request) => str_ends_with($request->url(), '/checkout-sessions'))->values();
+        $this->assertCount(2, $requests);
+        $this->assertNotEmpty($requests[0][0]['external_reference']);
+        $this->assertSame($requests[0][0]['external_reference'], $requests[1][0]['external_reference']);
     }
 
     public function test_backend_eligibility_rejection_prevents_checkout_session(): void
@@ -450,7 +442,7 @@ class SubscribeCheckoutTest extends TestCase
         config()->set('services.qonto.enabled', false);
         $entry = $this->createVerifiedWaitlistEntry('founder@example.com');
         $purchaseId = DatabaseUuid::new();
-        $userId = '0ea57493-fdcc-4093-965a-8a7774679116';
+        $userId = $this->customerId;
 
         DB::table('purchases')->insert([
             'id' => $purchaseId,
@@ -566,10 +558,9 @@ class SubscribeCheckoutTest extends TestCase
 
     public function test_recurring_purchase_requires_explicit_renewal_consent(): void
     {
-        Http::fake();
         $this->postJson(route('subscribe.checkout'), $this->checkoutPayload('price_monthly'))
             ->assertUnprocessable()->assertJsonValidationErrors('recurring_terms_accepted');
-        Http::assertNothingSent();
+        Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/checkout-sessions'));
     }
 
     public function test_confirmation_waits_for_the_selected_offer_then_accepts_a_free_entitlement(): void

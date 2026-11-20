@@ -7,38 +7,15 @@
 @php
     $hasPromos = !empty($packages);
     $permissionLabels = __('experience.permission_labels');
-    $checkoutProfile = session('checkout_profile', []);
+    $checkoutProfile = $customerProfile ? [...$customerProfile, 'birth_date' => $customerProfile['date_of_birth'] ?? ''] : [];
+    $isAccount = request()->routeIs('customer.dashboard');
     $adultMaxDate = now()->subYears(18)->toDateString();
-    $phonePrefixes = [
-        '+39' => 'IT +39',
-        '+33' => 'FR +33',
-        '+34' => 'ES +34',
-        '+49' => 'DE +49',
-        '+44' => 'UK +44',
-        '+1' => 'US +1',
-    ];
-    $firebaseBrowserConfig = [
-        'apiKey' => $firebaseConfig['api_key'] ?? null,
-        'authDomain' => $firebaseConfig['auth_domain'] ?? null,
-        'projectId' => config('services.firebase.project_id'),
-        'appId' => $firebaseConfig['app_id'] ?? null,
-        'measurementId' => $firebaseConfig['measurement_id'] ?? null,
-    ];
-    $phoneVerificationMessages = [
-        'configurationError' => __('messages.subscribe.phone_configuration_error'),
-        'invalidPhone' => __('messages.subscribe.phone_invalid'),
-        'sending' => __('messages.subscribe.phone_sending'),
-        'codeSent' => __('messages.subscribe.phone_code_sent'),
-        'resendCode' => __('messages.subscribe.phone_resend_code'),
-        'resendCountdown' => __('messages.subscribe.phone_resend_countdown'),
-        'sendError' => __('messages.subscribe.phone_send_error'),
-        'verifying' => __('messages.subscribe.phone_verifying'),
-        'verified' => __('messages.subscribe.phone_verified'),
-        'codeError' => __('messages.subscribe.phone_code_error'),
-    ];
 @endphp
 <section class="packages-page">
     <div class="wayout-shell">
+        @if($isAccount)
+            @include('partials.customer-account')
+        @endif
         <header class="packages-heading">
             <p class="experience-kicker">{{ __('experience.plans_label') }}</p>
             <h1>{{ __('experience.plans_headline') }}<br><span>{{ __('experience.plans_highlight') }}</span></h1>
@@ -72,7 +49,7 @@
                     @php
                         $soldOut = ($package['available'] ?? null) === 0;
                         $duration = (int) ($package['duration_days'] ?? 0);
-                        $canPurchase = !$soldOut && $duration > 0;
+                        $canPurchase = !$soldOut && $duration > 0 && ($package['eligibility']['allowed'] ?? true);
                         $inputId = 'package-'.$loop->index;
                         $currency = strtoupper($package['currency'] ?? 'EUR');
                         $price = number_format((float) ($package['price'] ?? 0), 2, app()->getLocale() === 'it' ? ',' : '.', app()->getLocale() === 'it' ? '.' : ',');
@@ -104,6 +81,7 @@
                         @endif
                         <div class="package-purchase">
                             <p>{{ $duration > 0 ? __('experience.validity', ['days' => $duration]) : __('experience.validity_pending') }}</p>
+                            @if(!empty($package['eligibility']['message']))<p class="text-sm text-slate-600">{{ $package['eligibility']['message'] }}</p>@endif
                             <p>✓ {{ __('experience.no_renewal') }}</p>
                             <input id="{{ $inputId }}" class="sr-only" type="radio" name="plan" value="{{ $package['code'] }}" data-free="{{ ($package['free'] ?? false) ? 'true' : 'false' }}" data-price="{{ $package['price'] ?? '0.00' }}" data-currency="{{ $currency }}" tabindex="-1" aria-hidden="true" @disabled(!$canPurchase)>
                             <button type="button" data-package-checkout="{{ $inputId }}" data-summary="{{ ($package['name'] ?? $package['code']).' · '.$price.' '.$currency.' · '.__('experience.duration', ['days' => $duration]) }}" @disabled(!$canPurchase)><span>{{ $soldOut ? __('experience.sold_out') : (($package['free'] ?? false) ? __('experience.activate') : __('experience.buy')) }}</span><span aria-hidden="true">↗</span></button>
@@ -145,27 +123,26 @@
         <p class="mt-4 text-sm text-slate-600">{{ __('messages.subscribe.seller_phone') }} <a class="font-bold text-violet-700" href="tel:+393522164100">+393522164100</a></p>
         <div id="selected-package-summary" class="selected-package-summary" aria-live="polite"></div>
         <form data-legal-unavailable="{{ $legalContentUnavailable ? 'true' : 'false' }}" id="payment-details-form" class="mt-5 space-y-4">
-            <input id="payment-firebase-token" type="hidden" name="firebase_token" value="" />
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block sm:col-span-2">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.email') }}</span>
-                    <input type="email" name="email" value="{{ old('email', session('purchase_confirmation_email')) }}" required autocomplete="email" maxlength="255" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 text-sm font-bold text-slate-700 outline-none" />
+                    <input type="email" name="email" readonly value="{{ $customerProfile['email'] ?? '' }}" required autocomplete="email" maxlength="255" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 text-sm font-bold text-slate-700 outline-none" />
                 </label>
                 <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.first_name') }}</span>
-                    <input type="text" name="first_name" value="{{ $checkoutProfile['first_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="given-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    <input type="text" name="first_name" readonly value="{{ $checkoutProfile['first_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="given-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
                 <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.last_name') }}</span>
-                    <input type="text" name="last_name" value="{{ $checkoutProfile['last_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    <input type="text" name="last_name" readonly value="{{ $checkoutProfile['last_name'] ?? '' }}" required minlength="2" maxlength="120" autocomplete="family-name" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
                 <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.birth_date') }}</span>
-                    <input type="date" name="birth_date" value="{{ $checkoutProfile['birth_date'] ?? '' }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
+                    <input type="date" name="birth_date" readonly value="{{ $checkoutProfile['birth_date'] ?? '' }}" max="{{ $adultMaxDate }}" required autocomplete="bday" class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
                 </label>
                 <label class="block">
                     <span class="mb-2 block text-sm font-black text-slate-950">{{ __('messages.subscribe.gender') }}</span>
-                    <select name="gender" required class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100">
+                    <select name="gender" disabled class="min-h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100">
                         <option value="">{{ __('messages.subscribe.gender_placeholder') }}</option>
                         <option value="MALE" @selected(($checkoutProfile['gender'] ?? '') === 'MALE')>{{ __('messages.subscribe.gender_male') }}</option>
                         <option value="FEMALE" @selected(($checkoutProfile['gender'] ?? '') === 'FEMALE')>{{ __('messages.subscribe.gender_female') }}</option>
@@ -173,27 +150,6 @@
                     </select>
                 </label>
             </div>
-            <section class="space-y-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 sm:p-5">
-                <div>
-                    <p class="text-sm font-black text-slate-950">{{ __('messages.subscribe.phone_verification_title') }}</p>
-                    <p class="mt-1 text-xs font-semibold leading-5 text-slate-600">{{ __('messages.subscribe.phone_verification_text') }}</p>
-                </div>
-                <div class="grid gap-3 sm:grid-cols-[7rem_1fr_auto]">
-                    <select id="payment-phone-prefix" name="phone_prefix" required autocomplete="tel-country-code" class="min-h-12 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100">
-                        @foreach($phonePrefixes as $prefix => $label)
-                            <option value="{{ $prefix }}" @selected(($checkoutProfile['phone_prefix'] ?? '+39') === $prefix)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <input id="payment-phone-number" type="tel" name="phone_number" value="" required minlength="5" maxlength="32" autocomplete="tel-national" inputmode="tel" placeholder="333 1234567" class="min-h-12 min-w-0 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-                    <button id="payment-phone-send" type="button" data-resend-seconds="{{ max(1, (int) config('services.firebase.sms_resend_cooldown_seconds', 60)) }}" class="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-violet-800 disabled:cursor-wait disabled:opacity-60">{{ __('messages.subscribe.phone_send_code') }}</button>
-                </div>
-                <div id="payment-phone-code-panel" class="hidden grid gap-3 sm:grid-cols-[1fr_auto]">
-                    <input id="payment-phone-code" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" placeholder="000000" class="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-center text-lg font-black tracking-[0.35em] text-slate-950 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100" />
-                    <button id="payment-phone-verify" type="button" class="inline-flex min-h-12 items-center justify-center rounded-2xl wayout-purple px-5 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60">{{ __('messages.subscribe.phone_verify_code') }}</button>
-                </div>
-                <div id="payment-phone-recaptcha"></div>
-                <p id="payment-phone-status" class="hidden rounded-2xl px-4 py-3 text-sm font-bold" role="status" aria-live="polite"></p>
-            </section>
             <label id="invoice-option" class="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
                 <input id="invoice-requested" type="checkbox" name="invoice_requested" value="true" class="mt-1 h-5 w-5 rounded border-slate-300 text-violet-700 focus:ring-violet-500" />
                 <span>
@@ -290,7 +246,7 @@
             </label>
             <div id="purchase-legal-documents" class="space-y-4" aria-live="polite"></div>
             <p id="payment-details-error" role="alert" class="hidden whitespace-pre-line rounded-2xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"></p>
-            <button id="payment-details-submit" type="submit" disabled class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-60">
+            <button id="payment-details-submit" type="submit" @disabled($legalContentUnavailable) class="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-full wayout-purple px-7 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(124,35,245,0.32)] transition hover:scale-[1.01] disabled:cursor-wait disabled:opacity-60">
                 <span class="payment-submit-text">{{ __('messages.subscribe.confirm_and_pay') }}</span>
                 <span class="payment-submit-loader hidden h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" aria-hidden="true"></span>
             </button>
@@ -299,8 +255,6 @@
 </div>
 
 <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
-    window.wayoutFirebaseConfig = {{ Illuminate\Support\Js::from($firebaseBrowserConfig) }};
-    window.wayoutPhoneVerificationMessages = {{ Illuminate\Support\Js::from($phoneVerificationMessages) }};
     let button = null;
     let originalButtonText = '';
     let previousFocus = null;
@@ -345,7 +299,7 @@
     function setPaymentLoading(isLoading) {
         if (!paymentSubmit) return;
 
-        paymentSubmit.disabled = @json($legalContentUnavailable) || isLoading || !document.getElementById('payment-firebase-token')?.value;
+        paymentSubmit.disabled = @json($legalContentUnavailable) || isLoading;
         paymentSubmitText?.classList.toggle('hidden', isLoading);
         paymentSubmitLoader?.classList.toggle('hidden', !isLoading);
     }
@@ -507,12 +461,18 @@
             select.type = 'button'; select.className = 'experience-cta mt-4';
             const webAvailable = typeof plan.external_price_id === 'string' && plan.external_price_id.startsWith('price_');
             if (webAvailable) select.dataset.packageCheckout = input.id;
-            select.disabled = !webAvailable;
-            input.disabled = !webAvailable;
+            select.disabled = !webAvailable || plan.eligibility?.allowed === false;
+            input.disabled = select.disabled;
             select.dataset.summary = `${plan.name} · ${price.textContent} · ${period.textContent} · ${renewal.textContent}`;
             select.textContent = webAvailable ? @json(__('experience.buy_plan')) : @json(__('experience.app_only_plan'));
             const purchase = document.createElement('div'); purchase.className = 'package-purchase';
             purchase.append(renewal, input, select);
+            if (plan.eligibility?.message) {
+                const message = document.createElement('p');
+                message.className = 'text-sm text-slate-600';
+                message.textContent = plan.eligibility.message;
+                purchase.append(message);
+            }
             const included = document.createElement('p');
             included.className = 'package-benefits-heading';
             included.textContent = @json(__('experience.included'));
@@ -568,8 +528,9 @@
         status.textContent = @json(__('experience.loading_plans'));
         catalog.setAttribute('aria-busy', 'true');
         try {
-            const response = await fetch("{{ route('subscribe.plans') }}", { headers: { Accept: 'application/json' } });
+            const response = await fetch("{{ route($isAccount ? 'customer.plans' : 'subscribe.plans') }}", { headers: { Accept: 'application/json' } });
             const data = await response.json();
+            if (response.status === 401 && data.redirectUrl) { window.location.assign(data.redirectUrl); return; }
             if (!response.ok || !Array.isArray(data.plans)) throw new Error('Catalog unavailable');
             renderPlans(data);
         } catch (error) {
@@ -592,6 +553,10 @@
             if (!selectedPlan || button.disabled) return;
             if (selectedPlan.value === '__plans') {
                 await loadPlans();
+                return;
+            }
+            if (!@json($isAccount)) {
+                window.location.assign(@json(session()->has('customer') ? route('customer.dashboard') : route('customer.login')));
                 return;
             }
             selectedPlan.checked = true;
@@ -729,7 +694,6 @@
             accepted_version_ids: formData.getAll('accepted_version_ids[]'),
             ...(selectedPlan.startsWith('price_') ? { recurring_terms_accepted: formData.get('recurring_terms_accepted') === 'on' } : {}),
             email: formData.get('email'),
-            firebase_token: formData.get('firebase_token'),
             first_name: formData.get('first_name'),
             last_name: formData.get('last_name'),
             birth_date: formData.get('birth_date'),
@@ -775,6 +739,10 @@
                 return;
             }
 
+            if (response.status === 401 && data.redirectUrl) {
+                window.location.assign(data.redirectUrl);
+                return;
+            }
             if (!response.ok || data.error) {
                 showServerValidationErrors(data);
                 button.disabled = false;

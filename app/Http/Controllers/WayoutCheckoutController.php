@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\WayoutApiException;
 use App\Support\CheckoutFeatures;
+use App\Support\CustomerAccount;
 use App\Support\DatabaseUuid;
 use App\Support\FounderPromoCatalog;
 use App\Support\ItalianFiscalData;
@@ -11,9 +12,9 @@ use App\Support\LegalDocumentService;
 use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
 use App\Support\WayoutApiClient;
-use App\Support\WayoutIdentityService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -33,7 +34,9 @@ class WayoutCheckoutController extends Controller
             foreach (($offer['providers'] ?? []) as $provider) {
                 if (($provider['provider'] ?? null) === 'STRIPE' && ($provider['active'] ?? false) === true
                     && is_string($provider['external_price_id'] ?? null) && str_starts_with($provider['external_price_id'], 'price_')) {
-                    $offers[] = [...$offer, 'external_price_id' => $provider['external_price_id']];
+                    $offers[] = [...$offer, 'external_price_id' => $provider['external_price_id'],
+                        'price' => $provider['price'] ?? $offer['price'] ?? null,
+                        'currency' => $provider['currency'] ?? $offer['currency'] ?? null];
                 }
             }
         }
@@ -41,10 +44,19 @@ class WayoutCheckoutController extends Controller
         return $offers;
     }
 
-    public function plans(WayoutApiClient $wayout)
+    public function plans(Request $request, WayoutApiClient $wayout)
     {
         try {
-            return response()->json(['plans' => $this->offers($wayout)]);
+            $offers = $this->offers($wayout);
+            if ($request->attributes->has('customer_token')) {
+                $account = app(CustomerAccount::class);
+                foreach ($offers as &$offer) {
+                    $offer['eligibility'] = $account->eligibility($request, ['external_price_id' => $offer['external_price_id']]);
+                }
+                unset($offer);
+            }
+
+            return response()->json(['plans' => $offers]);
         } catch (WayoutApiException $exception) {
             Log::warning('Subscription catalog unavailable.', $exception->logContext());
 
@@ -56,12 +68,24 @@ class WayoutCheckoutController extends Controller
         Request $request,
         CheckoutFeatures $checkoutFeatures,
         FounderPromoCatalog $catalog,
-        WayoutIdentityService $identities,
         WayoutApiClient $wayout,
     ) {
+        $profile = $request->attributes->get('customer_profile');
+        $token = $request->attributes->get('customer_token');
+        if (! is_array($profile) || ! is_string($token) || $token === '') {
+            return response()->json(['error' => __('account.login_required'), 'redirectUrl' => route('customer.login')], 401);
+        }
+        // Identity and billing contact come from the authenticated backend profile.
+        $request->merge([
+            'email' => $profile['email'] ?? null,
+            'first_name' => $profile['first_name'] ?? null,
+            'last_name' => $profile['last_name'] ?? null,
+            'birth_date' => $profile['date_of_birth'] ?? null,
+            'gender' => $profile['gender'] ?? null,
+        ]);
         $plan = (string) $request->input('plan');
         if ($plan === '__plans') {
-            return $this->plans($wayout);
+            return $this->plans($request, $wayout);
         }
 
         $legalEntityInvoiceEnabled = $checkoutFeatures->legalEntityInvoiceEnabled();
@@ -69,7 +93,6 @@ class WayoutCheckoutController extends Controller
         $validated = $request->validate([
             'email' => ['required', 'email:rfc', 'max:255'],
             'plan' => ['required', 'string', 'max:80'],
-            'firebase_token' => ['required', 'string', 'max:10000'],
             'first_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'last_name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\\pL\\pM][\\pL\\pM .'-]*$/u"],
             'birth_date' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
@@ -116,6 +139,10 @@ class WayoutCheckoutController extends Controller
         ]);
 
         $email = strtolower(trim($validated['email']));
+        $checkoutLock = Cache::lock('customer-checkout:'.hash('sha256', $profile['id'].':'.$plan), 120);
+        if (! $checkoutLock->get()) {
+            return response()->json(['error' => __('account.checkout_in_progress')], 429);
+        }
 
         try {
             $isPlanCatalog = $plan === '__plans';
@@ -130,13 +157,7 @@ class WayoutCheckoutController extends Controller
                 return response()->json(['error' => __('messages.messages.pass_sold_out', ['plan' => $package['name'] ?? $plan])], 422);
             }
 
-            $identity = $identities->resolve($validated['firebase_token'], [
-                'first_name' => trim($validated['first_name']),
-                'last_name' => trim($validated['last_name']),
-                'email' => $email,
-                'date_of_birth' => $validated['birth_date'],
-                'gender' => $validated['gender'],
-            ]);
+            $identity = ['id' => $profile['id'], 'access_token' => $token];
 
             if ($isPlanCatalog || $isRecurring) {
                 $offers = $this->offers($wayout);
@@ -288,6 +309,8 @@ class WayoutCheckoutController extends Controller
             Log::error('Wayout checkout failed.', PrivacySafeLogContext::exception($exception));
 
             return response()->json(['error' => __('messages.messages.checkout_unavailable')], 502);
+        } finally {
+            $checkoutLock->release();
         }
     }
 
@@ -295,10 +318,11 @@ class WayoutCheckoutController extends Controller
     {
         DB::table('purchases')
             ->where('id', $purchase)
+            ->where('wayout_user_id', data_get($request->attributes->get('customer_profile'), 'id'))
             ->where('status', 'pending')
             ->update(['status' => 'canceled', 'updated_at' => now()]);
 
-        return redirect()->route('subscribe')->with('checkout_error', __('messages.subscribe.checkout_canceled'));
+        return redirect()->route('customer.dashboard')->with('checkout_error', __('messages.subscribe.checkout_canceled'));
     }
 
     private function sitePurchaseDocuments(array $legal): array

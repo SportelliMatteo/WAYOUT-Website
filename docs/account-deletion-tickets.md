@@ -1,6 +1,6 @@
 # Richiesta di cancellazione account
 
-Il modulo pubblico `/cancellazione-account` apre un ticket usando
+Il modulo pubblico `/richiesta-cancellazione-account-e-dati-associati` apre un ticket usando
 `POST /api/v1/internal/support/tickets`, firma HMAC interna e nessun JWT.
 Categoria `CANCELLAZIONE_ACCOUNT`, priorità `NORMAL`, `context.source = account-deletion`.
 Non richiede acquisti o login e non rivela se l’email corrisponde a un account.

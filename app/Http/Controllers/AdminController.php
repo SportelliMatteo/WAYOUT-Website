@@ -39,7 +39,7 @@ class AdminController extends Controller
         $search = trim($filters['waitlist_q'] ?? '');
         $status = $filters['waitlist_status'] ?? 'all';
         $eligibleIds = $waitlistBenefits->eligibleQuery()->select('waitlist_entries.id');
-        $entries = DB::table('waitlist_entries')->select(['id', 'email', 'benefit_id', 'waitlist_position', 'email_verified_at', 'created_at']);
+        $entries = DB::table('waitlist_entries')->select(['id', 'email', 'marketing_consent', 'benefit_id', 'waitlist_position', 'email_verified_at', 'created_at']);
         if ($search !== '') {
             $entries->where(function ($query) use ($search) {
                 $query->whereRaw('LOWER(email) LIKE ?', ['%'.Str::lower($search).'%'])

@@ -6,6 +6,7 @@ use App\Exceptions\WayoutApiException;
 use App\Mail\PurchaseConfirmationMail;
 use App\Support\CheckoutFeatures;
 use App\Support\ConsentAuditService;
+use App\Support\CustomerAccount;
 use App\Support\FounderPromoCatalog;
 use App\Support\MetaConversions;
 use App\Support\PrivacySafeLogContext;
@@ -31,6 +32,12 @@ class SubscribeController extends Controller
     ) {
         try {
             $packages = $catalog->packages();
+            if ($request->attributes->has('customer_account')) {
+                foreach ($packages as &$package) {
+                    $package['eligibility'] = app(CustomerAccount::class)->eligibility($request, ['promo_package_code' => $package['code']]);
+                }
+                unset($package);
+            }
             $catalogError = null;
         } catch (WayoutApiException $exception) {
             Log::warning('Founder promo catalog unavailable.', [
@@ -44,6 +51,8 @@ class SubscribeController extends Controller
             'legalEntityInvoiceEnabled' => $checkoutFeatures->legalEntityInvoiceEnabled(),
             'packages' => $packages,
             'catalogError' => $catalogError,
+            'customerAccount' => $request->attributes->get('customer_account'),
+            'customerProfile' => $request->attributes->get('customer_profile', []),
             'firebaseConfig' => config('services.firebase.client'),
         ]);
     }
@@ -57,7 +66,7 @@ class SubscribeController extends Controller
         TransactionalEmailSender $emailSender,
     ) {
         $order = DB::table('purchases')->where('id', $purchase)->first();
-        abort_unless($order, 404);
+        abort_unless($order && $order->wayout_user_id === data_get($request->attributes->get('customer_profile'), 'id'), 404);
 
         $checkoutState = $this->confirmWayoutPurchase(
             $request,
@@ -86,7 +95,7 @@ class SubscribeController extends Controller
     ) {
         $order = DB::table('purchases')->where('id', $purchase)->first();
 
-        if (! $order) {
+        if (! $order || $order->wayout_user_id !== data_get($request->attributes->get('customer_profile'), 'id')) {
             return response()->json(['state' => 'not_found'], 404);
         }
 
@@ -108,7 +117,7 @@ class SubscribeController extends Controller
 
     public function resendPurchaseConfirmation(Request $request, TransactionalEmailSender $emailSender)
     {
-        $email = $request->session()->get('purchase_confirmation_email');
+        $email = data_get($request->attributes->get('customer_profile'), 'email');
 
         if (! $email) {
             return $this->purchaseConfirmationResponse(
@@ -122,9 +131,10 @@ class SubscribeController extends Controller
         $claimedAt = now();
 
         try {
-            $claim = DB::transaction(function () use ($email, $emailSender, $claimedAt) {
+            $claim = DB::transaction(function () use ($request, $email, $emailSender, $claimedAt) {
                 $purchase = DB::table('purchases')
                     ->where('email', $email)
+                    ->where('wayout_user_id', data_get($request->attributes->get('customer_profile'), 'id'))
                     ->where('status', 'succeeded')
                     ->latest('created_at')
                     ->lockForUpdate()

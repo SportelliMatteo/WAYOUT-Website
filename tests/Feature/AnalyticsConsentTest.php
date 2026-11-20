@@ -41,6 +41,11 @@ class AnalyticsConsentTest extends TestCase
     {
         $purchaseId = DatabaseUuid::new();
         $userId = 'b66b8442-67af-4dd7-813c-26ff521f82cd';
+        $this->withSession(['customer' => [
+            'token' => \Illuminate\Support\Facades\Crypt::encryptString('customer-token'),
+            'expires_at' => now()->addHour()->timestamp,
+        ]]);
+        Http::fake(['*/api/v1/users/me' => Http::response(['data' => ['id' => $userId]])]);
         DB::table('purchases')->insert([
             'id' => $purchaseId,
             'wayout_user_id' => $userId,

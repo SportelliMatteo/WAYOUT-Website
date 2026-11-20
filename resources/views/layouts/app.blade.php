@@ -32,14 +32,14 @@
                 <img src="/logos/logo_black.png" class="h-7" alt="WAYOUT Logo" />
             </a>
 
-            <button id="nav-toggle" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:border-violet-300 hover:text-violet-700 md:hidden" aria-controls="mobile-nav" aria-expanded="false">
+            <button id="nav-toggle" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:border-violet-300 hover:text-violet-700 lg:hidden" aria-controls="mobile-nav" aria-expanded="false">
                 <span class="sr-only">{{ __('messages.nav.open_menu') }}</span>
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                 </svg>
             </button>
 
-            <div class="site-desktop-nav hidden md:flex md:w-auto md:items-center">
+            <div class="site-desktop-nav hidden lg:flex lg:w-auto lg:items-center">
                 <div class="site-menu flex w-auto flex-row gap-1 rounded-full border border-slate-950/5 bg-white/55 p-1 text-center text-sm font-black shadow-inner shadow-white/60">
                     <a href="{{ route('home') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('home') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.home') }}
@@ -58,12 +58,13 @@
 <a href="{{ route('contact') }}" class="rounded-full px-5 py-2 transition {{ request()->routeIs('contact') ? 'bg-slate-950 text-white shadow-lg shadow-slate-950/15' : 'text-slate-500 hover:bg-white hover:text-slate-950' }}">
                         {{ __('messages.nav.contact') }}
                     </a>
+                    @if($plansEnabled)<a href="{{ route('customer.dashboard') }}" class="rounded-full bg-violet-700 px-5 py-2 text-white">{{ __('account.title') }}</a>@endif
                 </div>
             </div>
         </div>
     </nav>
 
-    <div id="mobile-nav" class="fixed inset-0 z-40 hidden bg-slate-950/48 px-4 py-5 text-white backdrop-blur-md md:hidden" aria-hidden="true">
+    <div id="mobile-nav" class="fixed inset-0 z-40 hidden bg-slate-950/48 px-4 py-5 text-white backdrop-blur-md lg:hidden" aria-hidden="true">
         <div class="flex h-full flex-col rounded-[2rem] border border-white/15 bg-slate-950/[0.58] p-5 shadow-[0_30px_100px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
             <div class="flex items-center justify-between gap-4">
                 <a href="{{ route('home') }}" class="inline-flex rounded-2xl bg-white/[0.92] px-4 py-3 shadow-lg shadow-slate-950/10">
@@ -94,6 +95,7 @@
 <a href="{{ route('contact') }}" class="mobile-nav-link rounded-[1.5rem] border border-white/10 px-5 py-4 text-3xl font-black shadow-lg shadow-slate-950/10 backdrop-blur transition {{ request()->routeIs('contact') ? 'bg-white/[0.92] text-slate-950' : 'bg-white/[0.08] text-white hover:bg-white/16' }}">
                     {{ __('messages.nav.contact') }}
                 </a>
+                @if($plansEnabled)<a href="{{ route('customer.dashboard') }}" class="mobile-nav-link rounded-[1.5rem] bg-violet-700 px-5 py-4 text-3xl font-black">{{ __('account.title') }}</a>@endif
             </div>
         </div>
     </div>
