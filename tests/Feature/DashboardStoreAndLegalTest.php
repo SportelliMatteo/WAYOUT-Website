@@ -87,8 +87,8 @@ class DashboardStoreAndLegalTest extends TestCase
         $xpath = new \DOMXPath($document);
         $site = $xpath->query('//footer//nav[@data-legal-scope="SITE"]//a[contains(text(), "Termini SITE")]')->item(0);
         $app = $xpath->query('//footer//nav[@data-legal-scope="APP"]//a[contains(text(), "Termini APP")]')->item(0);
-        $this->assertStringContainsString('scope=SITE', $site->getAttribute('href'));
-        $this->assertStringContainsString('scope=APP', $app->getAttribute('href'));
+        $this->assertStringContainsString('/site/it', $site->getAttribute('href'));
+        $this->assertStringContainsString('/app/it', $app->getAttribute('href'));
         $this->assertSame(1, $xpath->query('//footer//a[contains(@href, "/piani")]')->length);
     }
 
@@ -102,8 +102,8 @@ class DashboardStoreAndLegalTest extends TestCase
         $service = app(LegalDocumentService::class);
         $this->assertSame('<p>Contenuto SITE</p>', $service->current('TERMS', scope: 'SITE')->content_snapshot);
         $this->assertSame('<p>Contenuto APP</p>', $service->current('TERMS', scope: 'APP')->content_snapshot);
-        $this->get('/documenti-legali/TERMS?scope=APP')->assertOk()->assertSee('Contenuto APP')->assertDontSee('Contenuto SITE')
-            ->assertSee('scope=APP', false);
+        $this->get('/documenti-legali/terms/app/it')->assertOk()->assertSee('Contenuto APP')->assertDontSee('Contenuto SITE')
+            ->assertSee('/app/it', false);
         $this->get('/documenti-legali?scope=APP')->assertOk()->assertSee('data-legal-scope="APP"', false);
     }
 
@@ -116,7 +116,7 @@ class DashboardStoreAndLegalTest extends TestCase
             '*/legal/versions/'.$previous => Http::response(['data' => ['id' => $previous, 'version' => 1, 'label' => 'Vecchi termini', 'published_at' => '2026-10-01T12:00:00Z', 'content_html' => '<p>Versione APP precedente</p>', 'document' => ['code' => 'TERMS', 'scope' => 'APP']]]),
             '*/legal/documents' => Http::response(['data' => [$this->document('APP')]]),
         ]);
-        $this->get('/documenti-legali/TERMS/versioni?scope=APP')->assertOk()->assertSee('Vecchi termini app')->assertSee('scope=APP', false);
-        $this->get('/documenti-legali/TERMS/versioni/'.$previous.'?scope=APP')->assertOk()->assertSee('Versione APP precedente');
+        $this->get('/documenti-legali/terms/app/it/versioni')->assertOk()->assertSee('Vecchi termini app')->assertSee('/app/it', false);
+        $this->get('/documenti-legali/terms/app/it/versioni/'.$previous)->assertOk()->assertSee('Versione APP precedente');
     }
 }

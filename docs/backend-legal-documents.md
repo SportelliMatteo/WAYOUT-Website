@@ -10,11 +10,17 @@ restituito resta gestita dal backend.
 
 ## Pagine pubbliche
 
-- `/documenti-legali`: elenco dei documenti pubblicati, diviso tra sito e app.
-  Il parametro `?scope=SITE` oppure `?scope=APP` limita l’elenco.
-- `/documenti-legali/{code}`: documento pubblicato, anche senza template locale.
-- `/documenti-legali/{document}/versioni`: versioni precedentemente pubblicate.
-- `/documenti-legali/{document}/versioni/{uuid}`: HTML della versione precisa.
+- `/documenti-legali`: elenco complessivo dei documenti pubblicati.
+- `/documenti-legali/{scope}/it`: elenco per `site` oppure `app`.
+- `/documenti-legali/{slug}/{scope}/it`: documento pubblicato, anche senza template locale.
+- `/documenti-legali/{slug}/{scope}/it/versioni`: versioni precedentemente pubblicate.
+- `/documenti-legali/{slug}/{scope}/it/versioni/{uuid}`: HTML della versione precisa.
+
+I link sono costruiti con `LegalDocumentService::route`: lo slug è il codice backend
+in minuscolo con trattini al posto degli underscore (es. `TERMINI_DI_VENDITA`
+diventa `termini-di-vendita`). Scope e lingua sono segmenti del percorso, senza
+query string. Le route Laravel validano slug, scope, lingua italiana e UUID.
+Il menu laterale ha scorrimento indipendente e altezza limitata alla finestra.
 
 I vecchi URL pubblici rimangono collegati ai codici in `config/legal.php`.
 Lo storico ricevuto dal backend include anche la versione corrente: l'elenco
@@ -63,7 +69,7 @@ fatture e pubblicazione legale non sono più registrate.
 
 Il footer e la navigazione legale mostrano solo i documenti restituiti dall’API,
 separati per `scope`; il codice da solo non identifica univocamente un documento.
-Tutti i link a documento, storico e versione mantengono `scope=APP` o `scope=SITE`.
+Tutti i link a documento, storico e versione mantengono `/app/it` o `/site/it` nel percorso.
 I consensi di acquisto e contatto continuano a riferirsi ai documenti SITE.
 
 La dashboard permette di impostare i link HTTPS per App Store e Google Play.

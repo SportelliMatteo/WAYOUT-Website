@@ -15,6 +15,20 @@ class LegalDocumentService
 
     public function __construct(private readonly WayoutApiClient $client) {}
 
+    public static function route(string $name, array $parameters = []): string
+    {
+        $scope = strtoupper($parameters['scope'] ?? 'SITE');
+        if (isset($parameters['document'])) {
+            $document = $parameters['document'];
+            $code = $scope === 'SITE' ? config('legal.backend_codes.'.$document, $document) : $document;
+            $parameters['document'] = strtolower(str_replace('_', '-', $code));
+        }
+        $parameters['scope'] = strtolower($scope);
+        $parameters['lang'] ??= app()->getLocale();
+
+        return route($name, $parameters);
+    }
+
     public function keys(): array
     {
         return array_keys(config('legal.backend_codes', []));
@@ -105,6 +119,7 @@ class LegalDocumentService
         if ($scope === 'SITE' && in_array($document, $this->keys(), true)) {
             return (string) config('legal.backend_codes.'.$document);
         }
+        $document = strtoupper(str_replace('-', '_', $document));
         abort_unless(preg_match('/^[A-Z][A-Z0-9_-]{0,79}$/D', $document), 404);
 
         return $document;

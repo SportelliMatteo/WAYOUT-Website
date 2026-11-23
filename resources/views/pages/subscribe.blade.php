@@ -234,7 +234,7 @@
                         {{ __('experience.purchase_site_documents_acceptance') }}
                         <span>
                             @foreach($checkoutLegalDocuments as $legalDocument)
-                                <a href="{{ route('legal.document', ['document' => $legalDocument['code'], 'scope' => 'SITE', 'lang' => app()->getLocale()]) }}" target="_blank" rel="noopener">{{ $legalDocument['name'] }}</a>@if(!$loop->last),@endif
+                                <a href="{{ \App\Support\LegalDocumentService::route('legal.document', ['document' => $legalDocument['code'], 'scope' => 'SITE', 'lang' => app()->getLocale()]) }}" target="_blank" rel="noopener">{{ $legalDocument['name'] }}</a>@if(!$loop->last),@endif
                             @endforeach
                         </span>
                     @endif

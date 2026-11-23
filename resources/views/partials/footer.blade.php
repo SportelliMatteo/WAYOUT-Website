@@ -38,11 +38,11 @@
                 <nav class="site-footer-links" aria-label="{{ __('experience.'.$label) }}" data-legal-scope="{{ $scope }}">
                     <h2>{{ __('experience.'.$label) }}</h2>
                     @forelse($footerLegalDocuments[$scope] ?? [] as $legalDocument)
-                        <a href="{{ route('legal.document', ['document' => $legalDocument['code'], 'scope' => $scope, 'lang' => app()->getLocale()]) }}">{{ $legalDocument['name'] }}</a>
+                        <a href="{{ \App\Support\LegalDocumentService::route('legal.document', ['document' => $legalDocument['code'], 'scope' => $scope, 'lang' => app()->getLocale()]) }}">{{ $legalDocument['name'] }}</a>
                     @empty
                         <p class="site-footer-empty">{{ __('experience.legal_no_documents') }}</p>
                     @endforelse
-                    <a class="site-footer-all" href="{{ route('legal.index', ['scope' => $scope, 'lang' => app()->getLocale()]) }}">{{ __('experience.legal_all_documents') }} <span aria-hidden="true">↗</span></a>
+                    <a class="site-footer-all" href="{{ \App\Support\LegalDocumentService::route('legal.index', ['scope' => $scope, 'lang' => app()->getLocale()]) }}">{{ __('experience.legal_all_documents') }} <span aria-hidden="true">↗</span></a>
                 </nav>
             @endforeach
         </div>

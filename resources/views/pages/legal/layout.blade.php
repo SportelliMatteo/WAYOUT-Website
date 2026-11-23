@@ -27,8 +27,8 @@
                 @yield('legal-content')
             </article>
 
-            <aside class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-28">
-                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500"><a href="{{ route('legal.index', ['lang' => app()->getLocale()]) }}">{{ __('messages.legal_page.documents') }}</a></p>
+            <aside class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-28 max-h-[calc(100dvh-9rem)] overflow-y-scroll overscroll-contain [scrollbar-gutter:stable]" tabindex="0" aria-label="{{ __('messages.legal_page.documents') }}">
+                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500"><a href="{{ \App\Support\LegalDocumentService::route('legal.index', ['lang' => app()->getLocale()]) }}">{{ __('messages.legal_page.documents') }}</a></p>
                 @include('partials.legal-navigation')
             </aside>
         </div>

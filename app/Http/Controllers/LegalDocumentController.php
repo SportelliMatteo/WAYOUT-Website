@@ -9,11 +9,12 @@ class LegalDocumentController extends Controller
 {
     public function index(LegalDocumentService $legalDocuments, Request $request)
     {
-        return view('pages.legal.index', ['documents' => $legalDocuments->published($request->query('scope') === null ? null : $this->scope($request))]);
+        return view('pages.legal.index', ['documents' => $legalDocuments->published(($request->route('scope') ?? $request->query('scope')) === null ? null : $this->scope($request))]);
     }
 
-    public function show(string $document, LegalDocumentService $legalDocuments, Request $request)
+    public function show(LegalDocumentService $legalDocuments, Request $request)
     {
+        $document = $request->route('document');
         $scope = $this->scope($request);
 
         return view('pages.legal.document', [
@@ -24,8 +25,9 @@ class LegalDocumentController extends Controller
         ]);
     }
 
-    public function history(string $document, LegalDocumentService $legalDocuments, Request $request)
+    public function history(LegalDocumentService $legalDocuments, Request $request)
     {
+        $document = $request->route('document');
         $scope = $this->scope($request);
 
         return view('pages.legal.history', [
@@ -37,8 +39,10 @@ class LegalDocumentController extends Controller
         ]);
     }
 
-    public function version(string $document, string $version, LegalDocumentService $legalDocuments, Request $request)
+    public function version(LegalDocumentService $legalDocuments, Request $request)
     {
+        $document = $request->route('document');
+        $version = $request->route('version');
         $scope = $this->scope($request);
 
         return view('pages.legal.document', [
@@ -52,14 +56,15 @@ class LegalDocumentController extends Controller
 
     private function currentUrl(string $document, string $scope): string
     {
-        $route = $scope === 'SITE' ? config('legal.documents.'.$document.'.route') : null;
-
-        return $route ? route($route, ['lang' => app()->getLocale()])
-            : route('legal.document', ['document' => $document, 'scope' => $scope, 'lang' => app()->getLocale()]);
+        return LegalDocumentService::route('legal.document', ['document' => $document, 'scope' => $scope]);
     }
 
     private function scope(Request $request): string
     {
+        if ($scope = $request->route('scope')) {
+            return strtoupper($scope);
+        }
+
         $validated = $request->validate(['scope' => ['sometimes', 'string', 'in:APP,SITE']]);
 
         return $validated['scope'] ?? 'SITE';

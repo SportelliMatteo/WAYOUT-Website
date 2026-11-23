@@ -9,7 +9,7 @@
             <h2 class="text-2xl font-black">{{ __('experience.'.$label) }}</h2>
             <ul class="mt-4 divide-y divide-slate-200">
             @forelse(collect($documents)->where('scope', $scope) as $document)
-                <li class="py-5"><a class="text-lg font-bold text-violet-700 underline" href="{{ route('legal.document', ['document' => $document['code'], 'scope' => $scope, 'lang' => app()->getLocale()]) }}">{{ $document['name'] }}</a><p class="mt-1 text-sm text-slate-500">{{ __('messages.legal_page.version') }} {{ $document['current']['version'] }} · {{ \Illuminate\Support\Carbon::parse($document['current']['published_at'])->setTimezone(config('app.display_timezone'))->translatedFormat('d F Y') }}</p></li>
+                <li class="py-5"><a class="text-lg font-bold text-violet-700 underline" href="{{ \App\Support\LegalDocumentService::route('legal.document', ['document' => $document['code'], 'scope' => $scope, 'lang' => app()->getLocale()]) }}">{{ $document['name'] }}</a><p class="mt-1 text-sm text-slate-500">{{ __('messages.legal_page.version') }} {{ $document['current']['version'] }} · {{ \Illuminate\Support\Carbon::parse($document['current']['published_at'])->setTimezone(config('app.display_timezone'))->translatedFormat('d F Y') }}</p></li>
             @empty
                 <li class="py-5">{{ __('experience.legal_no_documents') }}</li>
             @endforelse

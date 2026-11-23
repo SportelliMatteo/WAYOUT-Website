@@ -23,10 +23,20 @@ Route::view('/chi-siamo', 'pages.about')->name('about');
 Route::view('/contatti', 'pages.contact')->name('contact');
 Route::get('/faq', FaqController::class)->name('faq');
 Route::view('/api/docs', 'api-docs')->name('api.docs');
-Route::get('/documenti-legali', [LegalDocumentController::class, 'index'])->name('legal.index');
-Route::get('/documenti-legali/{document}', [LegalDocumentController::class, 'show'])->name('legal.document');
-Route::get('/documenti-legali/{document}/versioni', [LegalDocumentController::class, 'history'])->name('legal.history');
-Route::get('/documenti-legali/{document}/versioni/{version}', [LegalDocumentController::class, 'version'])->whereUuid('version')->name('legal.version');
+Route::get('/documenti-legali/{scope}/{lang}', [LegalDocumentController::class, 'index'])
+    ->where(['scope' => 'site|app', 'lang' => 'it'])->name('legal.index');
+Route::prefix('/documenti-legali/{document}/{scope}/{lang}')
+    ->where(['document' => '[a-z][a-z0-9]*(?:-[a-z0-9]+)*', 'scope' => 'site|app', 'lang' => 'it'])
+    ->group(function () {
+        Route::get('/', [LegalDocumentController::class, 'show'])->name('legal.document');
+        Route::get('/versioni', [LegalDocumentController::class, 'history'])->name('legal.history');
+        Route::get('/versioni/{version}', [LegalDocumentController::class, 'version'])->whereUuid('version')->name('legal.version');
+    });
+Route::get('/documenti-legali', [LegalDocumentController::class, 'index']);
+// Existing URLs remain readable; all newly generated links use the canonical paths.
+Route::get('/documenti-legali/{document}', [LegalDocumentController::class, 'show']);
+Route::get('/documenti-legali/{document}/versioni', [LegalDocumentController::class, 'history']);
+Route::get('/documenti-legali/{document}/versioni/{version}', [LegalDocumentController::class, 'version'])->whereUuid('version');
 Route::get('/privacy-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'privacy')->name('legal.privacy');
 Route::get('/cookie-policy', [LegalDocumentController::class, 'show'])->defaults('document', 'cookies')->name('legal.cookies');
 Route::get('/termini-e-condizioni', [LegalDocumentController::class, 'show'])->defaults('document', 'terms')->name('legal.terms');

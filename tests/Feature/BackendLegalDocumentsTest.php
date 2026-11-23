@@ -31,6 +31,15 @@ class BackendLegalDocumentsTest extends TestCase
         ]];
     }
 
+    public function test_canonical_urls_normalize_codes_and_validate_path_parameters(): void
+    {
+        $this->assertSame(url('/documenti-legali/termini-di-vendita/site/it'),
+            LegalDocumentService::route('legal.document', ['document' => 'TERMINI_DI_VENDITA', 'scope' => 'SITE']));
+        foreach (['TERMS/site/it', 'termini_di_vendita/site/it', 'terms/SITE/it', 'terms/other/it', 'terms/site/fr', 'terms/site/it/versioni/invalid'] as $path) {
+            $this->get('/documenti-legali/'.$path)->assertNotFound();
+        }
+    }
+
     public function test_current_page_uses_backend_html_and_site_scope_without_local_publication(): void
     {
         $count = DB::table('legal_document_versions')->count();
@@ -79,7 +88,7 @@ class BackendLegalDocumentsTest extends TestCase
                 ],
             ]]),
         ]);
-        $this->get(route('legal.history', ['document' => 'cookies']))->assertOk()
+        $this->get(\App\Support\LegalDocumentService::route('legal.history', ['document' => 'cookies']))->assertOk()
             ->assertSee('Prima pubblicazione')->assertSee(self::PREVIOUS_ID)->assertDontSee(self::CURRENT_ID);
     }
 
@@ -96,11 +105,11 @@ class BackendLegalDocumentsTest extends TestCase
                 'document' => ['code' => 'COOKIES', 'scope' => 'SITE', 'name' => 'Cookie'],
             ]]),
         ]);
-        $this->get(route('legal.version', ['document' => 'cookies', 'version' => self::PREVIOUS_ID]))
+        $this->get(\App\Support\LegalDocumentService::route('legal.version', ['document' => 'cookies', 'version' => self::PREVIOUS_ID]))
             ->assertOk()->assertSee('Testo precedente dal backend')->assertSee('Stai leggendo una versione precedente.')
             ->assertSee('Pubblicato il:')->assertSee('01 ottobre 2026')->assertSee('Versione 1')
             ->assertDontSee('13 novembre 2026');
-        $this->get(route('legal.version', ['document' => 'cookies', 'version' => '98b09265-eaa3-4492-8639-053343bf4523']))->assertNotFound();
+        $this->get(\App\Support\LegalDocumentService::route('legal.version', ['document' => 'cookies', 'version' => '98b09265-eaa3-4492-8639-053343bf4523']))->assertNotFound();
         Http::assertNotSent(fn ($request) => str_contains($request->url(), '98b09265-eaa3-4492-8639-053343bf4523'));
     }
 
@@ -135,8 +144,8 @@ class BackendLegalDocumentsTest extends TestCase
             '*/legal/documents?scope=SITE' => Http::response(['data' => [$document]]),
             '*/legal/documents/NEW_POLICY?scope=SITE' => Http::response(['data' => $document]),
         ]);
-        $this->get(route('legal.index'))->assertOk()->assertSee('NEW_POLICY')->assertSee('Documento backend');
-        $this->get(route('legal.document', ['document' => 'NEW_POLICY']))->assertOk()->assertSee('Testo dal backend');
+        $this->get(\App\Support\LegalDocumentService::route('legal.index'))->assertOk()->assertSee('new-policy')->assertSee('Documento backend');
+        $this->get(\App\Support\LegalDocumentService::route('legal.document', ['document' => 'NEW_POLICY']))->assertOk()->assertSee('Testo dal backend');
     }
 
     public function test_backend_codes_can_be_configured_for_existing_public_urls(): void
@@ -203,9 +212,9 @@ class BackendLegalDocumentsTest extends TestCase
         ]);
 
         $this->get('/piani')->assertOk()
-            ->assertSee(route('legal.document', ['document' => 'TERMINI_DI_VENDITA', 'scope' => 'SITE', 'lang' => 'it']))
-            ->assertSee(route('legal.document', ['document' => 'RECESSO_E_RIMBORSI', 'scope' => 'SITE', 'lang' => 'it']))
-            ->assertSee(route('legal.document', ['document' => 'NEW_POLICY', 'scope' => 'SITE', 'lang' => 'it']))
+            ->assertSee(\App\Support\LegalDocumentService::route('legal.document', ['document' => 'TERMINI_DI_VENDITA', 'scope' => 'SITE', 'lang' => 'it']))
+            ->assertSee(\App\Support\LegalDocumentService::route('legal.document', ['document' => 'RECESSO_E_RIMBORSI', 'scope' => 'SITE', 'lang' => 'it']))
+            ->assertSee(\App\Support\LegalDocumentService::route('legal.document', ['document' => 'NEW_POLICY', 'scope' => 'SITE', 'lang' => 'it']))
             ->assertDontSee('APP_ONLY')
             ->assertDontSee('name="purchase_terms_accepted" value="true" required disabled', false)
             ->assertSee('data-legal-unavailable="false"', false);

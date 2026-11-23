@@ -92,7 +92,7 @@ class ConsentAuditService
 
             $versions[$document] = $current->version;
             $hashes[$document] = $current->content_hash;
-            $urls[$document] = route('legal.version', ['document' => $document, 'version' => $current->version_id], true);
+            $urls[$document] = \App\Support\LegalDocumentService::route('legal.version', ['document' => $document, 'version' => $current->version_id]);
         }
 
         return compact('versions', 'hashes', 'urls');

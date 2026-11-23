@@ -58,8 +58,8 @@
             <div class="mt-5 flex flex-wrap gap-5 font-bold text-violet-700">
                 <a class="underline underline-offset-4" href="{{ route('contact', ['lang' => app()->getLocale()]) }}">{{ __('messages.nav.contact') }} ↗</a>
                 <a class="break-all underline underline-offset-4" href="mailto:amministrazione@wayoutapp.it">amministrazione@wayoutapp.it</a>
-                <a class="underline underline-offset-4" href="{{ route('legal.index', ['scope' => 'SITE', 'lang' => app()->getLocale()]) }}">{{ __('experience.faq_legal_site') }} ↗</a>
-                <a class="underline underline-offset-4" href="{{ route('legal.index', ['scope' => 'APP', 'lang' => app()->getLocale()]) }}">{{ __('experience.faq_legal') }} ↗</a>
+                <a class="underline underline-offset-4" href="{{ \App\Support\LegalDocumentService::route('legal.index', ['scope' => 'SITE', 'lang' => app()->getLocale()]) }}">{{ __('experience.faq_legal_site') }} ↗</a>
+                <a class="underline underline-offset-4" href="{{ \App\Support\LegalDocumentService::route('legal.index', ['scope' => 'APP', 'lang' => app()->getLocale()]) }}">{{ __('experience.faq_legal') }} ↗</a>
             </div>
         </aside>
     </div>
