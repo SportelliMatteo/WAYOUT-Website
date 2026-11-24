@@ -3,12 +3,18 @@
 namespace App\Support;
 
 use App\Exceptions\WayoutApiException;
+use Illuminate\Support\Facades\Cache;
 
 class SiteFaqService
 {
     public function __construct(private readonly WayoutApiClient $client) {}
 
     public function sections(): array
+    {
+        return Cache::remember('site-faqs:v1:'.app()->getLocale(), now()->addDay(), fn () => $this->fetchSections());
+    }
+
+    private function fetchSections(): array
     {
         $response = $this->client->get('/api/v1/faqs/grouped?type=SITE', ['Accept-Language' => app()->getLocale()]);
         if (($response['success'] ?? false) !== true || ! is_array($response['data'] ?? null) || ! array_is_list($response['data'])) {

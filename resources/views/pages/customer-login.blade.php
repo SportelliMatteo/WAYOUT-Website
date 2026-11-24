@@ -34,7 +34,7 @@
 <section class="packages-page"><div class="wayout-shell max-w-2xl">
     <header class="packages-heading"><p class="experience-kicker">WAYOUT</p><h1>{{ __('account.login') }}</h1><p>{{ __('account.login_intro') }}</p></header>
     @if($errors->any())<p class="mb-4 rounded-2xl bg-rose-50 p-4 text-rose-800" role="alert">{{ $errors->first() }}</p>@endif
-    <form id="payment-details-form" method="POST" action="{{ route('customer.authenticate') }}" class="space-y-5 rounded-[2rem] bg-white p-6 shadow-lg">
+    <form id="payment-details-form" data-submit-after-phone-verification="true" method="POST" action="{{ route('customer.authenticate') }}" class="space-y-5 rounded-[2rem] bg-white p-6 shadow-lg">
         @csrf
         <input id="payment-firebase-token" type="hidden" name="firebase_token">
             <section class="space-y-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 sm:p-5">
@@ -59,7 +59,10 @@
                 <p id="payment-phone-status" class="hidden rounded-2xl px-4 py-3 text-sm font-bold" role="status" aria-live="polite"></p>
             </section>
 
-        <button id="payment-details-submit" type="submit" disabled class="experience-cta w-full disabled:opacity-50">{{ __('account.login') }} ↗</button>
+        <div id="customer-login-loader" class="hidden items-center justify-center gap-3 rounded-2xl bg-violet-50 p-4 text-sm font-bold text-violet-900" role="status" aria-live="polite">
+            <span class="h-5 w-5 animate-spin rounded-full border-2 border-violet-200 border-t-violet-700 motion-reduce:animate-none" aria-hidden="true"></span>
+            <span>{{ __('account.logging_in') }}</span>
+        </div>
     </form>
     <div class="mt-6 rounded-2xl bg-violet-50 p-5">
         <p class="mb-4 font-semibold text-slate-700">{{ __('account.app_account_help') }}</p>

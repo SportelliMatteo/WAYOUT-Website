@@ -3,6 +3,7 @@
 return [
     'title' => 'Area riservata',
     'login' => 'Accedi',
+    'logging_in' => 'Accesso in corso…',
     'login_intro' => 'Accedi con il numero di telefono del tuo account WAYOUT e il codice OTP. Per entrare devi aver già creato il tuo account nell’app.',
     'app_account_required' => 'Questo numero non è associato a un account WAYOUT. Scarica l’app e crea il tuo account, poi torna qui per accedere.',
     'app_account_help' => 'Non hai ancora un account? Scarica l’app WAYOUT e registrati prima di accedere al sito.',

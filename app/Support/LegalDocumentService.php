@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Exceptions\WayoutApiException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /** Published documents are owned and served by the WAYOUT backend. */
@@ -36,6 +37,12 @@ class LegalDocumentService
 
     public function published(?string $scope = 'SITE'): array
     {
+        return Cache::remember('legal:published:v1:'.hash('sha256', json_encode([$scope, app()->getLocale()])), now()->addDay(),
+            fn () => $this->fetchPublished($scope));
+    }
+
+    private function fetchPublished(?string $scope = 'SITE'): array
+    {
         $this->assertScope($scope);
         $key = $scope ?? 'ALL';
         if (isset($this->publishedDocuments[$key])) {
@@ -52,6 +59,12 @@ class LegalDocumentService
     }
 
     public function current(string $document, ?string $locale = null, string $scope = 'SITE'): object
+    {
+        return (object) Cache::remember('legal:current:v1:'.hash('sha256', json_encode([$scope, $document, $locale ?? app()->getLocale()])), now()->addDay(),
+            fn () => (array) $this->fetchCurrent($document, $locale, $scope));
+    }
+
+    private function fetchCurrent(string $document, ?string $locale = null, string $scope = 'SITE'): object
     {
         $locale ??= app()->getLocale();
         $this->assertScope($scope);
@@ -84,6 +97,12 @@ class LegalDocumentService
 
     public function history(string $document, string $scope = 'SITE'): array
     {
+        return Cache::remember('legal:history:v1:'.hash('sha256', json_encode([$scope, $document, app()->getLocale()])), now()->addDay(),
+            fn () => $this->fetchHistory($document, $scope));
+    }
+
+    private function fetchHistory(string $document, string $scope = 'SITE'): array
+    {
         $this->assertScope($scope);
         $response = $this->client->get('/api/v1/legal/documents/'.rawurlencode($this->code($document, $scope)).'/versions?scope='.$scope);
 
@@ -97,6 +116,12 @@ class LegalDocumentService
     }
 
     public function version(string $document, string $id, ?string $locale = null, string $scope = 'SITE'): object
+    {
+        return (object) Cache::remember('legal:version:v1:'.hash('sha256', json_encode([$scope, $document, $id, $locale ?? app()->getLocale()])), now()->addDay(),
+            fn () => (array) $this->fetchVersion($document, $id, $locale, $scope));
+    }
+
+    private function fetchVersion(string $document, string $id, ?string $locale = null, string $scope = 'SITE'): object
     {
         abort_unless(Str::isUuid($id), 404);
         $current = $this->current($document, $locale, $scope);

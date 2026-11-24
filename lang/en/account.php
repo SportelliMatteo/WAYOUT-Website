@@ -3,6 +3,7 @@
 return [
     'title' => 'My account',
     'login' => 'Sign in',
+    'logging_in' => 'Signing in…',
     'login_intro' => 'Sign in with your WAYOUT account phone number and OTP code. You must have already created your account in the app.',
     'app_account_required' => 'This phone number is not linked to a WAYOUT account. Download the app and create your account, then return here to sign in.',
     'app_account_help' => 'No account yet? Download the WAYOUT app and register before signing in to the website.',

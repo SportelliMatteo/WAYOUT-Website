@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\SiteFaqService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -11,6 +12,22 @@ class BackendFaqTest extends TestCase
     use RefreshDatabase;
 
     private const ENDPOINT = '*/faqs/grouped?type=SITE';
+
+    public function test_faq_cache_is_shared_between_instances_and_expires_after_one_day(): void
+    {
+        Http::fake([self::ENDPOINT => Http::response(['success' => true, 'data' => []])]);
+        app(SiteFaqService::class)->sections();
+        $this->travel(23)->hours();
+        app(SiteFaqService::class)->sections();
+        Http::assertSentCount(1);
+        app()->setLocale('en');
+        app(SiteFaqService::class)->sections();
+        Http::assertSentCount(2);
+        app()->setLocale('it');
+        $this->travel(2)->hours();
+        app(SiteFaqService::class)->sections();
+        Http::assertSentCount(3);
+    }
 
     public function test_page_uses_public_site_faqs_and_preserves_backend_group_and_question_order(): void
     {

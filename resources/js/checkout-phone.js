@@ -13,7 +13,10 @@ const setupCheckoutPhoneVerification = () => {
     const status = document.getElementById('payment-phone-status');
     const submit = document.getElementById('payment-details-submit');
 
-    if (!form || !prefix || !number || !send || !codePanel || !code || !verify || !token || !status || !submit) return;
+    const autoSubmit = form?.dataset.submitAfterPhoneVerification === 'true';
+    const loginLoader = document.getElementById('customer-login-loader');
+
+    if (!form || !prefix || !number || !send || !codePanel || !code || !verify || !token || !status || (!submit && !autoSubmit)) return;
     if (form.dataset.phoneVerificationInitialized === 'true') return;
 
     form.dataset.phoneVerificationInitialized = 'true';
@@ -22,6 +25,7 @@ const setupCheckoutPhoneVerification = () => {
     const messages = window.wayoutPhoneVerificationMessages || {};
     const initialSendLabel = send.textContent.trim();
     const resendSeconds = Math.max(1, Number.parseInt(send.dataset.resendSeconds || '60', 10) || 60);
+    let loginInProgress = false;
     let confirmation = null;
     let recaptcha = null;
     let codeWasSent = false;
@@ -41,7 +45,7 @@ const setupCheckoutPhoneVerification = () => {
     };
     const reset = () => {
         token.value = '';
-        submit.disabled = true;
+        if (submit) submit.disabled = true;
         confirmation = null;
         code.value = '';
         codePanel.classList.add('hidden');
@@ -140,30 +144,60 @@ const setupCheckoutPhoneVerification = () => {
         }
     });
 
+    if (autoSubmit) {
+        form.addEventListener('submit', (event) => {
+            if (token.value && loginInProgress) return;
+            event.preventDefault();
+            if (loginInProgress) return;
+            if (confirmation) verify.click();
+            else send.click();
+        });
+    }
+
     verify.addEventListener('click', async () => {
+        if (verify.disabled || loginInProgress) return;
         if (!confirmation || !/^\d{6}$/.test(code.value.trim())) {
             showStatus(messages.codeError, 'error');
             return;
         }
 
         verify.disabled = true;
+        if (autoSubmit) {
+            loginLoader?.classList.remove('hidden');
+            loginLoader?.classList.add('flex');
+            form.setAttribute('aria-busy', 'true');
+        }
         showStatus(messages.verifying);
 
         try {
             const credential = await confirmation.confirm(code.value.trim());
             token.value = await credential.user.getIdToken(true);
             await signOut(auth);
-            submit.disabled = form.dataset.legalUnavailable === 'true';
+            if (submit) submit.disabled = form.dataset.legalUnavailable === 'true';
             prefix.disabled = true;
             number.readOnly = true;
             updateSendButton();
             codePanel.classList.add('hidden');
             showStatus(messages.verified, 'success');
+
+            if (autoSubmit && form.dataset.legalUnavailable !== 'true') {
+                loginInProgress = true;
+                status.classList.add('hidden');
+                form.requestSubmit();
+            }
         } catch (error) {
+            loginInProgress = false;
             console.error('Firebase checkout OTP confirmation failed.', error);
             showStatus(messages.codeError, 'error');
         } finally {
-            verify.disabled = false;
+            if (!loginInProgress) {
+                verify.disabled = false;
+                if (autoSubmit) {
+                    loginLoader?.classList.add('hidden');
+                    loginLoader?.classList.remove('flex');
+                    form.removeAttribute('aria-busy');
+                }
+            }
         }
     });
 };
